@@ -40,6 +40,12 @@ npm install
 cp .env.example .env
 ```
 
+On Windows PowerShell, use:
+
+```powershell
+Copy-Item .env.example .env
+```
+
 3. Replace the placeholder values in `.env` with the Firebase web app config from your Firebase project.
 
 Required values:
@@ -51,6 +57,12 @@ VITE_FIREBASE_PROJECT_ID=
 VITE_FIREBASE_STORAGE_BUCKET=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
+```
+
+Optional Analytics value:
+
+```bash
+VITE_FIREBASE_MEASUREMENT_ID=
 ```
 
 4. Start the local app:
@@ -68,7 +80,7 @@ npm run build
 6. Deploy to Firebase Hosting:
 
 ```bash
-firebase deploy
+firebase deploy --only hosting
 ```
 
 ## Firebase notes
