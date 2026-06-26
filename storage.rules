@@ -1,0 +1,13 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isBrad() {
+      return request.auth != null && request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42";
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if isBrad();
+    }
+  }
+}
