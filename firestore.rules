@@ -1,0 +1,13 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isBrad() {
+      return request.auth != null && request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42";
+    }
+
+    match /{document=**} {
+      allow read, write: if isBrad();
+    }
+  }
+}
