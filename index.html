@@ -7,36 +7,9 @@
     <meta name="apple-mobile-web-app-title" content="Apex App" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Apex Detailers App</title>
-    <style>
-      *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{margin:0;background:linear-gradient(180deg,#050506,#101014);color:#f7f7f7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}.gate{min-height:100dvh;display:grid;place-items:center;padding:24px}.gate-card{width:min(100%,420px);background:linear-gradient(180deg,#151519,#101014);border:1px solid #2c2c34;border-radius:24px;padding:22px}.gate-logo{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:radial-gradient(circle,#ffd21f,#9b7500);color:#111;font-size:32px;font-weight:950;margin-bottom:14px}.gate-card h1{margin:0 0 6px;font-size:26px}.gate-card p{margin:0 0 18px;color:#aaaab5;line-height:1.45}.gate-card label{display:block;margin:12px 0}.gate-card span{display:block;margin-bottom:6px;color:#aaaab5;font-size:13px}.gate-card input{width:100%;min-height:52px;border:1px solid #34343b;border-radius:15px;padding:13px;background:#0f0f13;color:#f7f7f7;font-size:17px}.gate-card button{width:100%;min-height:52px;border:0;border-radius:16px;margin-top:12px;padding:14px 16px;background:#ffd21f;color:#111;font-size:17px;font-weight:900}.gate-error{display:none;margin-top:12px;padding:10px 12px;border-radius:14px;background:#3a1f23;color:#ffb5b8;font-size:14px}.app-hidden{display:none!important}
-    </style>
   </head>
   <body>
-    <div id="gate" class="gate">
-      <div class="gate-card">
-        <div class="gate-logo">A</div>
-        <h1>Apex Detailers</h1>
-        <p>Private business app. Enter your access details to continue.</p>
-        <label><span>Username</span><input id="gateUser" placeholder="Apex or Brad Apex" /></label>
-        <label><span>PIN</span><input id="gatePin" type="password" inputmode="numeric" placeholder="PIN" /></label>
-        <button id="gateButton" type="button">Open App</button>
-        <div id="gateError" class="gate-error">Access details are wrong.</div>
-      </div>
-    </div>
-    <div id="root" class="app-hidden"></div>
-    <script>
-      const users = ["apex", "brad apex", "bradapex"];
-      const pin = Array(4).fill("0").join("");
-      const gate = document.getElementById("gate");
-      const root = document.getElementById("root");
-      const user = document.getElementById("gateUser");
-      const pinInput = document.getElementById("gatePin");
-      const button = document.getElementById("gateButton");
-      const error = document.getElementById("gateError");
-      function clean(value){return String(value||"").trim().toLowerCase().replace(/\s+/g," ")}
-      function startApp(){gate.remove();root.classList.remove("app-hidden");const script=document.createElement("script");script.type="module";script.src="/src/main.jsx";document.body.appendChild(script)}
-      function check(){if(users.includes(clean(user.value))&&String(pinInput.value)===pin){sessionStorage.setItem("apexGate","open");startApp()}else{error.style.display="block";pinInput.value="";pinInput.focus()}}
-      if(sessionStorage.getItem("apexGate")==="open"){startApp()}else{button.addEventListener("click",check);user.addEventListener("keydown",e=>{if(e.key==="Enter")check()});pinInput.addEventListener("keydown",e=>{if(e.key==="Enter")check()})}
-    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
