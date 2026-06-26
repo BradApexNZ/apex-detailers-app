@@ -2,8 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { db, storage } from "./firebase";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { auth, db, storage } from "./firebase";
 import "./styles.css";
+
+const BRAD_UID = "FqDrn1aPFHXUB5ogb2rN9D7mRG42";
 
 const packages = {
   express: { name: "Express Refresh", price: 79 },
@@ -89,7 +92,41 @@ function calculatePricing(form) {
   return { base, vehicleAdj, conditionAdj, addonTotal, travel, calculatedTotal, total, warnings };
 }
 
+function LoginScreen({ loading, error, onLogin }) {
+  const [email, setEmail] = useState("Brad@apexdetailers.co.nz");
+  const [password, setPassword] = useState("");
+
+  function submit(event) {
+    event.preventDefault();
+    onLogin(email, password);
+  }
+
+  return <div className="appShell">
+    <main className="appMain">
+      <section className="heroCard">
+        <div>
+          <div className="brandLogo" aria-hidden="true"><span>A</span></div>
+          <span className="eyebrow">Private Apex App</span>
+          <h2>Sign in to Apex Detailers.</h2>
+          <p>This app is locked to Brad's Firebase account before customer, job, booking, and photo data loads.</p>
+        </div>
+      </section>
+      <form className="card" onSubmit={submit}>
+        <Input label="Email" type="email" value={email} onChange={setEmail} placeholder="Brad@apexdetailers.co.nz" />
+        <Input label="Password" type="password" value={password} onChange={setPassword} placeholder="Firebase password" />
+        <button type="submit" disabled={loading}>{loading ? "Signing in..." : "Log In"}</button>
+        {error && <p className="muted">{error}</p>}
+        <p className="muted">Use the user you created in Firebase Authentication.</p>
+      </form>
+    </main>
+  </div>;
+}
+
 function App() {
+  const [authUser, setAuthUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
   const [tab, setTab] = useState("dashboard");
   const [customers, setCustomers] = useState([]);
   const [jobs, setJobs] = useState([]);
@@ -101,8 +138,25 @@ function App() {
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
   const pricing = useMemo(() => calculatePricing(jobForm), [jobForm]);
+  const isBrad = authUser?.uid === BRAD_UID;
 
   useEffect(() => {
+    const stopAuth = onAuthStateChanged(auth, user => {
+      if (user && user.uid !== BRAD_UID) {
+        setLoginError("This Firebase user is not authorised for Apex Detailers.");
+        signOut(auth);
+        setAuthUser(null);
+      } else {
+        setAuthUser(user);
+        if (user) setLoginError("");
+      }
+      setAuthReady(true);
+    });
+    return stopAuth;
+  }, []);
+
+  useEffect(() => {
+    if (!isBrad) return undefined;
     const stopCustomers = onSnapshot(collection(db, "customers"), snap => {
       setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => displayCustomerName(a).localeCompare(displayCustomerName(b))));
     });
@@ -110,7 +164,7 @@ function App() {
       setJobs(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     });
     return () => { stopCustomers(); stopJobs(); };
-  }, []);
+  }, [isBrad]);
 
   const filteredCustomers = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -130,6 +184,28 @@ function App() {
   const paidRevenue = jobs.reduce((sum, job) => sum + Number(job.paidAmount || (job.status === "Paid" ? job.total : 0) || 0), 0);
   const photoCount = jobs.reduce((sum, job) => sum + (job.photos || []).length, 0);
   const customerJobs = id => jobs.filter(job => job.customerId === id);
+
+  async function handleLogin(email, password) {
+    setLoginLoading(true);
+    setLoginError("");
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+    } catch (error) {
+      console.error(error);
+      setLoginError("Login failed. Check the email/password in Firebase Authentication.");
+    }
+    setLoginLoading(false);
+  }
+
+  async function handleLogout() {
+    await signOut(auth);
+    setCustomers([]);
+    setJobs([]);
+    setSearch("");
+    setTab("dashboard");
+    setModal(null);
+    setActionOpen(false);
+  }
 
   function openCustomerModal(customer = null) {
     setActionOpen(false);
@@ -174,7 +250,7 @@ function App() {
     if (displayCustomerName(customerForm) === "Unnamed Customer") return alert("Add a customer name or business name first.");
     setSaving(true);
     try {
-      const payload = { ...customerForm, updatedAt: serverTimestamp() };
+      const payload = { ...customerForm, ownerUid: BRAD_UID, updatedAt: serverTimestamp() };
       if (customerForm.id) await updateDoc(doc(db, "customers", customerForm.id), payload);
       else await addDoc(collection(db, "customers"), { ...payload, createdAt: serverTimestamp() });
       setCustomerForm(emptyCustomer);
@@ -190,7 +266,7 @@ function App() {
   async function ensureCustomerForJob() {
     if (jobForm.customerId) return jobForm.customerId;
     const parts = splitName(jobForm.customerName);
-    const newCustomer = await addDoc(collection(db, "customers"), { firstName: parts.firstName, lastName: parts.lastName, businessName: "", phone: jobForm.phone, email: jobForm.email, address: jobForm.address, area: jobForm.area, preferredContact: jobForm.preferredContact, customerType: jobForm.customerType, notes: "Created from job entry.", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    const newCustomer = await addDoc(collection(db, "customers"), { firstName: parts.firstName, lastName: parts.lastName, businessName: "", phone: jobForm.phone, email: jobForm.email, address: jobForm.address, area: jobForm.area, preferredContact: jobForm.preferredContact, customerType: jobForm.customerType, notes: "Created from job entry.", ownerUid: BRAD_UID, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     return newCustomer.id;
   }
 
@@ -210,11 +286,11 @@ function App() {
         uploadedPhotos.push({ name: photo.name, category: photo.category || "before", url: await getDownloadURL(storageRef), path });
       }
       const addonNames = addons.filter(addon => jobForm.selectedAddons.includes(addon.id)).map(addon => addon.name);
-      const payload = { ...jobForm, customerId, vehicle: vehicleName(jobForm), packageName: packages[jobForm.packageId]?.name || "Custom Package", addonNames, pricing, total: pricing.total, paidAmount: Number(jobForm.paidAmount || 0), photos: uploadedPhotos, updatedAt: serverTimestamp() };
+      const payload = { ...jobForm, customerId, ownerUid: BRAD_UID, vehicle: vehicleName(jobForm), packageName: packages[jobForm.packageId]?.name || "Custom Package", addonNames, pricing, total: pricing.total, paidAmount: Number(jobForm.paidAmount || 0), photos: uploadedPhotos, updatedAt: serverTimestamp() };
       delete payload.photoCategory;
       if (jobForm.id) await updateDoc(doc(db, "jobs", jobForm.id), payload);
       else await addDoc(collection(db, "jobs"), { ...payload, createdAt: serverTimestamp() });
-      await updateDoc(doc(db, "customers", customerId), { phone: jobForm.phone, email: jobForm.email, address: jobForm.address, area: jobForm.area, preferredContact: jobForm.preferredContact, customerType: jobForm.customerType, lastVehicle: vehicleName(jobForm), lastJobStatus: jobForm.status, updatedAt: serverTimestamp() });
+      await updateDoc(doc(db, "customers", customerId), { phone: jobForm.phone, email: jobForm.email, address: jobForm.address, area: jobForm.area, preferredContact: jobForm.preferredContact, customerType: jobForm.customerType, lastVehicle: vehicleName(jobForm), lastJobStatus: jobForm.status, ownerUid: BRAD_UID, updatedAt: serverTimestamp() });
       setJobForm(emptyJob);
       setModal(null);
       setTab(jobForm.mode === "booking" ? "bookings" : "jobs");
@@ -237,8 +313,11 @@ function App() {
     setMessage(`Hey ${jobForm.customerName || "there"}, thanks for reaching out to Apex Detailers.\n\nFor your ${vehicleName(jobForm)}, I can do the ${packages[jobForm.packageId].name} package for an estimated total of ${money(pricing.total)}.${names.length ? "\nAdd-ons included: " + names.join(", ") + "." : ""}${jobForm.bookingDate ? "\nBooking requested: " + jobForm.bookingDate + (jobForm.bookingTime ? " at " + jobForm.bookingTime : "") + "." : ""}\n\nThis includes Apex launch pricing. Access to an outside tap is required.\n\nCheers,\nApex Detailers`);
   }
 
+  if (!authReady) return <div className="appShell"><main className="appMain"><section className="card"><h2>Loading Apex...</h2></section></main></div>;
+  if (!isBrad) return <LoginScreen loading={loginLoading} error={loginError} onLogin={handleLogin} />;
+
   return <div className="appShell">
-    <header className="appHeader"><div className="brandLogo" aria-hidden="true"><span>A</span></div><div><h1>Apex Detailers</h1><p>Customers • Quotes • Jobs • Photos</p></div></header>
+    <header className="appHeader"><div className="brandLogo" aria-hidden="true"><span>A</span></div><div><h1>Apex Detailers</h1><p>Customers • Quotes • Jobs • Photos</p></div><button type="button" className="smallButton secondary" onClick={handleLogout}>Logout</button></header>
     <main className="appMain">
       <section className="heroCard"><div><span className="eyebrow">Apex App V2</span><h2>Business database, not just a quote pad.</h2><p>Add old customers, past jobs, new bookings, photos, and proper contact details from your iPhone.</p></div><button type="button" className="miniAdd" onClick={() => setActionOpen(true)}>＋ Add</button></section>
       {tab !== "dashboard" && <label className="searchBox"><span>Search</span><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Name, rego, phone, vehicle..." /></label>}
