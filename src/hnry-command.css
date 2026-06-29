@@ -1,0 +1,169 @@
+/* Hnry command layer - makes the payment/tax workflow obvious in Apex HQ */
+
+/* Hnry bottom-nav item */
+.bottomNav button:nth-child(5) {
+  position: relative;
+  overflow: hidden;
+}
+
+.bottomNav button:nth-child(5)::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 210, 31, 0.18);
+  pointer-events: none;
+}
+
+.bottomNav button:nth-child(5).active {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 210, 31, 0.32), transparent 56%),
+    linear-gradient(180deg, rgba(255, 210, 31, 0.24), rgba(255, 210, 31, 0.08)) !important;
+}
+
+/* Hnry tab header */
+section:has(h2:first-child),
+section:has(h2) {
+  scroll-margin-top: 90px;
+}
+
+.sectionTitle h2 {
+  letter-spacing: -0.06em !important;
+}
+
+.sectionTitle:has(h2) p {
+  max-width: 680px;
+}
+
+/* Payment/Hnry setup card */
+section:has(.paymentJobCard) > .card:first-of-type {
+  border: 1px solid rgba(255, 210, 31, 0.42) !important;
+  border-left: 6px solid rgba(255, 210, 31, 0.9) !important;
+  background:
+    linear-gradient(120deg, rgba(255, 210, 31, 0.18), transparent 36%),
+    radial-gradient(circle at 100% 0%, rgba(255, 210, 31, 0.15), transparent 34%),
+    linear-gradient(180deg, rgba(24, 22, 12, 0.96), rgba(5, 6, 10, 0.98)) !important;
+}
+
+section:has(.paymentJobCard) > .card:first-of-type .cardHeader h3::before {
+  content: "HNRY CONTROL · ";
+  color: #ffd21f;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  font-weight: 1000;
+}
+
+section:has(.paymentJobCard) > .card:first-of-type .detailList span {
+  border-color: rgba(255, 210, 31, 0.2) !important;
+  background: rgba(255, 210, 31, 0.065) !important;
+}
+
+/* Hnry workflow rail */
+section:has(.paymentJobCard) .pipelineRail {
+  padding: 3px 0 9px;
+}
+
+section:has(.paymentJobCard) .pipelineStep {
+  min-height: 108px !important;
+  border-color: rgba(255, 210, 31, 0.3) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 210, 31, 0.12), rgba(255,255,255,0.04)),
+    rgba(8, 8, 10, 0.82) !important;
+}
+
+section:has(.paymentJobCard) .pipelineStep strong {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(255, 210, 31, 0.16);
+  border: 1px solid rgba(255, 210, 31, 0.24);
+}
+
+/* Individual handoff cards */
+.paymentJobCard {
+  border-left: 7px solid #ffd21f !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 210, 31, 0.18), transparent 38%),
+    linear-gradient(145deg, rgba(24, 24, 30, 0.98), rgba(5, 6, 10, 0.98)) !important;
+}
+
+.paymentJobCard .cardHeader h3::before {
+  content: "Invoice handoff";
+  display: inline-flex;
+  margin: 0 8px 7px 0;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(255, 210, 31, 0.14);
+  border: 1px solid rgba(255, 210, 31, 0.28);
+  color: #fff3a3;
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.invoiceBrief pre,
+.messageBox pre {
+  max-height: 420px;
+  overflow: auto;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 210, 31, 0.16);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.paymentJobCard .buttonRow button:first-child {
+  min-height: 58px;
+  font-size: 17px;
+  box-shadow: 0 18px 46px rgba(255, 210, 31, 0.25), inset 0 1px 0 rgba(255,255,255,0.5) !important;
+}
+
+.paymentJobCard .buttonRow button:nth-child(2)::before { content: "1 · "; }
+.paymentJobCard .buttonRow button:nth-child(3)::before { content: "2 · "; }
+.paymentJobCard .buttonRow button:nth-child(4)::before { content: "3 · "; }
+.paymentJobCard .buttonRow button:nth-child(5)::before { content: "4 · "; }
+
+/* Hnry fields in the job form */
+.formPanel:has(textarea[placeholder*="Invoice sent in Hnry"]) {
+  border-color: rgba(255, 210, 31, 0.34) !important;
+  border-left: 6px solid rgba(255, 210, 31, 0.84) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 210, 31, 0.14), transparent 36%),
+    linear-gradient(180deg, rgba(25, 24, 15, 0.96), rgba(6, 6, 9, 0.98)) !important;
+}
+
+.formPanel:has(textarea[placeholder*="Invoice sent in Hnry"]) h3::after {
+  content: "  · Hnry safe handoff";
+  color: #ffd21f;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+}
+
+/* Make statuses easier to scan */
+.jobCard .badge,
+.paymentJobCard .badge {
+  min-width: 92px;
+}
+
+.jobCard:has(select option[value="Prepare Hnry Invoice"]:checked),
+.jobCard:has(select option[value="Invoice Sent"]:checked),
+.jobCard:has(select option[value="Paid"]:checked),
+.jobCard:has(select option[value="Review Request Sent"]:checked) {
+  border-color: rgba(255, 210, 31, 0.3) !important;
+  border-left-color: #ffd21f !important;
+}
+
+@media (max-width: 430px) {
+  .paymentJobCard .buttonRow {
+    grid-template-columns: 1fr !important;
+  }
+
+  .invoiceBrief pre,
+  .messageBox pre {
+    max-height: 320px;
+    font-size: 13px;
+  }
+}
