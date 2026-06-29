@@ -5,7 +5,7 @@ Mobile-first Apex Detailers app for quotes, bookings, jobs, customers, revenue t
 ## What this app does
 
 - Create customer quotes and bookings
-- Calculate Apex launch pricing with add-ons and vehicle adjustments
+- Calculate Apex package pricing with add-ons and vehicle adjustments
 - Save jobs to Firestore
 - Upload job photos to Firebase Storage
 - Track quote/job statuses
@@ -20,6 +20,8 @@ apex-detailers-app/
 ├─ package.json
 ├─ vite.config.js
 ├─ .env.example
+├─ docs/
+│  └─ APEX_APP_ROADMAP.md
 └─ src/
    ├─ firebase.js
    ├─ main.jsx
@@ -83,6 +85,16 @@ npm run build
 firebase deploy --only hosting
 ```
 
+## Next deploy from home
+
+```bash
+cd apex-detailers-app
+git pull
+npm install
+npm run build
+firebase deploy --only hosting
+```
+
 ## Firebase notes
 
 The app reads Firebase settings from Vite environment variables in `src/firebase.js`.
@@ -90,3 +102,7 @@ The app reads Firebase settings from Vite environment variables in `src/firebase
 Do not commit your real `.env` file. It is ignored by Git.
 
 Before full live use, check Firestore and Storage security rules so customer details and vehicle photos are protected.
+
+## Roadmap
+
+Apex App planning notes are saved in `docs/APEX_APP_ROADMAP.md`.
