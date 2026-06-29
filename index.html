@@ -4,9 +4,32 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" />
     <meta name="theme-color" content="#050506" />
-    <meta name="apple-mobile-web-app-title" content="Apex App" />
+    <meta name="apple-mobile-web-app-title" content="Apex HQ" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <title>Apex Detailers App</title>
+    <title>Apex Detailers HQ</title>
+    <style>
+      .bottomNav { grid-template-columns: repeat(6, 1fr) !important; }
+      .bottomNav button { font-size: 10px !important; }
+      .paymentJobCard {
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 14px;
+        padding: 16px;
+        border: 1px solid var(--line, rgba(255,255,255,0.12));
+        border-radius: var(--radius, 24px);
+        background: linear-gradient(180deg, rgba(255,255,255,0.035), transparent 44%), linear-gradient(180deg, var(--panel, rgba(18,18,22,0.92)), var(--panel2, rgba(10,10,13,0.96)));
+        box-shadow: var(--shadow, 0 22px 70px rgba(0,0,0,0.58));
+      }
+      .paymentJobCard::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: radial-gradient(circle at 100% 0%, rgba(255,210,31,0.1), transparent 36%);
+      }
+      .paymentJobCard > * { position: relative; z-index: 1; }
+      .invoiceBrief { margin-top: 12px; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
