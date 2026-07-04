@@ -1,4 +1,4 @@
-/* Apex HQ V3.1 clean modern GUI + no fake wings */
+/* Apex HQ V4 clean modern GUI + no fake wings */
 :root {
   --apex-bg: #030306;
   --apex-card: rgba(15, 16, 22, 0.92);
@@ -81,7 +81,7 @@ body {
 
 .wordmark p::before,
 .appHeader p::before {
-  content: "APEX HQ V3.1";
+  content: "APEX HQ V4";
   color: var(--apex-yellow);
   font-size: 11px;
   font-weight: 1000;
@@ -141,7 +141,7 @@ body {
 
 .heroCard .eyebrow::before,
 .loginHero .eyebrow::before {
-  content: "APEX HQ V3.1";
+  content: "APEX HQ V4";
   font-size: 11px;
   font-weight: 1000;
   letter-spacing: 0.12em;
