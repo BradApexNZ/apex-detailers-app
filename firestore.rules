@@ -6,8 +6,20 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42";
     }
 
-    match /{document=**} {
+    match /customers/{customerId} {
       allow read, write: if isBrad();
+    }
+
+    match /jobs/{jobId} {
+      allow read, write: if isBrad();
+    }
+
+    match /settings/{settingId} {
+      allow read, write: if isBrad();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
