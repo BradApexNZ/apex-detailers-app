@@ -6,8 +6,19 @@ service firebase.storage {
       return request.auth != null && request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42";
     }
 
+    function isSafeImageUpload() {
+      return request.resource != null
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /jobs/{customerId}/{fileName} {
+      allow read, delete: if isBrad();
+      allow create, update: if isBrad() && isSafeImageUpload();
+    }
+
     match /{allPaths=**} {
-      allow read, write: if isBrad();
+      allow read, write: if false;
     }
   }
 }
