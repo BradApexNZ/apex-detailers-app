@@ -2,7 +2,7 @@
 
 Ascend Macros is a private MVP tracker for Brad's Ascending plan: macros, saved meals, daily check-ins, black coffee control, gut tolerance, gym performance, GHK-Cu context and Sunday Reta context.
 
-This app is original code. It is not a MacroFactor clone. The goal is to build a lightweight tracker with similar category-level ideas: macro logging, body-weight trend thinking, saved meals, and weekly adjustments.
+This app is original code. It is not a MacroFactor clone. The goal is to build a lightweight tracker with similar category-level ideas: macro logging, body-weight trend thinking, saved meals, recipe suggestions, supplement logging and weekly adjustments.
 
 ## Preloaded profile
 
@@ -24,7 +24,7 @@ This app is original code. It is not a MacroFactor clone. The goal is to build a
 
 ## Adaptive macro coach
 
-The MVP now includes a simple self-adjusting macro engine. It starts with Brad's preloaded targets and then looks at saved daily trend entries.
+The MVP includes a simple self-adjusting macro engine. It starts with Brad's preloaded targets and then looks at saved daily trend entries.
 
 It uses:
 
@@ -46,9 +46,29 @@ Rules in plain English:
 
 This is a practical coaching engine, not medical advice.
 
+## Recipe bank
+
+The app includes 50 high-protein lunch and dinner ideas for building meal plans:
+
+- 25 lunch ideas
+- 25 dinner ideas
+- Sauce-friendly meals like teriyaki, honey soy, satay, bang bang, Korean BBQ, burrito bowls, tomato pasta and yoghurt garlic sauce
+- Estimated macros so the user can quick-add meals, then adjust portions/sauces later
+
+## Supplements / PED / peptide tracker
+
+The app includes a user-entered tracker for supplements, protein shakes, pre-workout, peptides, prescribed meds, and other user-entered compounds.
+
+Boundary:
+
+- The app records what the user enters.
+- The app can log timing, frequency, amount/serving, format/route, notes and recent use.
+- The app does **not** recommend compounds, sources, cycles, protocols, dosing, or timing.
+- The app is for tracking, symptom awareness, and safer record keeping.
+
 ## Safety boundary
 
-This app does **not** provide peptide sourcing, dosing, or treatment advice. It only tracks user-entered routine context, symptoms, nutrition, hydration, training, and notes.
+This app does **not** provide peptide sourcing, dosing, cycling, or treatment advice. It only tracks user-entered routine context, symptoms, nutrition, hydration, training, and notes.
 
 ## Run locally
 
@@ -79,7 +99,8 @@ firebase deploy --only hosting,firestore:rules
 
 - Proper custom food entry
 - Recipe builder for the three oat flavours and gangster meals
+- Meal-plan generator from the 50-recipe bank
 - Graphs for weight, waist, calories, protein, coffee, appetite and digestion
 - Bloodwork reminder module
 - Export/import backup
-- Public-safe peptide education module with regulatory review before release
+- Public-safe peptide/PED education module with regulatory review before release
