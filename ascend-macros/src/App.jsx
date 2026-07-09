@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, CalendarDays, Coffee, Download, Save, Settings, ShieldCheck, SlidersHorizontal, Syringe, TrendingUp, Utensils, Waves } from 'lucide-react';
+import { Activity, AlertTriangle, CalendarDays, Coffee, Download, Pill, Plus, Save, Settings, ShieldCheck, SlidersHorizontal, Syringe, TrendingUp, Utensils, Waves } from 'lucide-react';
 import { firebaseReady, loadCloudState, saveCloudState } from './firebase.js';
+import { commonTrackingLabels, recipeBank, supplementCategories } from './data/recipeBank.js';
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
 const toNumber = (value, fallback = 0) => Number.parseFloat(value) || fallback;
@@ -40,6 +41,17 @@ const defaultCheckIn = {
   restingHeartRate: '',
   ghkCuDone: false,
   retaSundayLogged: false,
+  notes: '',
+};
+
+const defaultSupplementDraft = {
+  name: '',
+  category: 'Supplement',
+  amount: '',
+  timing: '',
+  frequency: '',
+  route: '',
+  reminder: '',
   notes: '',
 };
 
@@ -92,10 +104,7 @@ function buildAdaptiveCoach({ history, checkIn, totals, targets, profile }) {
     targets,
   }].filter((entry) => entry?.checkIn?.weight);
 
-  const recent = upserted
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-7);
-
+  const recent = upserted.sort((a, b) => a.date.localeCompare(b.date)).slice(-7);
   if (recent.length < 3) {
     return {
       status: 'Learning mode',
@@ -163,6 +172,10 @@ function App() {
   const [loggedMeals, setLoggedMeals] = useState(() => JSON.parse(localStorage.getItem('ascend:meals') || '[]'));
   const [checkIn, setCheckIn] = useState(() => JSON.parse(localStorage.getItem('ascend:checkin') || JSON.stringify(defaultCheckIn)));
   const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('ascend:history') || '[]'));
+  const [supplementPlan, setSupplementPlan] = useState(() => JSON.parse(localStorage.getItem('ascend:supplementPlan') || '[]'));
+  const [supplementLog, setSupplementLog] = useState(() => JSON.parse(localStorage.getItem('ascend:supplementLog') || '[]'));
+  const [supplementDraft, setSupplementDraft] = useState(defaultSupplementDraft);
+  const [recipeFilter, setRecipeFilter] = useState('All');
   const [syncStatus, setSyncStatus] = useState(firebaseReady ? 'Firebase ready' : 'Local mode');
 
   const targets = useMemo(() => buildTargets(profile), [profile]);
@@ -172,7 +185,9 @@ function App() {
     localStorage.setItem('ascend:meals', JSON.stringify(loggedMeals));
     localStorage.setItem('ascend:checkin', JSON.stringify(checkIn));
     localStorage.setItem('ascend:history', JSON.stringify(history));
-  }, [profile, loggedMeals, checkIn, history]);
+    localStorage.setItem('ascend:supplementPlan', JSON.stringify(supplementPlan));
+    localStorage.setItem('ascend:supplementLog', JSON.stringify(supplementLog));
+  }, [profile, loggedMeals, checkIn, history, supplementPlan, supplementLog]);
 
   const totals = useMemo(() => loggedMeals.reduce((sum, meal) => ({
     calories: sum.calories + meal.calories,
@@ -184,6 +199,7 @@ function App() {
   const coach = useMemo(() => buildAdaptiveCoach({ history, checkIn, totals, targets, profile }), [history, checkIn, totals, targets, profile]);
   const sunday = new Date().getDay() === 0;
   const monday = new Date().getDay() === 1;
+  const filteredRecipes = recipeBank.filter((recipe) => recipeFilter === 'All' || recipe.meal === recipeFilter).slice(0, 50);
 
   function addMeal(meal) {
     setLoggedMeals((current) => [...current, { ...meal, loggedAt: new Date().toISOString() }]);
@@ -206,6 +222,29 @@ function App() {
     setSyncStatus('Applied adaptive macro targets');
   }
 
+  function addSupplementPlan() {
+    if (!supplementDraft.name.trim()) return;
+    setSupplementPlan((current) => [...current, { ...supplementDraft, id: crypto.randomUUID(), createdAt: new Date().toISOString() }]);
+    setSupplementDraft(defaultSupplementDraft);
+  }
+
+  function logSupplement(item) {
+    setSupplementLog((current) => [{
+      id: crypto.randomUUID(),
+      name: item.name,
+      category: item.category,
+      amount: item.amount,
+      timing: item.timing,
+      route: item.route,
+      loggedAt: new Date().toISOString(),
+      notes: item.notes,
+    }, ...current]);
+  }
+
+  function removeSupplement(id) {
+    setSupplementPlan((current) => current.filter((item) => item.id !== id));
+  }
+
   function clearToday() {
     setLoggedMeals([]);
     setCheckIn({ ...defaultCheckIn, date: todayKey(), weight: profile.currentWeight || profile.startWeight || '85' });
@@ -217,7 +256,7 @@ function App() {
       return;
     }
     try {
-      await saveCloudState({ profile, loggedMeals, checkIn, history, targets });
+      await saveCloudState({ profile, loggedMeals, checkIn, history, supplementPlan, supplementLog, targets });
       setSyncStatus('Saved to Firebase');
     } catch (error) {
       setSyncStatus(`Firebase save failed: ${error.message}`);
@@ -235,6 +274,8 @@ function App() {
       if (data?.loggedMeals) setLoggedMeals(data.loggedMeals);
       if (data?.checkIn) setCheckIn(data.checkIn);
       if (data?.history) setHistory(data.history);
+      if (data?.supplementPlan) setSupplementPlan(data.supplementPlan);
+      if (data?.supplementLog) setSupplementLog(data.supplementLog);
       setSyncStatus(data ? 'Loaded from Firebase' : 'No cloud data yet');
     } catch (error) {
       setSyncStatus(`Firebase load failed: ${error.message}`);
@@ -242,7 +283,7 @@ function App() {
   }
 
   function exportJson() {
-    const blob = new Blob([JSON.stringify({ date: todayKey(), profile, targets, totals, loggedMeals, checkIn, history, coach }, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ date: todayKey(), profile, targets, totals, loggedMeals, checkIn, history, supplementPlan, supplementLog, coach }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -340,6 +381,24 @@ function App() {
         ))}
       </section>
 
+      <section className="card recipe-bank-card">
+        <div className="section-head inline"><Utensils/><h2>50 gangster lunch + dinner ideas</h2></div>
+        <p className="soft">Built for meal-plan suggestions: high-protein, high-carb, sauce-friendly, not bland. Macros are estimates so you can adjust portions and sauces later.</p>
+        <div className="filter-row">
+          {['All', 'Lunch', 'Dinner'].map((filter) => <button key={filter} className={recipeFilter === filter ? '' : 'ghost'} onClick={() => setRecipeFilter(filter)}>{filter}</button>)}
+        </div>
+        <div className="recipe-bank-grid">
+          {filteredRecipes.map((recipe) => (
+            <article className="recipe-card" key={recipe.id}>
+              <p className="tag">{recipe.meal} · {recipe.sauce}</p>
+              <h3>{recipe.name}</h3>
+              <div className="mini-macros"><span>{recipe.calories} kcal</span><span>{recipe.protein}P</span><span>{recipe.carbs}C</span><span>{recipe.fat}F</span></div>
+              <button onClick={() => addMeal({ ...recipe, time: recipe.meal, day: 'Recipe bank', vibe: recipe.sauce })}><Plus size={16}/> Add</button>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="grid two-col">
         <section className="card">
           <div className="section-head inline"><Activity/><h2>Daily check-in</h2></div>
@@ -364,12 +423,43 @@ function App() {
 
         <section className="card">
           <div className="section-head inline"><Syringe/><h2>Routine context</h2></div>
-          <p className="soft">Track completion and symptoms only. This app does not recommend peptides, sources, or dosing.</p>
+          <p className="soft">Track completion and symptoms only. This app does not recommend peptides, sources, cycles, or dosing.</p>
           <label className="big-check"><input type="checkbox" checked={checkIn.ghkCuDone} onChange={(e) => setCheckIn({ ...checkIn, ghkCuDone: e.target.checked })}/> GHK-Cu daily logged</label>
           <label className="big-check"><input type="checkbox" checked={checkIn.retaSundayLogged} onChange={(e) => setCheckIn({ ...checkIn, retaSundayLogged: e.target.checked })}/> Sunday Reta context logged</label>
           <div className="guardrail"><ShieldCheck/><p><strong>Guardrails:</strong> Protein first. Carbs for training. Moderate fat. Sauces allowed. Hydrate/electrolytes. Bloodwork after 3 months. Adjust from weekly data.</p></div>
           <div className="danger"><AlertTriangle/><p><strong>Red flags:</strong> severe ongoing stomach pain, repeated vomiting, dehydration, fainting, chest pain, trouble breathing, yellow skin/eyes, or strong right-upper-abdominal pain.</p></div>
         </section>
+      </section>
+
+      <section className="card tracker-card">
+        <div className="section-head inline"><Pill/><h2>Supplements / PED / peptide tracker</h2></div>
+        <p className="soft">User-entered tracking only. The app can log what someone says they use, when they used it, and what symptoms showed up. It does not tell anyone what to use, where to source it, how much to take, how to cycle it, or when to dose it.</p>
+        <div className="label-cloud">
+          {commonTrackingLabels.map((label) => <button key={label} className="ghost mini-button" onClick={() => setSupplementDraft({ ...supplementDraft, name: label })}>{label}</button>)}
+        </div>
+        <div className="form-grid four">
+          <label>Name<input value={supplementDraft.name} onChange={(e) => setSupplementDraft({ ...supplementDraft, name: e.target.value })} placeholder="e.g. whey, creatine, prescribed med, user-entered compound" /></label>
+          <label>Category<select value={supplementDraft.category} onChange={(e) => setSupplementDraft({ ...supplementDraft, category: e.target.value })}>{supplementCategories.map((cat) => <option key={cat}>{cat}</option>)}</select></label>
+          <label>Amount / serving<input value={supplementDraft.amount} onChange={(e) => setSupplementDraft({ ...supplementDraft, amount: e.target.value })} placeholder="user-entered only" /></label>
+          <label>Timing<input value={supplementDraft.timing} onChange={(e) => setSupplementDraft({ ...supplementDraft, timing: e.target.value })} placeholder="morning, pre-gym, Sunday" /></label>
+          <label>Frequency<input value={supplementDraft.frequency} onChange={(e) => setSupplementDraft({ ...supplementDraft, frequency: e.target.value })} placeholder="daily, weekly, as needed" /></label>
+          <label>Route / format<input value={supplementDraft.route} onChange={(e) => setSupplementDraft({ ...supplementDraft, route: e.target.value })} placeholder="shake, capsule, prescribed format" /></label>
+          <label>Reminder<input value={supplementDraft.reminder} onChange={(e) => setSupplementDraft({ ...supplementDraft, reminder: e.target.value })} placeholder="manual reminder text" /></label>
+          <label>Notes<input value={supplementDraft.notes} onChange={(e) => setSupplementDraft({ ...supplementDraft, notes: e.target.value })} placeholder="side effects, clinician notes, bloodwork notes" /></label>
+        </div>
+        <button onClick={addSupplementPlan}><Plus size={16}/> Add tracker item</button>
+        <div className="tracker-list">
+          {supplementPlan.length === 0 ? <p className="soft">No tracker items yet. Add protein, pre-workout, creatine, Reta context, or user-entered health items.</p> : supplementPlan.map((item) => (
+            <article className="tracker-row" key={item.id}>
+              <div><strong>{item.name}</strong><p>{item.category} · {item.timing || 'no timing'} · {item.frequency || 'no frequency'} · {item.amount || 'no amount entered'}</p></div>
+              <div className="row-actions"><button onClick={() => logSupplement(item)}>Log now</button><button className="ghost" onClick={() => removeSupplement(item.id)}>Remove</button></div>
+            </article>
+          ))}
+        </div>
+        <h3>Recent use log</h3>
+        <div className="history-list">
+          {supplementLog.slice(0, 8).map((item) => <div className="history-row" key={item.id}><strong>{new Date(item.loggedAt).toLocaleString()}</strong><span>{item.name}</span><span>{item.category}</span><span>{item.amount || '-'}</span></div>)}
+        </div>
       </section>
 
       <section className="card history-card">
