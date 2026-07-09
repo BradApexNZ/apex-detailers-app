@@ -48,11 +48,13 @@ This is a practical coaching engine, not medical advice.
 
 ## Recipe bank
 
-The app includes 50 high-protein lunch and dinner ideas for building meal plans:
+The app now includes 150 high-protein meal ideas for building meal plans:
 
-- 25 lunch ideas
-- 25 dinner ideas
-- Sauce-friendly meals like teriyaki, honey soy, satay, bang bang, Korean BBQ, burrito bowls, tomato pasta and yoghurt garlic sauce
+- 50 breakfast ideas
+- 50 lunch ideas
+- 50 dinner ideas
+- Sweet/custardy breakfast options, protein oats, yoghurt bowls, pancakes, wraps, rice bowls and liquid-calorie backups
+- Sauce-friendly lunch and dinner meals like teriyaki, honey soy, satay, bang bang, Korean BBQ, burrito bowls, tomato pasta and yoghurt garlic sauce
 - Estimated macros so the user can quick-add meals, then adjust portions/sauces later
 
 ## Supplements / PED / peptide tracker
@@ -99,7 +101,7 @@ firebase deploy --only hosting,firestore:rules
 
 - Proper custom food entry
 - Recipe builder for the three oat flavours and gangster meals
-- Meal-plan generator from the 50-recipe bank
+- Meal-plan generator from the 150-recipe bank
 - Graphs for weight, waist, calories, protein, coffee, appetite and digestion
 - Bloodwork reminder module
 - Export/import backup
