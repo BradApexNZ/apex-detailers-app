@@ -1173,3 +1173,161 @@ textarea {
     transform: translateY(-1px);
   }
 }
+
+/* ─── Status badge colour variants ─────────────────────────────────────────── */
+
+.badge-success {
+  background: rgba(103, 224, 138, 0.18) !important;
+  border-color: rgba(103, 224, 138, 0.38) !important;
+  color: #a3f5bc !important;
+}
+
+.badge-active {
+  background: rgba(100, 180, 255, 0.18) !important;
+  border-color: rgba(100, 180, 255, 0.38) !important;
+  color: #b3d9ff !important;
+}
+
+.badge-booked {
+  background: rgba(180, 130, 255, 0.18) !important;
+  border-color: rgba(180, 130, 255, 0.38) !important;
+  color: #d9b3ff !important;
+}
+
+.badge-hnry {
+  background: rgba(255, 180, 50, 0.18) !important;
+  border-color: rgba(255, 180, 50, 0.38) !important;
+  color: #ffd88a !important;
+}
+
+.badge-muted {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: var(--muted) !important;
+}
+
+/* ─── Inline badge (used inside compact job rows) ───────────────────────────── */
+
+.inlineBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 210, 31, 0.27);
+  background: rgba(255, 210, 31, 0.13);
+  color: var(--yellow3);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.inlineBadge.badge-success {
+  background: rgba(103, 224, 138, 0.18) !important;
+  border-color: rgba(103, 224, 138, 0.38) !important;
+  color: #a3f5bc !important;
+}
+
+.inlineBadge.badge-active {
+  background: rgba(100, 180, 255, 0.18) !important;
+  border-color: rgba(100, 180, 255, 0.38) !important;
+  color: #b3d9ff !important;
+}
+
+.inlineBadge.badge-booked {
+  background: rgba(180, 130, 255, 0.18) !important;
+  border-color: rgba(180, 130, 255, 0.38) !important;
+  color: #d9b3ff !important;
+}
+
+.inlineBadge.badge-hnry {
+  background: rgba(255, 180, 50, 0.18) !important;
+  border-color: rgba(255, 180, 50, 0.38) !important;
+  color: #ffd88a !important;
+}
+
+.inlineBadge.badge-muted {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: var(--muted) !important;
+}
+
+/* ─── Today's jobs banner ───────────────────────────────────────────────────── */
+
+.todayBanner {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 210, 31, 0.52);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 210, 31, 0.18), transparent 48%),
+    linear-gradient(180deg, rgba(26, 24, 10, 0.98), rgba(10, 9, 5, 0.98));
+  box-shadow: 0 0 0 1px rgba(255, 210, 31, 0.12), 0 12px 38px rgba(255, 210, 31, 0.08);
+}
+
+.todayItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.todayLabel {
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(255, 210, 31, 0.22);
+  border: 1px solid rgba(255, 210, 31, 0.44);
+  color: var(--yellow3);
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.todayJob {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 750;
+}
+
+/* ─── Voucher card ──────────────────────────────────────────────────────────── */
+
+.voucherCard {
+  border-left: 5px solid rgba(180, 130, 255, 0.58) !important;
+}
+
+/* ─── Message box copy button ───────────────────────────────────────────────── */
+
+.messageBox button {
+  margin-top: 12px;
+}
+
+/* ─── Nav: 7-item grid override ─────────────────────────────────────────────── */
+
+@media (max-width: 619px) {
+  .bottomNav {
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 3px !important;
+    padding: 6px !important;
+  }
+
+  .bottomNav button {
+    min-height: 52px !important;
+    font-size: 9px !important;
+    padding-inline: 1px !important;
+  }
+
+  .navIcon {
+    font-size: 15px !important;
+  }
+}
+
+@media (min-width: 620px) {
+  .bottomNav {
+    grid-template-columns: repeat(7, 1fr) !important;
+  }
+}
