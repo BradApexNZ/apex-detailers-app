@@ -1,0 +1,50 @@
+/* Official Apex Detailers V5 brand assets */
+.brandLogo {
+  width: 54px !important;
+  height: 54px !important;
+  border: 0 !important;
+  border-radius: 16px !important;
+  background: url('/brand/apex-icon.svg') center/contain no-repeat !important;
+  box-shadow: 0 10px 30px rgba(255,193,7,.18) !important;
+}
+.brandLogo span,.brandLogo span::before { content:none !important; display:none !important; }
+.brandHeader { gap:14px !important; }
+.wordmark h1 {
+  font-size:0 !important;
+  width:220px;
+  height:44px;
+  margin:0 !important;
+  background:url('/brand/apex-horizontal.svg') left center/contain no-repeat;
+}
+.wordmark p::before,.appHeader p::before { content:'Apex HQ · Business Operations' !important; }
+.loginHero .brandLogo,.loginCard .brandLogo,.loadingCard .brandLogo {
+  width:112px !important;
+  height:112px !important;
+  border-radius:28px !important;
+}
+.loginHero .wordmark h1,.loginCard .wordmark h1,.loadingCard .wordmark h1 {
+  width:300px;
+  height:88px;
+  background-image:url('/brand/apex-stacked.svg');
+  background-position:center;
+}
+.mainCommand::before {
+  content:'';
+  position:absolute;
+  right:34px;
+  top:30px;
+  width:130px;
+  height:130px;
+  background:url('/brand/apex-icon.svg') center/contain no-repeat;
+  opacity:.075;
+  pointer-events:none;
+}
+@media (max-width:700px) {
+  .brandLogo { width:46px !important; height:46px !important; border-radius:14px !important; }
+  .wordmark h1 { width:150px; height:34px; }
+  .mainCommand::before { width:90px; height:90px; right:10px; top:18px; }
+}
+@media (max-width:430px) {
+  .wordmark h1 { width:128px; }
+  .wordmark p::before,.appHeader p::before { content:'Apex HQ V5' !important; }
+}
