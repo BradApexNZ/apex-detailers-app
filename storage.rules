@@ -3,7 +3,7 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     function isBrad() {
-      return request.auth != null && request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42";
+      return request.auth != null && request.auth.uid == "fnc4G85CtmQVy0OooOzfOoSC9u22";
     }
 
     function isSafeImageUpload() {
