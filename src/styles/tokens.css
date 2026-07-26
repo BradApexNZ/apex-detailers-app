@@ -1,0 +1,57 @@
+:root {
+  --apex-black: #0d0d0d;
+  --apex-black-soft: #121212;
+  --apex-charcoal: #1a1a1a;
+  --apex-gunmetal: #333333;
+  --apex-yellow: #ffc107;
+  --apex-yellow-soft: #ffd54f;
+  --apex-silver: #c0c0c0;
+  --apex-white: #f7f7f5;
+  --apex-muted: #969696;
+  --apex-success: #41c783;
+  --apex-danger: #ff6b6b;
+
+  --apex-border: rgba(255, 255, 255, 0.09);
+  --apex-border-strong: rgba(255, 193, 7, 0.28);
+  --apex-surface: rgba(26, 26, 26, 0.86);
+  --apex-surface-raised: rgba(35, 35, 35, 0.94);
+  --apex-glow: 0 0 32px rgba(255, 193, 7, 0.12);
+  --apex-shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
+
+  --apex-radius-sm: 10px;
+  --apex-radius-md: 16px;
+  --apex-radius-lg: 24px;
+  --apex-radius-pill: 999px;
+
+  --apex-space-1: 4px;
+  --apex-space-2: 8px;
+  --apex-space-3: 12px;
+  --apex-space-4: 16px;
+  --apex-space-5: 20px;
+  --apex-space-6: 24px;
+  --apex-space-8: 32px;
+  --apex-space-10: 40px;
+  --apex-space-12: 48px;
+
+  --apex-font-display: "Arial Narrow", "Roboto Condensed", Inter, system-ui, sans-serif;
+  --apex-font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --apex-transition: 180ms ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 193, 7, 0.08), transparent 32rem),
+    var(--apex-black);
+  color: var(--apex-white);
+  font-family: var(--apex-font-body);
+}
+
+::selection {
+  background: var(--apex-yellow);
+  color: var(--apex-black);
+}
