@@ -1,0 +1,180 @@
+body.apex-pin-locked {
+  overflow: hidden;
+}
+
+.apex-pin-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: grid;
+  place-items: center;
+  padding: max(24px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 208, 0, 0.12), transparent 34%),
+    linear-gradient(180deg, #070708 0%, #111113 100%);
+  color: #fff;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.apex-pin-panel {
+  width: min(100%, 390px);
+  text-align: center;
+}
+
+.apex-pin-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 44px;
+  text-align: left;
+}
+
+.apex-pin-mark {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid rgba(255, 215, 0, 0.46);
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(255, 215, 0, 0.22), rgba(255, 215, 0, 0.05));
+  color: #ffd400;
+  font-size: 25px;
+  font-weight: 900;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.34);
+}
+
+.apex-pin-brand strong,
+.apex-pin-brand small {
+  display: block;
+}
+
+.apex-pin-brand strong {
+  letter-spacing: 0.12em;
+}
+
+.apex-pin-brand small {
+  margin-top: 3px;
+  color: #9b9ba3;
+  font-size: 12px;
+}
+
+.apex-pin-eyebrow {
+  color: #ffd400;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.apex-pin-copy h1 {
+  margin: 12px 0 8px;
+  font-size: clamp(30px, 8vw, 40px);
+  line-height: 1.05;
+}
+
+.apex-pin-copy p {
+  margin: 0;
+  color: #a5a5ad;
+  line-height: 1.55;
+}
+
+.apex-pin-dots {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin: 32px 0 18px;
+}
+
+.apex-pin-dots span {
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid #73737b;
+  border-radius: 50%;
+  background: transparent;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.apex-pin-dots span.filled {
+  border-color: #ffd400;
+  background: #ffd400;
+  transform: scale(1.08);
+}
+
+.apex-pin-status {
+  min-height: 22px;
+  margin: 0 0 14px;
+  color: #a5a5ad;
+  font-size: 13px;
+}
+
+.apex-pin-status[data-tone="error"] {
+  color: #ff8c8c;
+}
+
+.apex-pin-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 76px);
+  justify-content: center;
+  gap: 14px 22px;
+}
+
+.apex-pin-keypad button {
+  width: 76px;
+  height: 76px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font: inherit;
+  font-size: 28px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 100ms ease, background 100ms ease;
+}
+
+.apex-pin-keypad button:active {
+  transform: scale(0.94);
+  background: rgba(255, 212, 0, 0.24);
+}
+
+.apex-pin-keypad .apex-pin-secondary {
+  border-color: transparent;
+  background: transparent;
+  color: #b7b7bd;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.apex-pin-forgot {
+  margin-top: 28px;
+  border: 0;
+  background: transparent;
+  color: #ffd400;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.apex-pin-forgot[hidden] {
+  display: none;
+}
+
+@media (max-height: 720px) {
+  .apex-pin-brand {
+    margin-bottom: 22px;
+  }
+
+  .apex-pin-dots {
+    margin-top: 22px;
+  }
+
+  .apex-pin-keypad {
+    grid-template-columns: repeat(3, 64px);
+    gap: 9px 18px;
+  }
+
+  .apex-pin-keypad button {
+    width: 64px;
+    height: 64px;
+  }
+}
