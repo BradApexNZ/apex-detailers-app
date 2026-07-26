@@ -6,7 +6,7 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebas
 import { auth, db, storage } from "./firebase";
 import "./styles.css";
 
-const BRAD_UID = "FqDrn1aPFHXUB5ogb2rN9D7mRG42";
+const BRAD_UID = "fnc4G85CtmQVy0OooOzfOoSC9u22";
 
 const packages = {
   express: { name: "Express Refresh", price: 79 },
@@ -182,3 +182,4 @@ function Textarea({ label, value, onChange, placeholder }) { return <label class
 function Check({ label, checked, onChange }) { return <label className="checkRow"><input type="checkbox" checked={!!checked} onChange={e => onChange(e.target.checked)} /><span>{label}</span></label>; }
 
 createRoot(document.getElementById("root")).render(<App />);
+
