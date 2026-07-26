@@ -159,6 +159,71 @@ body.apex-pin-locked {
   display: none;
 }
 
+.apex-google-login {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  background: #fff;
+  color: #171717;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.apex-google-login:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.apex-google-icon {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4285f4 0 25%, #34a853 25% 50%, #fbbc05 50% 75%, #ea4335 75%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.apex-login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0 18px;
+  color: #8f8f96;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.apex-login-divider::before,
+.apex-login-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.apex-google-status {
+  min-height: 20px;
+  margin: -6px 0 12px;
+  color: #a5a5ad;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.apex-google-status[data-tone="error"] {
+  color: #ff9a9a;
+}
+
 @media (max-height: 720px) {
   .apex-pin-brand {
     margin-bottom: 22px;
