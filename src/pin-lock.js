@@ -1,4 +1,10 @@
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import {
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut
+} from "firebase/auth";
 import { auth } from "./firebase";
 import "./pin-lock.css";
 
@@ -9,6 +15,7 @@ const PIN_LENGTH = 6;
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 60_000;
 const IDLE_MS = 5 * 60_000;
+const AUTHORISED_EMAIL = "brad@apexdetailers.co.nz";
 
 let currentUser = null;
 let unlocked = false;
@@ -67,6 +74,73 @@ function setStatus(element, message, tone = "") {
   element.textContent = message;
   element.dataset.tone = tone;
 }
+
+function googleButtonMarkup() {
+  return `
+    <button type="button" class="apex-google-login" data-apex-google-login>
+      <span class="apex-google-icon" aria-hidden="true">G</span>
+      <span>Continue with Google</span>
+    </button>
+    <div class="apex-login-divider"><span>or use email and password</span></div>
+    <p class="apex-google-status" data-apex-google-status aria-live="polite"></p>`;
+}
+
+function installGoogleLoginButton() {
+  if (currentUser || document.querySelector("[data-apex-google-login]")) return;
+
+  const loginCard = document.querySelector(".loginCard");
+  if (!loginCard) return;
+
+  loginCard.insertAdjacentHTML("afterbegin", googleButtonMarkup());
+  const button = loginCard.querySelector("[data-apex-google-login]");
+  const status = loginCard.querySelector("[data-apex-google-status]");
+
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    status.textContent = "Opening Google sign-in…";
+    status.dataset.tone = "";
+
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: "select_account",
+      login_hint: AUTHORISED_EMAIL
+    });
+
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const email = String(result.user?.email || "").toLowerCase();
+
+      if (email !== AUTHORISED_EMAIL) {
+        await signOut(auth);
+        throw new Error("Use the Brad@apexdetailers.co.nz Google account.");
+      }
+
+      status.textContent = "Google sign-in successful.";
+    } catch (error) {
+      console.error("Google sign-in failed", error);
+
+      if (error?.code === "auth/popup-blocked") {
+        status.textContent = "Popup blocked. Redirecting to Google…";
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+
+      if (error?.code === "auth/account-exists-with-different-credential") {
+        status.textContent = "This email already uses password login. Sign in once with the password, then Google can be linked safely.";
+      } else if (error?.code === "auth/popup-closed-by-user") {
+        status.textContent = "Google sign-in was cancelled.";
+      } else {
+        status.textContent = error?.message || "Google sign-in failed. Please try again.";
+      }
+      status.dataset.tone = "error";
+      button.disabled = false;
+    }
+  });
+}
+
+const loginObserver = new MutationObserver(() => installGoogleLoginButton());
+loginObserver.observe(document.documentElement, { childList: true, subtree: true });
+window.setTimeout(installGoogleLoginButton, 0);
 
 function showPinFlow(mode) {
   removeOverlay();
@@ -231,13 +305,22 @@ function showPinFlow(mode) {
   render();
 }
 
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, async user => {
   currentUser = user;
   window.clearTimeout(idleTimer);
 
   if (!user) {
     clearLocalPin();
     removeOverlay();
+    window.setTimeout(installGoogleLoginButton, 0);
+    return;
+  }
+
+  const email = String(user.email || "").toLowerCase();
+  if (email !== AUTHORISED_EMAIL) {
+    clearLocalPin();
+    removeOverlay();
+    await signOut(auth);
     return;
   }
 
