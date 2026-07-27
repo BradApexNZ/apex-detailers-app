@@ -45,7 +45,7 @@
     "source": "functions"
   },
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firestore.v5.rules"
   },
   "storage": {
     "rules": "storage.rules"
