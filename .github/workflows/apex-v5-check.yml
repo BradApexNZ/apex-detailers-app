@@ -35,6 +35,12 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
+      - name: Use Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
       - name: Run Firestore rules check
         id: rules
         shell: bash
