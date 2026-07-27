@@ -26,8 +26,27 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Build all pages
-        run: npm run build
+      - name: Run V5 build
+        shell: bash
+        run: |
+          set +e
+          npm run build > apex-v5-build-output.txt 2>&1
+          result=$?
+          echo "$result" > apex-v5-build-exit.txt
+          cat apex-v5-build-output.txt
+          exit 0
+
+      - name: Upload V5 build diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apex-v5-build-diagnostic
+          path: |
+            apex-v5-build-output.txt
+            apex-v5-build-exit.txt
+
+      - name: Enforce V5 build result
+        run: test "$(cat apex-v5-build-exit.txt)" = "0"
 
   firestore-rules:
     runs-on: ubuntu-latest
@@ -42,7 +61,6 @@ jobs:
           java-version: "21"
 
       - name: Run Firestore rules check
-        id: rules
         shell: bash
         run: |
           set +e
