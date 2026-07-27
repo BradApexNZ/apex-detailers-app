@@ -2,6 +2,13 @@ const BIOMETRIC_KEY = "apex-hq-biometric-credential";
 const PIN_KEY = "apex-hq-pin";
 const LOCK_ENABLED_KEY = "apex-hq-device-lock-enabled";
 const SESSION_UNLOCK_KEY = "apex-hq-session-unlocked";
+const LAST_ACTIVITY_KEY = "apex-hq-last-activity";
+const FAILED_ATTEMPTS_KEY = "apex-hq-pin-failures";
+const LOCK_UNTIL_KEY = "apex-hq-pin-lock-until";
+
+const INACTIVITY_LIMIT_MS = 5 * 60 * 1000;
+const PIN_LOCKOUT_MS = 60 * 1000;
+const MAX_PIN_FAILURES = 5;
 
 function toBase64(bytes) {
   let binary = "";
@@ -27,6 +34,17 @@ async function digest(value) {
   return toBase64(await crypto.subtle.digest("SHA-256", bytes));
 }
 
+function resetPinFailures() {
+  localStorage.removeItem(FAILED_ATTEMPTS_KEY);
+  localStorage.removeItem(LOCK_UNTIL_KEY);
+}
+
+function recordActivity() {
+  if (isDeviceLockEnabled() && isSessionUnlocked()) {
+    sessionStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
+  }
+}
+
 export function supportsBiometrics() {
   return Boolean(window.PublicKeyCredential && navigator.credentials && window.isSecureContext);
 }
@@ -44,40 +62,69 @@ export function isDeviceLockEnabled() {
 }
 
 export function isSessionUnlocked() {
-  return sessionStorage.getItem(SESSION_UNLOCK_KEY) === "true";
+  if (sessionStorage.getItem(SESSION_UNLOCK_KEY) !== "true") return false;
+  const lastActivity = Number(sessionStorage.getItem(LAST_ACTIVITY_KEY) || 0);
+  if (lastActivity && Date.now() - lastActivity >= INACTIVITY_LIMIT_MS) {
+    lockSession();
+    return false;
+  }
+  return true;
 }
 
 export function markSessionUnlocked() {
   sessionStorage.setItem(SESSION_UNLOCK_KEY, "true");
+  sessionStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
 }
 
 export function lockSession() {
   sessionStorage.removeItem(SESSION_UNLOCK_KEY);
+  sessionStorage.removeItem(LAST_ACTIVITY_KEY);
 }
 
 export function disableDeviceLock() {
   localStorage.removeItem(BIOMETRIC_KEY);
   localStorage.removeItem(PIN_KEY);
   localStorage.removeItem(LOCK_ENABLED_KEY);
+  resetPinFailures();
   markSessionUnlocked();
 }
 
 export async function setPin(pin) {
-  if (!/^\d{4,6}$/.test(pin)) throw new Error("Use a 4–6 digit PIN.");
+  if (!/^\d{6}$/.test(pin)) throw new Error("Use a 6-digit PIN.");
   const salt = toBase64(randomBytes(18));
   const hash = await digest(`${salt}:${pin}`);
   localStorage.setItem(PIN_KEY, JSON.stringify({ salt, hash }));
   localStorage.setItem(LOCK_ENABLED_KEY, "true");
+  resetPinFailures();
   markSessionUnlocked();
 }
 
 export async function verifyPin(pin) {
-  const stored = JSON.parse(localStorage.getItem(PIN_KEY) || "null");
-  if (!stored) return false;
+  const lockUntil = Number(localStorage.getItem(LOCK_UNTIL_KEY) || 0);
+  if (lockUntil > Date.now()) return false;
+  if (lockUntil) resetPinFailures();
+
+  let stored = null;
+  try { stored = JSON.parse(localStorage.getItem(PIN_KEY) || "null"); }
+  catch { stored = null; }
+  if (!stored || !/^\d{6}$/.test(pin)) return false;
+
   const hash = await digest(`${stored.salt}:${pin}`);
   const valid = hash === stored.hash;
-  if (valid) markSessionUnlocked();
-  return valid;
+  if (valid) {
+    resetPinFailures();
+    markSessionUnlocked();
+    return true;
+  }
+
+  const failures = Number(localStorage.getItem(FAILED_ATTEMPTS_KEY) || 0) + 1;
+  if (failures >= MAX_PIN_FAILURES) {
+    localStorage.setItem(LOCK_UNTIL_KEY, String(Date.now() + PIN_LOCKOUT_MS));
+    localStorage.setItem(FAILED_ATTEMPTS_KEY, "0");
+  } else {
+    localStorage.setItem(FAILED_ATTEMPTS_KEY, String(failures));
+  }
+  return false;
 }
 
 export async function registerBiometricLock(user) {
@@ -108,6 +155,7 @@ export async function registerBiometricLock(user) {
   if (!credential) throw new Error("Biometric setup was cancelled.");
   localStorage.setItem(BIOMETRIC_KEY, toBase64(credential.rawId));
   localStorage.setItem(LOCK_ENABLED_KEY, "true");
+  resetPinFailures();
   markSessionUnlocked();
 }
 
@@ -123,6 +171,33 @@ export async function verifyBiometricLock() {
     }
   });
   const valid = Boolean(assertion);
-  if (valid) markSessionUnlocked();
+  if (valid) {
+    resetPinFailures();
+    markSessionUnlocked();
+  }
   return valid;
+}
+
+if (typeof window !== "undefined") {
+  let lastWrite = 0;
+  const activity = () => {
+    const now = Date.now();
+    if (now - lastWrite < 5000) return;
+    lastWrite = now;
+    recordActivity();
+  };
+  ["pointerdown", "keydown", "touchstart", "scroll"].forEach(eventName => {
+    window.addEventListener(eventName, activity, { passive: true });
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      if (!isSessionUnlocked() && isDeviceLockEnabled()) window.location.reload();
+      else activity();
+    }
+  });
+  window.setInterval(() => {
+    if (isDeviceLockEnabled() && sessionStorage.getItem(SESSION_UNLOCK_KEY) === "true" && !isSessionUnlocked()) {
+      window.location.reload();
+    }
+  }, 15000);
 }
