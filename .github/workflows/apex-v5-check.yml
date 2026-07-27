@@ -35,5 +35,25 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Validate Firestore rules
-        run: npx --yes firebase-tools@latest emulators:exec --only firestore --project demo-apex-hq "node -e \"console.log('Firestore rules loaded')\""
+      - name: Run Firestore rules check
+        id: rules
+        shell: bash
+        run: |
+          set +e
+          npx --yes firebase-tools@latest emulators:exec --only firestore --project demo-apex-hq "node -e \"console.log('Firestore rules loaded')\"" > firestore-rules-output.txt 2>&1
+          result=$?
+          echo "$result" > firestore-rules-exit.txt
+          cat firestore-rules-output.txt
+          exit 0
+
+      - name: Upload Firestore diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firestore-rules-diagnostic
+          path: |
+            firestore-rules-output.txt
+            firestore-rules-exit.txt
+
+      - name: Enforce Firestore rules result
+        run: test "$(cat firestore-rules-exit.txt)" = "0"
