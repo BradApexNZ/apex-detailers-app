@@ -1,0 +1,56 @@
+import React,{useEffect,useMemo,useState}from"react";
+import{createRoot}from"react-dom/client";
+import{getPublicBookingConfig,listBookingAvailability,submitBookingRequest}from"./apex-api";
+import{money,serviceById}from"./booking-data";
+import"./booking.css";
+
+const today=()=>new Date().toLocaleDateString("en-CA",{timeZone:"Pacific/Auckland"});
+const blank={serviceId:"deep",vehicleType:"small",bookingDate:"",bookingTime:"",bookingEndTime:"",customerName:"",phone:"",email:"",address:"",area:"Napier",vehicleYear:"",vehicleMake:"",vehicleModel:"",rego:"",condition:"normal",petHair:false,heavyStains:false,notes:"",website:""};
+
+function Mark(){return <div className="mark"><b>A</b><i/></div>}
+
+function Booking(){
+  const[config,setConfig]=useState(null),[form,setForm]=useState(blank),[step,setStep]=useState(1),[slots,setSlots]=useState([]),[busy,setBusy]=useState(false),[error,setError]=useState(""),[done,setDone]=useState(null);
+  const update=(key,value)=>setForm(old=>({...old,[key]:value}));
+  useEffect(()=>{getPublicBookingConfig().then(setConfig).catch(()=>setError("Online booking is unavailable right now. Please contact Apex directly."));},[]);
+  const service=useMemo(()=>serviceById(form.serviceId),[form.serviceId]);
+
+  async function findTimes(){
+    if(!form.bookingDate)return setError("Choose a date first.");
+    setBusy(true);setError("");
+    try{
+      const result=await listBookingAvailability({date:form.bookingDate,serviceId:form.serviceId});
+      setSlots(result.slots||[]);
+      if(result.slots?.length)setStep(3);else setError("That day is full. Try another date.");
+    }catch(err){setError(err.message||"Could not check the calendar.");}
+    setBusy(false);
+  }
+
+  async function submit(event){
+    event.preventDefault();setBusy(true);setError("");
+    try{setDone(await submitBookingRequest(form));}
+    catch(err){setError(err.message||"That time may have just been taken. Please try again.");}
+    setBusy(false);
+  }
+
+  if(!config&&!error)return <main className="splash"><Mark/><span>Loading Apex bookings…</span></main>;
+  if(done)return <main className="publicPage"><header><div className="brand"><Mark/><div><strong>APEX DETAILERS</strong><small>HAWKE'S BAY</small></div></div></header><section className="success"><div className="tick">✓</div><span className="eyebrow">REQUEST RECEIVED</span><h1>Your booking request is in.</h1><p>{done.emailSent?"A confirmation email has been sent. ":""}Brad will review the vehicle details and confirm the final booking.</p><div className="confirm"><span><b>{done.serviceName}</b>Service</span><span><b>{done.bookingDate}</b>Date</span><span><b>{done.bookingTime}</b>Start</span><span><b>{done.reference}</b>Reference</span></div></section></main>;
+
+  return <main className="publicPage">
+    <header><div className="brand"><Mark/><div><strong>APEX DETAILERS</strong><small>HAWKE'S BAY</small></div></div><a href="mailto:bookings@apexdetailers.co.nz">Need help?</a></header>
+    <section className="hero"><div><span className="eyebrow">MOBILE CAR DETAILING</span><h1>Book your vehicle in.</h1><p>Choose your service and a genuine available time. Your request lands straight inside Apex HQ.</p></div><aside><b>Napier</b><span>Hastings · Havelock North</span></aside></section>
+    <div className="steps">{[1,2,3,4].map(n=><i key={n} className={n<=step?"on":""}>{n}</i>)}</div>
+    {error&&<div className="error">{error}</div>}
+
+    {step===1&&<section className="card"><span className="eyebrow">01 — SERVICE</span><h2>What does the vehicle need?</h2><div className="services">{config?.services.map(item=><button type="button" key={item.id} className={form.serviceId===item.id?"selected":""} onClick={()=>update("serviceId",item.id)}><div><strong>{item.name}</strong><small>{item.description}</small></div><b>from {money(item.price)}</b><em>about {Math.round(item.durationMinutes/30)/2} hrs</em></button>)}</div><label>Vehicle type<select value={form.vehicleType} onChange={e=>update("vehicleType",e.target.value)}><option value="small">Sedan / hatch</option><option value="suv">SUV / wagon</option><option value="singlecab">Single-cab ute</option><option value="doublecab">Double-cab ute</option><option value="large">7-seater / large SUV</option><option value="van">Van / oversized</option></select></label><button className="primary" onClick={()=>setStep(2)}>Choose a date →</button></section>}
+
+    {step===2&&<section className="card"><button className="back" onClick={()=>setStep(1)}>← Back</button><span className="eyebrow">02 — DATE</span><h2>When suits you?</h2><p>Availability accounts for Apex jobs and Brad's connected Google Calendar.</p><label>Preferred date<input type="date" min={today()} value={form.bookingDate} onChange={e=>update("bookingDate",e.target.value)}/></label><div className="summary"><span>{service.name}</span><b>from {money(service.price)}</b></div><button className="primary" onClick={findTimes} disabled={busy}>{busy?"Checking Calendar…":"Show available times"}</button></section>}
+
+    {step===3&&<section className="card"><button className="back" onClick={()=>setStep(2)}>← Change date</button><span className="eyebrow">03 — TIME</span><h2>Pick an available start.</h2><div className="slotGrid">{slots.map(slot=><button key={slot.start} onClick={()=>{update("bookingTime",slot.start);update("bookingEndTime",slot.end);setStep(4)}}><b>{slot.start}</b><small>Finish about {slot.end}</small></button>)}</div></section>}
+
+    {step===4&&<section className="card"><button className="back" onClick={()=>setStep(3)}>← Change time</button><span className="eyebrow">04 — DETAILS</span><h2>Tell Apex about the job.</h2><form className="form" onSubmit={submit}><label>Full name<input required value={form.customerName} onChange={e=>update("customerName",e.target.value)}/></label><label>Mobile<input required inputMode="tel" value={form.phone} onChange={e=>update("phone",e.target.value)}/></label><label>Email for confirmation<input required type="email" value={form.email} onChange={e=>update("email",e.target.value)}/></label><label>Area<select value={form.area} onChange={e=>update("area",e.target.value)}>{config?.serviceAreas.map(area=><option key={area}>{area}</option>)}</select></label><label className="wide">Detailing address<input required value={form.address} onChange={e=>update("address",e.target.value)}/></label><label>Year<input value={form.vehicleYear} onChange={e=>update("vehicleYear",e.target.value)}/></label><label>Make<input required value={form.vehicleMake} onChange={e=>update("vehicleMake",e.target.value)}/></label><label>Model<input required value={form.vehicleModel} onChange={e=>update("vehicleModel",e.target.value)}/></label><label>Rego<input value={form.rego} onChange={e=>update("rego",e.target.value.toUpperCase())}/></label><label>Condition<select value={form.condition} onChange={e=>update("condition",e.target.value)}><option value="normal">Normal / maintained</option><option value="dirty">Dirty / deep clean needed</option><option value="heavily">Heavily soiled</option></select></label><label className="check"><input type="checkbox" checked={form.petHair} onChange={e=>update("petHair",e.target.checked)}/>Pet hair present</label><label className="check"><input type="checkbox" checked={form.heavyStains} onChange={e=>update("heavyStains",e.target.checked)}/>Heavy stains present</label><label className="wide">Notes<textarea rows="4" value={form.notes} onChange={e=>update("notes",e.target.value)}/></label><input className="honeypot" tabIndex="-1" value={form.website} onChange={e=>update("website",e.target.value)}/><div className="summary wide"><span><b>{service.name}</b><small>{form.bookingDate} · {form.bookingTime}–{form.bookingEndTime}</small></span><b>from {money(service.price)}</b></div><button className="primary wide" disabled={busy}>{busy?"Sending to Apex HQ…":"Request this booking"}</button><p className="fine wide">Apex confirms the final price after reviewing size and condition. An accessible outside tap is required.</p></form></section>}
+    <footer><strong>APEX DETAILERS</strong><span>Napier · Hastings · Hawke's Bay</span></footer>
+  </main>;
+}
+
+createRoot(document.getElementById("root")).render(<Booking/>);

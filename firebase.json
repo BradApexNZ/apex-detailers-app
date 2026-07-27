@@ -8,13 +8,44 @@
     ],
     "rewrites": [
       {
+        "source": "/hq",
+        "destination": "/hq.html"
+      },
+      {
+        "source": "/book",
+        "destination": "/booking.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public,max-age=31536000,immutable"
+          }
+        ]
+      },
+      {
+        "source": "**/*.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
     ]
   },
+  "functions": {
+    "source": "functions"
+  },
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firestore.v5.rules"
   },
   "storage": {
     "rules": "storage.rules"
