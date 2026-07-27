@@ -3,7 +3,80 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isBrad() {
-      return request.auth != null && request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42";
+      return request.auth != null
+        && request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42";
+    }
+
+    function shortText(value, maximum) {
+      return value is string && value.size() <= maximum;
+    }
+
+    function validPublicRequest(requestId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          "firstName", "lastName", "customerName", "phone", "email",
+          "address", "area", "vehicleYear", "vehicleMake", "vehicleModel",
+          "rego", "vehicleType", "condition", "packageId", "packageName",
+          "estimatedFromPrice", "preferredDate", "preferredTime", "slotKey",
+          "notes", "outsideTapConfirmed", "consentConfirmed", "source",
+          "status", "createdAt"
+        ])
+        && shortText(data.firstName, 80)
+        && data.firstName.size() > 0
+        && shortText(data.lastName, 100)
+        && shortText(data.customerName, 180)
+        && data.customerName.size() > 0
+        && shortText(data.phone, 40)
+        && data.phone.size() >= 5
+        && shortText(data.email, 180)
+        && shortText(data.address, 240)
+        && data.address.size() > 0
+        && shortText(data.area, 120)
+        && data.area.size() > 0
+        && shortText(data.vehicleYear, 12)
+        && shortText(data.vehicleMake, 80)
+        && data.vehicleMake.size() > 0
+        && shortText(data.vehicleModel, 100)
+        && data.vehicleModel.size() > 0
+        && shortText(data.rego, 20)
+        && data.vehicleType in ["small", "suv", "singlecab", "doublecab", "large", "van"]
+        && data.condition in ["light", "average", "heavy", "extreme"]
+        && data.packageId in ["maintenance", "deep", "full", "tradie", "seats"]
+        && shortText(data.packageName, 100)
+        && (data.estimatedFromPrice is int || data.estimatedFromPrice is float)
+        && data.estimatedFromPrice >= 0
+        && data.estimatedFromPrice <= 5000
+        && shortText(data.preferredDate, 10)
+        && data.preferredDate.size() == 10
+        && shortText(data.preferredTime, 5)
+        && data.preferredTime.size() == 5
+        && shortText(data.slotKey, 32)
+        && data.slotKey.size() > 0
+        && shortText(data.notes, 2000)
+        && data.outsideTapConfirmed == true
+        && data.consentConfirmed == true
+        && data.source == "public"
+        && data.status == "pending"
+        && data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/bookingSlots/$(data.slotKey)).data.requestId == requestId;
+    }
+
+    function validPublicSlot(slotId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          "slotKey", "date", "time", "requestId", "status", "source", "createdAt"
+        ])
+        && data.slotKey == slotId
+        && shortText(data.date, 10)
+        && data.date.size() == 10
+        && shortText(data.time, 5)
+        && data.time.size() == 5
+        && shortText(data.requestId, 80)
+        && data.requestId.size() > 0
+        && data.status == "pending"
+        && data.source == "public"
+        && data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/bookingRequests/$(data.requestId)).data.slotKey == slotId;
     }
 
     match /customers/{customerId} {
@@ -14,8 +87,28 @@ service cloud.firestore {
       allow read, write: if isBrad();
     }
 
+    match /vouchers/{voucherId} {
+      allow read, write: if isBrad();
+    }
+
     match /settings/{settingId} {
       allow read, write: if isBrad();
+    }
+
+    match /publicSettings/{settingId} {
+      allow read: if true;
+      allow write: if isBrad();
+    }
+
+    match /bookingRequests/{requestId} {
+      allow create: if validPublicRequest(requestId);
+      allow read, update, delete: if isBrad();
+    }
+
+    match /bookingSlots/{slotId} {
+      allow read: if true;
+      allow create: if validPublicSlot(slotId);
+      allow update, delete: if isBrad();
     }
 
     match /{document=**} {
