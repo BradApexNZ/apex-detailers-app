@@ -29,5 +29,11 @@ jobs:
       - name: Build all pages
         run: npm run build
 
+  firestore-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
       - name: Validate Firestore rules
         run: npx --yes firebase-tools@latest emulators:exec --only firestore --project demo-apex-hq "node -e \"console.log('Firestore rules loaded')\""
