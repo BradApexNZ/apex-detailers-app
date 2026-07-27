@@ -28,3 +28,6 @@ jobs:
 
       - name: Build all pages
         run: npm run build
+
+      - name: Validate Firestore rules
+        run: npx --yes firebase-tools@latest emulators:exec --only firestore --project demo-apex-hq "node -e \"console.log('Firestore rules loaded')\""
