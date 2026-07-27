@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isApexOwner() {
+      return request.auth != null
+        && (request.auth.uid == "fnc4G85CtmQVy0OooOzfOoSC9u22"
+          || request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42");
+    }
+
+    match /customers/{id} { allow read, write: if isApexOwner(); }
+    match /jobs/{id} { allow read, write: if isApexOwner(); }
+    match /vouchers/{id} { allow read, write: if isApexOwner(); }
+    match /bookingRequests/{id} { allow read, write: if isApexOwner(); }
+    match /inquiries/{id} { allow read, write: if isApexOwner(); }
+    match /settings/{id} { allow read, write: if isApexOwner(); }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
