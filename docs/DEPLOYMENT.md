@@ -46,8 +46,8 @@ This deploys owner-only database rules, image-upload rules, Google Calendar/emai
 
 1. Open `/hq` on the deployed Apex domain.
 2. Sign in as an authorised Apex owner.
-3. Open **Settings**.
-4. Select **Connect Google Calendar**.
+3. Keep **Public booking page enabled** switched off initially.
+4. Open **Settings** and select **Connect Google Calendar**.
 5. Complete Google consent using the Apex bookings account.
 6. Return to Settings and verify the integration shows **Connected** with the correct email.
 
@@ -59,19 +59,21 @@ Open `/tools`, sign in, and select **Download full backup** before importing any
 
 Use a real email address and a clearly labelled test customer.
 
-1. Open `/book` in a private browser window.
-2. Confirm Maintenance Clean is not publicly listed.
-3. Submit a Deep Interior booking request.
-4. Confirm the request appears in the Apex HQ inbox.
-5. Confirm the request-received customer email arrives.
-6. Approve the request in Apex HQ.
-7. Confirm the customer record and job are created.
-8. Confirm the Google Calendar event exists at the correct Auckland date/time.
-9. Confirm the booking-confirmed email arrives.
-10. Use **Sync** on the Calendar screen and confirm it updates the same event rather than creating a duplicate.
-11. Change the job through Completed → Prepare Hnry Invoice → Invoice Sent → Paid.
-12. Download another full backup from `/tools`.
-13. Delete or archive the test record only after all checks pass.
+1. Temporarily enable the public booking page in HQ Settings.
+2. Open `/book` in a private browser window.
+3. Confirm Maintenance Clean is not publicly listed.
+4. Submit a Deep Interior booking request.
+5. Confirm the request appears in the Apex HQ inbox.
+6. Confirm the request-received customer email arrives.
+7. Approve the request in Apex HQ.
+8. Confirm the customer record and job are created.
+9. Confirm the Google Calendar event exists at the correct Auckland date/time.
+10. Confirm the booking-confirmed email arrives.
+11. Use **Sync** on the Calendar screen and confirm it updates the same event rather than creating a duplicate.
+12. Change the job through Completed → Prepare Hnry Invoice → Invoice Sent → Paid.
+13. Download another full backup from `/tools`.
+14. Delete or archive the test record only after all checks pass.
+15. Leave public booking enabled only when every critical check passed.
 
 ## Customer import format
 
