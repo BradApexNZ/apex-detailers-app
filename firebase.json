@@ -16,6 +16,10 @@
         "destination": "/booking.html"
       },
       {
+        "source": "/tools",
+        "destination": "/data-tools.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
