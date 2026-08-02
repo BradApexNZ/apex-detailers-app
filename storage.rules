@@ -2,8 +2,10 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    function isBrad() {
-      return request.auth != null && request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42";
+    function isApexOwner() {
+      return request.auth != null
+        && (request.auth.uid == "fnc4G85CtmQVy0OooOzfOoSC9u22"
+          || request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42");
     }
 
     function isSafeImageUpload() {
@@ -13,8 +15,8 @@ service firebase.storage {
     }
 
     match /jobs/{customerId}/{fileName} {
-      allow read, delete: if isBrad();
-      allow create, update: if isBrad() && isSafeImageUpload();
+      allow read, delete: if isApexOwner();
+      allow create, update: if isApexOwner() && isSafeImageUpload();
     }
 
     match /{allPaths=**} {
