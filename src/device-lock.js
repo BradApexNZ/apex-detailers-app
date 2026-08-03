@@ -6,6 +6,8 @@ const LAST_ACTIVITY_KEY = "apex-hq-last-activity";
 const FAILED_ATTEMPTS_KEY = "apex-hq-pin-failures";
 const LOCK_UNTIL_KEY = "apex-hq-pin-lock-until";
 
+const PIN_LENGTH = 4;
+const LEGACY_PIN_LENGTH = 6;
 const INACTIVITY_LIMIT_MS = 5 * 60 * 1000;
 const PIN_LOCKOUT_MS = 60 * 1000;
 const MAX_PIN_FAILURES = 5;
@@ -34,6 +36,14 @@ async function digest(value) {
   return toBase64(await crypto.subtle.digest("SHA-256", bytes));
 }
 
+function readStoredPin() {
+  try {
+    return JSON.parse(localStorage.getItem(PIN_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
 function resetPinFailures() {
   localStorage.removeItem(FAILED_ATTEMPTS_KEY);
   localStorage.removeItem(LOCK_UNTIL_KEY);
@@ -54,7 +64,17 @@ export function hasBiometricLock() {
 }
 
 export function hasPinLock() {
-  return Boolean(localStorage.getItem(PIN_KEY));
+  return Boolean(readStoredPin());
+}
+
+export function getPinLength() {
+  const stored = readStoredPin();
+  if (!stored) return PIN_LENGTH;
+  return stored.digits === PIN_LENGTH ? PIN_LENGTH : LEGACY_PIN_LENGTH;
+}
+
+export function hasLegacyPinLock() {
+  return hasPinLock() && getPinLength() !== PIN_LENGTH;
 }
 
 export function isDeviceLockEnabled() {
@@ -90,10 +110,10 @@ export function disableDeviceLock() {
 }
 
 export async function setPin(pin) {
-  if (!/^\d{6}$/.test(pin)) throw new Error("Use a 6-digit PIN.");
+  if (!/^\d{4}$/.test(pin)) throw new Error("Use a 4-digit PIN.");
   const salt = toBase64(randomBytes(18));
   const hash = await digest(`${salt}:${pin}`);
-  localStorage.setItem(PIN_KEY, JSON.stringify({ salt, hash }));
+  localStorage.setItem(PIN_KEY, JSON.stringify({ salt, hash, digits: PIN_LENGTH, version: 2 }));
   localStorage.setItem(LOCK_ENABLED_KEY, "true");
   resetPinFailures();
   markSessionUnlocked();
@@ -104,10 +124,9 @@ export async function verifyPin(pin) {
   if (lockUntil > Date.now()) return false;
   if (lockUntil) resetPinFailures();
 
-  let stored = null;
-  try { stored = JSON.parse(localStorage.getItem(PIN_KEY) || "null"); }
-  catch { stored = null; }
-  if (!stored || !/^\d{6}$/.test(pin)) return false;
+  const stored = readStoredPin();
+  const digits = getPinLength();
+  if (!stored || !(new RegExp(`^\\d{${digits}}$`)).test(pin)) return false;
 
   const hash = await digest(`${stored.salt}:${pin}`);
   const valid = hash === stored.hash;
@@ -136,7 +155,7 @@ export async function registerBiometricLock(user) {
       user: {
         id: new TextEncoder().encode(user.uid),
         name: user.email || "Apex HQ owner",
-        displayName: "Brad — Apex Detailers"
+        displayName: "Brad - Apex Detailers"
       },
       pubKeyCredParams: [
         { type: "public-key", alg: -7 },
