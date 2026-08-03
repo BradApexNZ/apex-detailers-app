@@ -4,7 +4,7 @@
   "short_name": "Apex HQ",
   "description": "Apex Detailers bookings, customers, jobs and business operations.",
   "start_url": "/hq",
-  "scope": "/",
+  "scope": "/hq",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "any",
