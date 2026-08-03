@@ -1,20 +1,25 @@
-/* Apex HQ production presentation layer.
-   The React/Firebase logic remains in hq-v5.jsx and hq-v5.css.
-   This file owns the final desktop-admin and mobile-owner appearance. */
+/* Apex HQ — professional production interface
+   Overrides the legacy visual layer without changing application logic. */
 
 :root {
-  --hq-bg: #0b0d0f;
-  --hq-sidebar: #0d1013;
-  --hq-surface: #14181c;
-  --hq-surface-2: #181d22;
-  --hq-border: #2a3036;
-  --hq-border-soft: rgba(255, 255, 255, 0.08);
-  --hq-text: #f4f3ee;
-  --hq-muted: #9da3aa;
-  --hq-yellow: #f4c900;
-  --hq-yellow-soft: rgba(244, 201, 0, 0.1);
-  --hq-danger: #d7656d;
-  --hq-radius: 16px;
+  --hq-bg: #0c0e10;
+  --hq-sidebar: #111315;
+  --hq-surface: #171a1d;
+  --hq-surface-raised: #1c2024;
+  --hq-surface-soft: #131619;
+  --hq-border: #2b3035;
+  --hq-border-soft: rgba(255, 255, 255, 0.075);
+  --hq-text: #f3f3ef;
+  --hq-text-soft: #d3d5d2;
+  --hq-muted: #92989f;
+  --hq-yellow: #e6bd18;
+  --hq-yellow-hover: #f0c921;
+  --hq-yellow-soft: rgba(230, 189, 24, 0.10);
+  --hq-danger: #d76770;
+  --hq-success: #58a978;
+  --hq-radius: 12px;
+  --hq-radius-small: 9px;
+  --hq-shadow: 0 16px 38px rgba(0, 0, 0, 0.20);
 }
 
 html,
@@ -24,10 +29,12 @@ body {
 }
 
 body {
+  margin: 0;
   color: var(--hq-text);
-  background:
-    radial-gradient(circle at 80% -20%, rgba(244, 201, 0, 0.055), transparent 32rem),
-    var(--hq-bg);
+  background: var(--hq-bg) !important;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body::before,
@@ -35,9 +42,10 @@ body::after {
   display: none !important;
 }
 
+/* Desktop shell */
 .shell > aside {
-  width: 256px;
-  padding: 24px 18px;
+  width: 248px;
+  padding: 22px 16px 18px;
   border-right: 1px solid var(--hq-border-soft);
   background: var(--hq-sidebar);
   box-shadow: none;
@@ -45,18 +53,19 @@ body::after {
 }
 
 .workspace {
-  margin-left: 256px;
+  margin-left: 248px;
 }
 
 .hqBrand {
-  gap: 13px;
+  gap: 12px;
   min-width: 0;
-  padding: 5px 6px 20px;
+  padding: 4px 7px 21px;
+  border-bottom: 1px solid var(--hq-border-soft);
 }
 
 .hqBrand > img {
-  width: 54px;
-  height: 50px;
+  width: 48px;
+  height: 44px;
   flex: 0 0 auto;
   object-fit: contain;
   border: 0;
@@ -72,33 +81,35 @@ body::after {
 .hqBrand strong {
   color: var(--hq-text);
   font-size: 12px;
-  letter-spacing: 0.14em;
+  font-weight: 800;
+  letter-spacing: 0.12em;
 }
 
 .hqBrand span {
-  margin-top: 5px;
+  margin-top: 4px;
   color: var(--hq-muted);
   font-size: 9px;
-  letter-spacing: 0.13em;
+  font-weight: 650;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
 }
 
 .shell aside nav {
-  gap: 4px;
-  margin-top: 18px;
+  gap: 3px;
+  margin-top: 17px;
 }
 
 .shell aside nav button,
 .shell aside footer button {
-  min-height: 46px;
-  padding: 11px 13px;
+  min-height: 43px;
+  padding: 10px 12px;
   border: 1px solid transparent !important;
-  border-radius: 10px !important;
+  border-radius: 8px !important;
   color: var(--hq-muted) !important;
   background: transparent !important;
   box-shadow: none !important;
-  font-size: 13px;
-  font-weight: 650 !important;
+  font-size: 12px;
+  font-weight: 680 !important;
   transform: none !important;
 }
 
@@ -111,15 +122,15 @@ body::after {
 
 .shell aside nav button.active {
   color: var(--hq-text) !important;
-  border-color: var(--hq-border) !important;
-  background: var(--hq-surface-2) !important;
-  box-shadow: inset 3px 0 0 var(--hq-yellow) !important;
+  border-color: var(--hq-border-soft) !important;
+  background: var(--hq-surface-raised) !important;
+  box-shadow: inset 2px 0 0 var(--hq-yellow) !important;
 }
 
 .shell aside nav i {
-  width: 20px;
-  color: var(--hq-muted);
-  font-size: 13px;
+  width: 19px;
+  color: #7f858c;
+  font-size: 12px;
 }
 
 .shell aside nav button.active i {
@@ -127,47 +138,54 @@ body::after {
 }
 
 .shell aside nav em {
+  min-width: 19px;
+  height: 19px;
+  border-radius: 5px;
   background: var(--hq-yellow);
-  color: #11140f;
+  color: #16150f;
+  font-size: 9px;
 }
 
 .shell aside footer {
-  gap: 3px;
-  padding-top: 14px;
+  gap: 2px;
+  padding-top: 13px;
   border-top: 1px solid var(--hq-border-soft);
 }
 
+/* Top bar */
 .top {
-  min-height: 92px;
-  padding: 18px clamp(24px, 3.5vw, 48px);
+  min-height: 78px;
+  padding: 14px clamp(24px, 3vw, 42px);
   border-bottom: 1px solid var(--hq-border-soft);
-  background: rgba(11, 13, 15, 0.94);
+  background: rgba(12, 14, 16, 0.97);
   box-shadow: none;
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(14px);
 }
 
 .top h1 {
-  margin-top: 6px;
+  margin: 4px 0 0;
   color: var(--hq-text);
-  font-size: 28px;
-  font-weight: 720;
-  letter-spacing: -0.035em;
+  font-size: 24px;
+  font-weight: 730;
+  letter-spacing: -0.028em;
 }
 
 .eyebrow {
-  color: #d7bc38;
+  color: #c9a91d;
   font-size: 9px;
-  letter-spacing: 0.16em;
+  font-weight: 800;
+  letter-spacing: 0.14em;
 }
 
 .workspace > main {
-  width: min(1380px, 100%);
-  padding: 30px clamp(24px, 3.5vw, 48px) 110px;
+  width: min(1360px, 100%);
+  padding: 25px clamp(24px, 3vw, 42px) 100px;
 }
 
+/* Dashboard composition */
 .command {
-  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.65fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.65fr) minmax(290px, 0.72fr);
+  gap: 13px;
 }
 
 .command > div,
@@ -186,29 +204,47 @@ body::after {
 }
 
 .command > div {
-  min-height: 300px;
-  padding: 30px;
-  border-color: rgba(244, 201, 0, 0.22);
-  background:
-    linear-gradient(135deg, rgba(244, 201, 0, 0.09), transparent 45%),
-    var(--hq-surface);
+  min-height: 255px;
+  justify-content: center;
+  padding: 28px;
+  border-color: rgba(230, 189, 24, 0.23);
+  background: var(--hq-surface);
+}
+
+.command > div::before {
+  content: "";
+  width: 42px;
+  height: 3px;
+  margin-bottom: 15px;
+  border-radius: 99px;
+  background: var(--hq-yellow);
 }
 
 .command > article {
-  min-height: 300px;
-  padding: 26px;
+  min-height: 255px;
+  padding: 25px;
+  justify-content: center;
+  background: var(--hq-surface-soft);
+}
+
+.command > article > .eyebrow {
+  margin-bottom: 13px;
 }
 
 .command h2 {
   max-width: 760px;
-  margin: 14px 0 18px;
-  font-size: clamp(40px, 4.8vw, 64px);
-  line-height: 0.98;
-  letter-spacing: -0.055em;
+  margin: 8px 0 13px;
+  font-size: clamp(32px, 3.7vw, 48px);
+  font-weight: 745;
+  line-height: 1.02;
+  letter-spacing: -0.045em;
 }
 
 .command > article h3 {
-  font-size: 27px;
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 720;
+  letter-spacing: -0.03em;
 }
 
 .command p,
@@ -218,46 +254,141 @@ body::after {
 .customerGrid p,
 .muted {
   color: var(--hq-muted);
+  line-height: 1.55;
 }
 
 .stats {
-  gap: 12px;
-  margin: 16px 0;
+  gap: 10px;
+  margin: 13px 0;
 }
 
 .stats > article {
-  min-height: 124px;
-  padding: 20px;
+  min-height: 108px;
+  padding: 17px 18px;
+  background: var(--hq-surface-soft);
+}
+
+.stats span {
+  color: var(--hq-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
 }
 
 .stats b {
-  margin-top: 18px;
-  font-size: 32px;
+  margin-top: 15px;
+  font-size: 27px;
+  font-weight: 730;
+  letter-spacing: -0.035em;
 }
 
 .panel,
 .request,
 .customerGrid > article,
 .settings > section {
-  padding: 22px;
+  padding: 20px;
+}
+
+.panel > h3,
+.settings h3 {
+  color: var(--hq-text-soft);
+  font-size: 15px;
+  font-weight: 720;
+  letter-spacing: -0.01em;
+}
+
+.intro {
+  margin-bottom: 20px;
 }
 
 .intro h2 {
-  font-size: clamp(38px, 5vw, 62px);
-  letter-spacing: -0.055em;
+  margin: 8px 0 7px;
+  font-size: clamp(30px, 4vw, 45px);
+  font-weight: 745;
+  line-height: 1.03;
+  letter-spacing: -0.045em;
 }
 
 .cards,
 .customerGrid,
 .settings {
+  gap: 10px;
+}
+
+/* Operational rows */
+.agenda {
+  grid-template-columns: 46px minmax(0, 1fr) auto auto;
   gap: 12px;
+  padding: 13px 0;
+  border-top-color: var(--hq-border-soft);
+}
+
+.agenda time {
+  width: 44px;
+  height: 47px;
+  border: 1px solid var(--hq-border);
+  border-radius: 8px;
+  background: var(--hq-surface-soft);
+}
+
+.agenda time span,
+.agenda em {
+  color: var(--hq-yellow);
+}
+
+.agenda button {
+  border-color: var(--hq-border);
+  border-radius: 8px;
+  background: var(--hq-surface-raised);
 }
 
 .job {
-  border-radius: 12px;
-  background: var(--hq-surface);
+  grid-template-columns: 38px minmax(160px, 1fr) minmax(140px, 0.8fr) auto 170px;
+  gap: 12px;
+  padding: 13px;
+  border-radius: 10px;
+  background: var(--hq-surface-soft);
 }
 
+.job > i {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(230, 189, 24, 0.18);
+  border-radius: 8px;
+  color: var(--hq-yellow);
+  background: var(--hq-yellow-soft);
+}
+
+.request {
+  background: var(--hq-surface-soft);
+}
+
+.request blockquote {
+  margin: 13px 0;
+  padding: 12px;
+  border-left: 2px solid var(--hq-border);
+  border-radius: 7px;
+  background: #111417;
+  color: #c9ccc9;
+}
+
+.customerGrid > article {
+  background: var(--hq-surface-soft);
+}
+
+.customerGrid header i {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--hq-yellow);
+  font-size: 12px;
+}
+
+.customerGrid footer {
+  border-top-color: var(--hq-border-soft);
+}
+
+/* Buttons */
 .top button,
 .command button,
 .modalForm > button,
@@ -265,13 +396,14 @@ body::after {
 .customerActions > button,
 .settings button,
 .settingsLink {
-  min-height: 44px;
+  min-height: 41px;
+  padding: 9px 14px;
   border: 1px solid transparent !important;
-  border-radius: 10px !important;
-  color: #11140f !important;
+  border-radius: 8px !important;
+  color: #17160f !important;
   background: var(--hq-yellow) !important;
   box-shadow: none !important;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800 !important;
   transform: none !important;
 }
@@ -283,7 +415,8 @@ body::after {
 .customerActions > button:hover,
 .settings button:hover,
 .settingsLink:hover {
-  filter: brightness(1.035) !important;
+  background: var(--hq-yellow-hover) !important;
+  filter: none !important;
   transform: none !important;
 }
 
@@ -292,18 +425,28 @@ body::after {
 .importButton,
 .settings .secondary,
 .top a {
-  color: var(--hq-text) !important;
+  color: var(--hq-text-soft) !important;
   border-color: var(--hq-border) !important;
-  background: var(--hq-surface-2) !important;
+  background: var(--hq-surface-raised) !important;
+}
+
+.secondaryTop:hover,
+.heroActions .secondaryTop:hover,
+.importButton:hover,
+.settings .secondary:hover,
+.top a:hover {
+  color: var(--hq-text) !important;
+  background: #22272b !important;
 }
 
 .danger,
 .request footer .danger {
-  color: #ffd9dc !important;
-  border-color: rgba(215, 101, 109, 0.45) !important;
-  background: rgba(215, 101, 109, 0.13) !important;
+  color: #ffdadd !important;
+  border-color: rgba(215, 103, 112, 0.34) !important;
+  background: rgba(215, 103, 112, 0.10) !important;
 }
 
+/* Forms */
 input,
 select,
 textarea,
@@ -312,28 +455,90 @@ textarea,
 .modalForm input,
 .modalForm select,
 .modalForm textarea,
-.job select {
+.job select,
+.loginPage input,
+.gate input {
+  min-height: 43px;
+  padding: 10px 12px;
   color: var(--hq-text) !important;
   border: 1px solid var(--hq-border) !important;
-  border-radius: 10px !important;
-  background: #0e1114 !important;
+  border-radius: 8px !important;
+  background: #101316 !important;
   box-shadow: none !important;
+}
+
+textarea {
+  min-height: 108px;
+  resize: vertical;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6f757b;
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: rgba(244, 201, 0, 0.65) !important;
-  outline: 3px solid rgba(244, 201, 0, 0.08);
+  border-color: rgba(230, 189, 24, 0.65) !important;
+  outline: 3px solid rgba(230, 189, 24, 0.075);
 }
 
+.settings label,
+.modalForm label,
+.loginPage label {
+  color: #c7cac7;
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.015em;
+}
+
+.integration {
+  border-radius: 9px;
+  background: rgba(215, 103, 112, 0.08);
+}
+
+.integration.connected {
+  background: rgba(88, 169, 120, 0.09);
+}
+
+/* Modal, auth and feedback */
 .modal,
 .loginPage > form,
 .gate > section {
   border: 1px solid var(--hq-border);
-  border-radius: 16px;
+  border-radius: 13px;
   background: var(--hq-surface);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+  box-shadow: var(--hq-shadow);
+}
+
+.modal {
+  padding: 21px;
+}
+
+.modal > header button {
+  border-radius: 8px;
+  background: var(--hq-surface-raised);
+}
+
+.toast {
+  right: 16px;
+  bottom: 16px;
+  padding: 12px 15px;
+  border-color: rgba(230, 189, 24, 0.28);
+  border-radius: 9px;
+  background: #1d1b10;
+  box-shadow: var(--hq-shadow);
+}
+
+.loginPage > section h1 {
+  font-size: clamp(44px, 6vw, 72px);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.loginPage > section p {
+  font-size: 16px;
 }
 
 .mobile {
@@ -360,11 +565,12 @@ textarea:focus {
   }
 
   .top {
-    padding: 15px 14px;
+    min-height: 70px;
+    padding: 12px 14px;
   }
 
   .workspace > main {
-    padding: 20px 13px 104px;
+    padding: 17px 12px 96px;
   }
 
   .command {
@@ -377,7 +583,7 @@ textarea:focus {
   }
 
   .command h2 {
-    font-size: clamp(38px, 10vw, 56px);
+    font-size: clamp(31px, 8.5vw, 43px);
   }
 
   .stats {
@@ -398,23 +604,23 @@ textarea:focus {
     bottom: calc(8px + env(safe-area-inset-bottom));
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    padding: 6px;
+    padding: 5px;
     border: 1px solid var(--hq-border);
-    border-radius: 16px;
-    background: rgba(13, 16, 19, 0.96);
-    backdrop-filter: blur(18px);
+    border-radius: 13px;
+    background: rgba(17, 19, 21, 0.97);
+    backdrop-filter: blur(16px);
   }
 
   .mobile button {
     min-width: 0;
-    min-height: 52px;
-    padding: 6px 2px;
+    min-height: 49px;
+    padding: 5px 2px;
     border: 0 !important;
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     color: var(--hq-muted) !important;
     background: transparent !important;
     box-shadow: none !important;
-    font-weight: 600 !important;
+    font-weight: 650 !important;
   }
 
   .mobile button.active {
@@ -429,15 +635,19 @@ textarea:focus {
   .mobile small {
     font-size: 8px;
   }
+
+  .job {
+    grid-template-columns: 34px 1fr auto;
+  }
 }
 
 @media (max-width: 560px) {
   .top h1 {
-    font-size: 23px;
+    font-size: 21px;
   }
 
   .top > div:last-child button {
-    padding-inline: 11px;
+    padding-inline: 10px;
   }
 
   .command > div,
@@ -446,15 +656,19 @@ textarea:focus {
   .request,
   .customerGrid > article,
   .settings > section {
-    padding: 18px;
-  }
-
-  .stats > article {
-    min-height: 108px;
     padding: 16px;
   }
 
+  .stats > article {
+    min-height: 96px;
+    padding: 14px;
+  }
+
   .stats b {
-    font-size: 28px;
+    font-size: 24px;
+  }
+
+  .agenda {
+    grid-template-columns: 42px 1fr auto;
   }
 }
