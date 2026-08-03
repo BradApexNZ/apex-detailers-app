@@ -11,21 +11,25 @@ import {
 import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+const productionFirebaseConfig = {
+  apiKey: "AIzaSyDtSvqhxrk9o1k4AeiXMNQs1Ug2QwdXYNs",
+  authDomain: "apex-detailers.firebaseapp.com",
+  projectId: "apex-detailers",
+  storageBucket: "apex-detailers.firebasestorage.app",
+  messagingSenderId: "845997886809",
+  appId: "1:845997886809:web:0f2f2a1ff25b55cdf99048",
+  measurementId: "G-F0B7ENR8RE"
 };
 
-const requiredConfigKeys = ["apiKey", "authDomain", "projectId", "storageBucket", "messagingSenderId", "appId"];
-const missingConfig = requiredConfigKeys.filter(key => !firebaseConfig[key]);
-if (missingConfig.length) {
-  console.warn(`Missing Firebase config value(s): ${missingConfig.join(", ")}. Add them to your .env file.`);
-}
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || productionFirebaseConfig.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || productionFirebaseConfig.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || productionFirebaseConfig.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || productionFirebaseConfig.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || productionFirebaseConfig.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || productionFirebaseConfig.appId,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || productionFirebaseConfig.measurementId
+};
 
 export const app = initializeApp(firebaseConfig);
 
