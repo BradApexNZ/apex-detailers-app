@@ -1,0 +1,460 @@
+/* Apex HQ production presentation layer.
+   The React/Firebase logic remains in hq-v5.jsx and hq-v5.css.
+   This file owns the final desktop-admin and mobile-owner appearance. */
+
+:root {
+  --hq-bg: #0b0d0f;
+  --hq-sidebar: #0d1013;
+  --hq-surface: #14181c;
+  --hq-surface-2: #181d22;
+  --hq-border: #2a3036;
+  --hq-border-soft: rgba(255, 255, 255, 0.08);
+  --hq-text: #f4f3ee;
+  --hq-muted: #9da3aa;
+  --hq-yellow: #f4c900;
+  --hq-yellow-soft: rgba(244, 201, 0, 0.1);
+  --hq-danger: #d7656d;
+  --hq-radius: 16px;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--hq-bg);
+}
+
+body {
+  color: var(--hq-text);
+  background:
+    radial-gradient(circle at 80% -20%, rgba(244, 201, 0, 0.055), transparent 32rem),
+    var(--hq-bg);
+}
+
+body::before,
+body::after {
+  display: none !important;
+}
+
+.shell > aside {
+  width: 256px;
+  padding: 24px 18px;
+  border-right: 1px solid var(--hq-border-soft);
+  background: var(--hq-sidebar);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.workspace {
+  margin-left: 256px;
+}
+
+.hqBrand {
+  gap: 13px;
+  min-width: 0;
+  padding: 5px 6px 20px;
+}
+
+.hqBrand > img {
+  width: 54px;
+  height: 50px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.hqBrand > img.logoUnavailable {
+  display: none;
+}
+
+.hqBrand strong {
+  color: var(--hq-text);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+}
+
+.hqBrand span {
+  margin-top: 5px;
+  color: var(--hq-muted);
+  font-size: 9px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.shell aside nav {
+  gap: 4px;
+  margin-top: 18px;
+}
+
+.shell aside nav button,
+.shell aside footer button {
+  min-height: 46px;
+  padding: 11px 13px;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  color: var(--hq-muted) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 13px;
+  font-weight: 650 !important;
+  transform: none !important;
+}
+
+.shell aside nav button:hover,
+.shell aside footer button:hover {
+  color: var(--hq-text) !important;
+  background: rgba(255, 255, 255, 0.035) !important;
+  filter: none !important;
+}
+
+.shell aside nav button.active {
+  color: var(--hq-text) !important;
+  border-color: var(--hq-border) !important;
+  background: var(--hq-surface-2) !important;
+  box-shadow: inset 3px 0 0 var(--hq-yellow) !important;
+}
+
+.shell aside nav i {
+  width: 20px;
+  color: var(--hq-muted);
+  font-size: 13px;
+}
+
+.shell aside nav button.active i {
+  color: var(--hq-yellow);
+}
+
+.shell aside nav em {
+  background: var(--hq-yellow);
+  color: #11140f;
+}
+
+.shell aside footer {
+  gap: 3px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hq-border-soft);
+}
+
+.top {
+  min-height: 92px;
+  padding: 18px clamp(24px, 3.5vw, 48px);
+  border-bottom: 1px solid var(--hq-border-soft);
+  background: rgba(11, 13, 15, 0.94);
+  box-shadow: none;
+  backdrop-filter: blur(16px);
+}
+
+.top h1 {
+  margin-top: 6px;
+  color: var(--hq-text);
+  font-size: 28px;
+  font-weight: 720;
+  letter-spacing: -0.035em;
+}
+
+.eyebrow {
+  color: #d7bc38;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+
+.workspace > main {
+  width: min(1380px, 100%);
+  padding: 30px clamp(24px, 3.5vw, 48px) 110px;
+}
+
+.command {
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.65fr);
+  gap: 16px;
+}
+
+.command > div,
+.command > article,
+.stats > article,
+.panel,
+.request,
+.customerGrid > article,
+.settings > section,
+.empty,
+.job {
+  border: 1px solid var(--hq-border-soft);
+  border-radius: var(--hq-radius);
+  background: var(--hq-surface);
+  box-shadow: none;
+}
+
+.command > div {
+  min-height: 300px;
+  padding: 30px;
+  border-color: rgba(244, 201, 0, 0.22);
+  background:
+    linear-gradient(135deg, rgba(244, 201, 0, 0.09), transparent 45%),
+    var(--hq-surface);
+}
+
+.command > article {
+  min-height: 300px;
+  padding: 26px;
+}
+
+.command h2 {
+  max-width: 760px;
+  margin: 14px 0 18px;
+  font-size: clamp(40px, 4.8vw, 64px);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.command > article h3 {
+  font-size: 27px;
+}
+
+.command p,
+.intro p,
+.request header span,
+.customerGrid header span,
+.customerGrid p,
+.muted {
+  color: var(--hq-muted);
+}
+
+.stats {
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.stats > article {
+  min-height: 124px;
+  padding: 20px;
+}
+
+.stats b {
+  margin-top: 18px;
+  font-size: 32px;
+}
+
+.panel,
+.request,
+.customerGrid > article,
+.settings > section {
+  padding: 22px;
+}
+
+.intro h2 {
+  font-size: clamp(38px, 5vw, 62px);
+  letter-spacing: -0.055em;
+}
+
+.cards,
+.customerGrid,
+.settings {
+  gap: 12px;
+}
+
+.job {
+  border-radius: 12px;
+  background: var(--hq-surface);
+}
+
+.top button,
+.command button,
+.modalForm > button,
+.request footer button,
+.customerActions > button,
+.settings button,
+.settingsLink {
+  min-height: 44px;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  color: #11140f !important;
+  background: var(--hq-yellow) !important;
+  box-shadow: none !important;
+  font-size: 12px;
+  font-weight: 800 !important;
+  transform: none !important;
+}
+
+.top button:hover,
+.command button:hover,
+.modalForm > button:hover,
+.request footer button:hover,
+.customerActions > button:hover,
+.settings button:hover,
+.settingsLink:hover {
+  filter: brightness(1.035) !important;
+  transform: none !important;
+}
+
+.secondaryTop,
+.heroActions .secondaryTop,
+.importButton,
+.settings .secondary,
+.top a {
+  color: var(--hq-text) !important;
+  border-color: var(--hq-border) !important;
+  background: var(--hq-surface-2) !important;
+}
+
+.danger,
+.request footer .danger {
+  color: #ffd9dc !important;
+  border-color: rgba(215, 101, 109, 0.45) !important;
+  background: rgba(215, 101, 109, 0.13) !important;
+}
+
+input,
+select,
+textarea,
+.settings input,
+.settings select,
+.modalForm input,
+.modalForm select,
+.modalForm textarea,
+.job select {
+  color: var(--hq-text) !important;
+  border: 1px solid var(--hq-border) !important;
+  border-radius: 10px !important;
+  background: #0e1114 !important;
+  box-shadow: none !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(244, 201, 0, 0.65) !important;
+  outline: 3px solid rgba(244, 201, 0, 0.08);
+}
+
+.modal,
+.loginPage > form,
+.gate > section {
+  border: 1px solid var(--hq-border);
+  border-radius: 16px;
+  background: var(--hq-surface);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+.mobile {
+  box-shadow: none;
+}
+
+@media (min-width: 1100px) {
+  .customerGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 960px) {
+  .shell > aside {
+    display: none;
+  }
+
+  .workspace {
+    margin-left: 0;
+  }
+
+  .top {
+    padding: 15px 14px;
+  }
+
+  .workspace > main {
+    padding: 20px 13px 104px;
+  }
+
+  .command {
+    grid-template-columns: 1fr;
+  }
+
+  .command > div,
+  .command > article {
+    min-height: auto;
+  }
+
+  .command h2 {
+    font-size: clamp(38px, 10vw, 56px);
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cards,
+  .customerGrid,
+  .settings {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile {
+    position: fixed;
+    z-index: 30;
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    padding: 6px;
+    border: 1px solid var(--hq-border);
+    border-radius: 16px;
+    background: rgba(13, 16, 19, 0.96);
+    backdrop-filter: blur(18px);
+  }
+
+  .mobile button {
+    min-width: 0;
+    min-height: 52px;
+    padding: 6px 2px;
+    border: 0 !important;
+    border-radius: 10px !important;
+    color: var(--hq-muted) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    font-weight: 600 !important;
+  }
+
+  .mobile button.active {
+    color: var(--hq-text) !important;
+    background: var(--hq-yellow-soft) !important;
+  }
+
+  .mobile button.active i {
+    color: var(--hq-yellow);
+  }
+
+  .mobile small {
+    font-size: 8px;
+  }
+}
+
+@media (max-width: 560px) {
+  .top h1 {
+    font-size: 23px;
+  }
+
+  .top > div:last-child button {
+    padding-inline: 11px;
+  }
+
+  .command > div,
+  .command > article,
+  .panel,
+  .request,
+  .customerGrid > article,
+  .settings > section {
+    padding: 18px;
+  }
+
+  .stats > article {
+    min-height: 108px;
+    padding: 16px;
+  }
+
+  .stats b {
+    font-size: 28px;
+  }
+}
