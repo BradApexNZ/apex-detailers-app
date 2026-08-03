@@ -2,7 +2,12 @@ import { initializeApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  memoryLocalCache,
+  persistentLocalCache,
+  persistentMultipleTabManager
+} from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
 
@@ -32,8 +37,16 @@ if (typeof window !== "undefined" && appCheckSiteKey) {
   });
 }
 
+const privateOfflinePath = typeof window !== "undefined"
+  && /^\/(?:hq(?:\.html)?|tools|data-tools(?:\.html)?)$/.test(window.location.pathname);
+
+export const offlinePersistenceEnabled = privateOfflinePath;
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db = initializeFirestore(app, {
+  localCache: privateOfflinePath
+    ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    : memoryLocalCache()
+});
 export const storage = getStorage(app);
 export const functions = getFunctions(app, "australia-southeast1");
 export const analyticsPromise = firebaseConfig.measurementId

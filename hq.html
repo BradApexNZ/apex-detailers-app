@@ -5,15 +5,21 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" />
     <meta name="theme-color" content="#0b0d0f" />
     <meta name="apple-mobile-web-app-title" content="Apex HQ" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Apex HQ</title>
+    <link rel="manifest" href="/apex-hq.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="./assets/apex-logo-official.svg" />
+    <link rel="apple-touch-icon" href="/apex-logo-official.svg" />
     <link rel="stylesheet" href="/src/hq-production.css" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/hq-v5.jsx"></script>
     <script type="module" src="/src/hq-production.js"></script>
+    <script type="module" src="/src/hq-pwa.js"></script>
     <script type="module" src="/src/hq-customer-import.js"></script>
   </body>
 </html>

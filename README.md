@@ -15,6 +15,20 @@ Apex HQ uses one Firebase-backed system across devices:
 - Desktop admin workspace for bookings, customer records, follow-ups, job status and payment administration.
 - Mobile owner workspace for today's jobs, customer details, status updates and field use.
 
+## Installable app and offline mode
+
+Apex HQ is configured as an installable progressive web app from `/hq`.
+
+- iPhone/iPad: open `/hq` in Safari, tap Share, then Add to Home Screen.
+- Supported Chromium browsers: use the Apex HQ Install app button or the browser install action.
+- The app shell, branding and built JavaScript/CSS are cached for offline startup.
+- Firestore persistence is enabled only for private HQ and data-tools pages.
+- Previously loaded customers, jobs, bookings and settings remain readable offline.
+- Firestore writes made offline are queued by the Firebase SDK and synchronise after connectivity returns.
+- The HQ status chip shows Offline, Syncing, Synced or Online.
+
+Cloud Functions, Google Calendar, email delivery, fresh server-only data and Storage uploads still require internet access. Offline data remains on the trusted device, so the local Apex PIN or biometric lock must remain enabled.
+
 ## Launch service catalogue
 
 - Maintenance Clean — $150, existing regular clients only
@@ -27,7 +41,8 @@ Maintenance Clean is intentionally hidden from the first-time public booking flo
 
 ## Core features
 
-- Private owner authentication with optional local PIN or biometric quick lock
+- Private owner authentication with mandatory local PIN and optional biometric quick lock
+- Installable Apex HQ app shell with offline Firestore persistence
 - Public booking requests and availability controls
 - Customer and job records in Firestore
 - Booking inbox and manual confirmed bookings
@@ -52,7 +67,7 @@ Copy `.env.example` to `.env` and provide the Firebase web configuration. Never 
 npm run build
 ```
 
-Do not deploy when this command fails. GitHub Actions also runs the same build automatically on every push to `main`.
+Do not deploy when this command fails. GitHub Actions runs the same build on every pull request and every push to `main` using Node 22.
 
 ## Hosting deployment
 
@@ -61,6 +76,16 @@ firebase deploy --only hosting --project apex-detailers
 ```
 
 Deploy Firestore rules, Storage rules or Functions separately only when those areas have intentionally changed.
+
+## Offline acceptance test
+
+1. Open `/hq` online and wait for the status chip to show Synced or Online.
+2. Add Apex HQ to the phone home screen.
+3. Open the installed app once while online.
+4. Enable airplane mode and reopen Apex HQ.
+5. Confirm previously loaded customers and jobs are available.
+6. Make one safe test edit, then reconnect.
+7. Confirm the status changes through Syncing to Synced and verify the edit from another device.
 
 ## Safety notes
 

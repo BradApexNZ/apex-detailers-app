@@ -353,22 +353,6 @@ function polishApexHq(root = document) {
   ensureSecuritySetup();
 }
 
-async function removeLegacyPwaState() {
-  if ("serviceWorker" in navigator) {
-    const registrations = await navigator.serviceWorker.getRegistrations().catch(() => []);
-    await Promise.all(registrations.map(registration => registration.unregister().catch(() => false)));
-  }
-
-  if ("caches" in window) {
-    const keys = await caches.keys().catch(() => []);
-    await Promise.all(
-      keys
-        .filter(key => key.toLowerCase().includes("apex-hq"))
-        .map(key => caches.delete(key).catch(() => false))
-    );
-  }
-}
-
 let polishScheduled = false;
 
 function schedulePolish() {
@@ -384,7 +368,6 @@ function schedulePolish() {
 injectSecurityStyles();
 installSecurityActions();
 polishApexHq();
-removeLegacyPwaState();
 
 new MutationObserver(schedulePolish).observe(document.body, {
   childList: true,
