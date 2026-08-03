@@ -1,9 +1,22 @@
+import { copyFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { resolve } from "node:path";
+
+function publishApexPwaAssets() {
+  return {
+    name: "publish-apex-pwa-assets",
+    closeBundle() {
+      copyFileSync(
+        resolve(process.cwd(), "assets/apex-logo-official.svg"),
+        resolve(process.cwd(), "dist/apex-logo-official.svg")
+      );
+    }
+  };
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), publishApexPwaAssets()],
   server: {
     host: "0.0.0.0"
   },
