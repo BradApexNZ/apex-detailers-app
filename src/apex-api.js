@@ -1,14 +1,24 @@
 import { httpsCallable } from "firebase/functions";
 import { functions } from "./firebase";
 
-export const apexCloudEnabled = import.meta.env.VITE_APEX_CLOUD_ENABLED === "true";
+// Apex is now running on the paid Firebase project. Keep an environment override
+// for local/showcase builds, but enable the real cloud booking workflow in production.
+const cloudOverride = import.meta.env.VITE_APEX_CLOUD_ENABLED;
+export const apexCloudEnabled = cloudOverride == null
+  ? import.meta.env.PROD
+  : cloudOverride === "true";
 
 const call = name => async payload => {
   if (!apexCloudEnabled) {
-    throw new Error("Cloud automation is not enabled in this free showcase build.");
+    throw new Error("Apex cloud automation is disabled in this build.");
   }
 
-  return (await httpsCallable(functions, name)(payload || {})).data;
+  try {
+    return (await httpsCallable(functions, name)(payload || {})).data;
+  } catch (error) {
+    const message = error?.message || "Apex cloud services are temporarily unavailable.";
+    throw new Error(message);
+  }
 };
 
 export const getPublicBookingConfig = call("getPublicBookingConfig");
