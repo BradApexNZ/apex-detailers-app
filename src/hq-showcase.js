@@ -1,5 +1,6 @@
 const PRIVACY_KEY = "apex.hq.privacyMode";
 const DEFAULT_PRIVACY_ON = true;
+const CLOUD_ENABLED = import.meta.env.VITE_APEX_CLOUD_ENABLED === "true";
 
 function injectShowcaseStyles() {
   if (document.getElementById("apex-showcase-styles")) return;
@@ -65,6 +66,23 @@ function injectShowcaseStyles() {
       letter-spacing: .32em;
     }
 
+    .apexCloudPaused {
+      opacity: .58 !important;
+      cursor: not-allowed !important;
+      filter: grayscale(.2) !important;
+    }
+
+    .apexCloudNotice {
+      margin: 12px 0 0 !important;
+      padding: 10px 11px;
+      border: 1px solid rgba(244,201,0,.2);
+      border-radius: 10px;
+      background: rgba(244,201,0,.055);
+      color: #d8c76b !important;
+      font-size: 10px !important;
+      line-height: 1.45;
+    }
+
     @media (max-width: 720px) {
       .apexPrivacyToggle {
         min-height: 34px !important;
@@ -121,8 +139,55 @@ function maskPinInputs(root = document) {
     '.gate input[inputmode="numeric"], .settings input[inputmode="numeric"], .apexSecurityForm input[inputmode="numeric"]'
   ).forEach(input => {
     input.type = "password";
-    input.autocomplete = "current-password";
+    input.autocomplete = input.closest(".gate") ? "current-password" : "new-password";
     input.setAttribute("aria-label", input.getAttribute("aria-label") || "Apex HQ PIN");
+  });
+}
+
+function pauseControl(button, label) {
+  if (!button || button.dataset.apexCloudPaused) return;
+  button.dataset.apexCloudPaused = "true";
+  button.disabled = true;
+  button.classList.add("apexCloudPaused");
+  button.title = "Available after the future cloud upgrade";
+  if (label) button.textContent = label;
+}
+
+function pauseCloudSections(root = document) {
+  if (CLOUD_ENABLED) return;
+
+  root.querySelectorAll("button").forEach(button => {
+    if (button.dataset.apexPrivacy || button.dataset.apexInstall) return;
+    const label = button.textContent.trim().toLowerCase();
+
+    if (label.includes("add booking") || label === "booking" || label.includes("create booking")) {
+      pauseControl(button, "Booking upgrade");
+    } else if (label === "confirm" || label === "decline") {
+      pauseControl(button);
+    } else if (label === "sync" || label.includes("connect calendar") || label.includes("refresh status")) {
+      pauseControl(button);
+    }
+  });
+
+  root.querySelectorAll(".settings > section").forEach(section => {
+    const heading = section.querySelector("h3")?.textContent.trim().toLowerCase();
+    if (heading !== "online booking" && heading !== "google calendar") return;
+
+    section.querySelectorAll("input, select, button").forEach(control => {
+      if (control.tagName === "BUTTON") pauseControl(control);
+      else {
+        control.disabled = true;
+        control.classList.add("apexCloudPaused");
+      }
+    });
+
+    if (!section.querySelector("[data-apex-cloud-notice]")) {
+      const note = document.createElement("p");
+      note.className = "apexCloudNotice";
+      note.dataset.apexCloudNotice = "true";
+      note.textContent = "Planned cloud upgrade. No paid Calendar, email or Functions automation is active.";
+      section.appendChild(note);
+    }
   });
 }
 
@@ -130,6 +195,7 @@ function refreshShowcaseLayer() {
   injectShowcaseStyles();
   maskPinInputs();
   ensurePrivacyToggle();
+  pauseCloudSections();
 }
 
 injectShowcaseStyles();
