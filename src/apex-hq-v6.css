@@ -1,0 +1,238 @@
+/* Apex HQ V6 — premium command-centre polish. Visual-only overrides. */
+:root {
+  --bg: #08090a;
+  --bg2: #0e1012;
+  --panel: #14171a;
+  --panel2: #0f1113;
+  --panel3: #1a1d20;
+  --text: #f5f4ef;
+  --muted: #b5b2aa;
+  --muted2: #797872;
+  --yellow: #ffd21f;
+  --yellow2: #e8b900;
+  --yellow3: #fff0a3;
+  --yellowSoft: rgba(255,210,31,.08);
+  --line: rgba(255,255,255,.085);
+  --lineStrong: rgba(255,210,31,.24);
+  --shadow: 0 18px 50px rgba(0,0,0,.34);
+  --shadowGlow: 0 12px 36px rgba(255,210,31,.08);
+  --radius: 20px;
+}
+
+html, body { background: var(--bg); }
+body {
+  background:
+    radial-gradient(circle at 12% -12%, rgba(255,210,31,.10), transparent 30%),
+    linear-gradient(180deg, #090a0b 0%, #0c0e10 48%, #08090a 100%);
+}
+body::before { opacity: .28; background-size: 52px 52px; }
+body::after { opacity: .35; }
+
+.appHeader,
+.top {
+  background: rgba(8,9,10,.9) !important;
+  border-bottom: 1px solid var(--line) !important;
+  backdrop-filter: blur(20px) saturate(1.1) !important;
+}
+
+.appMain,
+.hqMain {
+  width: min(100%, 1180px) !important;
+  padding: 22px !important;
+}
+
+.heroCard,
+.card,
+.stat,
+.emptyState,
+.formPanel,
+.messageBox,
+.commandCard,
+.customerGrid > article,
+.jobCard,
+.bookingCard,
+.paymentCard,
+.photoCard,
+.voucherCard,
+.settings > section {
+  border: 1px solid var(--line) !important;
+  border-radius: var(--radius) !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.025), transparent 45%),
+    linear-gradient(180deg, var(--panel), var(--panel2)) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+.heroCard,
+.mainCommand {
+  border-color: var(--lineStrong) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255,210,31,.10), transparent 34%),
+    linear-gradient(180deg, #181b1f, #101214) !important;
+}
+
+.heroCard::before,
+.card::before,
+.stat::before,
+.emptyState::before,
+.formPanel::before,
+.messageBox::before,
+.commandCard::before {
+  opacity: .34 !important;
+}
+
+button,
+.customerActions > button,
+.settingsLink {
+  border-radius: 14px !important;
+  background: var(--yellow) !important;
+  color: #10110d !important;
+  box-shadow: none !important;
+  font-weight: 900 !important;
+}
+button:hover { filter: brightness(1.03); transform: translateY(-1px); }
+button.secondary,
+.secondaryTop,
+.importButton,
+.logoutButton {
+  background: rgba(255,255,255,.055) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+h1 { letter-spacing: .055em !important; }
+h2 { letter-spacing: -.035em !important; }
+h3 { letter-spacing: -.018em !important; }
+p, label, input, select, textarea { color: var(--text); }
+.muted, .heroCard p, .commandCard p { color: var(--muted) !important; }
+
+input,
+select,
+textarea {
+  border: 1px solid var(--line) !important;
+  border-radius: 14px !important;
+  background: rgba(255,255,255,.035) !important;
+  color: var(--text) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.025) !important;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(255,210,31,.55) !important;
+  box-shadow: 0 0 0 3px rgba(255,210,31,.10) !important;
+}
+
+.eyebrow,
+.badge,
+.statusBadge,
+.heroPills span,
+.chips span,
+.warnings span {
+  border-radius: 999px !important;
+}
+.eyebrow {
+  background: rgba(255,210,31,.07) !important;
+  border-color: rgba(255,210,31,.22) !important;
+  color: var(--yellow3) !important;
+}
+
+.statGrid {
+  grid-template-columns: repeat(4, minmax(0,1fr)) !important;
+  gap: 14px !important;
+}
+.stat {
+  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.stat strong,
+.accentCommand strong {
+  color: var(--text) !important;
+  text-shadow: none !important;
+}
+
+.commandGrid { gap: 14px !important; }
+.commandCard { padding: 20px !important; }
+.sectionLead { margin-bottom: 18px !important; }
+.customerGrid,
+.jobGrid,
+.bookingGrid,
+.paymentGrid,
+.photoGrid,
+.voucherGrid {
+  gap: 14px !important;
+}
+
+.hqBrand > img {
+  width: 58px !important;
+  height: 52px !important;
+  object-fit: contain !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.hqBrand { gap: 12px !important; }
+.hqBrand strong { letter-spacing: .07em; }
+
+.mobile,
+.bottomNav {
+  background: rgba(8,9,10,.94) !important;
+  border-top: 1px solid var(--line) !important;
+  backdrop-filter: blur(20px) !important;
+  box-shadow: 0 -10px 30px rgba(0,0,0,.28) !important;
+}
+.mobile button,
+.bottomNav button {
+  background: transparent !important;
+  color: var(--muted) !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+}
+.mobile button.active,
+.bottomNav button.active {
+  color: var(--yellow) !important;
+  background: rgba(255,210,31,.07) !important;
+}
+
+.toast {
+  background: #17191c !important;
+  border: 1px solid var(--lineStrong) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+@media (min-width: 901px) {
+  .commandGrid { grid-template-columns: 1.4fr .8fr !important; }
+  .customerGrid,
+  .jobGrid,
+  .bookingGrid,
+  .paymentGrid,
+  .photoGrid,
+  .voucherGrid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+}
+
+@media (max-width: 900px) {
+  .appMain,
+  .hqMain { padding: 16px !important; }
+  .statGrid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+  .heroCard,
+  .card,
+  .stat,
+  .formPanel,
+  .messageBox,
+  .commandCard { border-radius: 18px !important; }
+}
+
+@media (max-width: 560px) {
+  .appMain,
+  .hqMain { padding: 12px !important; }
+  .statGrid { gap: 10px !important; }
+  .stat { min-height: 112px; padding: 14px !important; }
+  .heroCard,
+  .commandCard,
+  .card,
+  .formPanel { padding: 15px !important; }
+  .hqBrand > img { width: 48px !important; height: 44px !important; }
+  h2 { font-size: clamp(27px, 8vw, 38px) !important; }
+}
