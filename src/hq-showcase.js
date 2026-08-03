@@ -160,7 +160,7 @@ function pauseCloudSections(root = document) {
     if (button.dataset.apexPrivacy || button.dataset.apexInstall) return;
     const label = button.textContent.trim().toLowerCase();
 
-    if (label.includes("add booking") || label === "booking" || label.includes("create booking")) {
+    if (label.includes("booking")) {
       pauseControl(button, "Booking upgrade");
     } else if (label === "confirm" || label === "decline") {
       pauseControl(button);
