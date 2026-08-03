@@ -100,11 +100,17 @@ function readPrivacyPreference() {
 }
 
 function updatePrivacyButton(button, enabled) {
-  button.setAttribute("aria-pressed", String(enabled));
-  button.textContent = enabled ? "Privacy on" : "Privacy off";
-  button.title = enabled
+  const pressed = String(enabled);
+  const text = enabled ? "Privacy on" : "Privacy off";
+  const title = enabled
     ? "Customer details are blurred for recording"
     : "Customer details are visible";
+
+  if (button.getAttribute("aria-pressed") !== pressed) {
+    button.setAttribute("aria-pressed", pressed);
+  }
+  if (button.textContent !== text) button.textContent = text;
+  if (button.title !== title) button.title = title;
 }
 
 function applyPrivacyMode(enabled) {
@@ -138,9 +144,10 @@ function maskPinInputs(root = document) {
   root.querySelectorAll(
     '.gate input[inputmode="numeric"], .settings input[inputmode="numeric"], .apexSecurityForm input[inputmode="numeric"]'
   ).forEach(input => {
-    input.type = "password";
-    input.autocomplete = input.closest(".gate") ? "current-password" : "new-password";
-    input.setAttribute("aria-label", input.getAttribute("aria-label") || "Apex HQ PIN");
+    if (input.type !== "password") input.type = "password";
+    const autocomplete = input.closest(".gate") ? "current-password" : "new-password";
+    if (input.autocomplete !== autocomplete) input.autocomplete = autocomplete;
+    if (!input.getAttribute("aria-label")) input.setAttribute("aria-label", "Apex HQ PIN");
   });
 }
 
@@ -175,7 +182,7 @@ function pauseCloudSections(root = document) {
 
     section.querySelectorAll("input, select, button").forEach(control => {
       if (control.tagName === "BUTTON") pauseControl(control);
-      else {
+      else if (!control.disabled) {
         control.disabled = true;
         control.classList.add("apexCloudPaused");
       }
@@ -198,11 +205,30 @@ function refreshShowcaseLayer() {
   pauseCloudSections();
 }
 
+let showcaseFrame = 0;
+let showcaseObserver = null;
+
+function observeShowcaseChanges() {
+  showcaseObserver?.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+}
+
+function scheduleShowcaseRefresh() {
+  if (showcaseFrame) return;
+
+  showcaseFrame = requestAnimationFrame(() => {
+    showcaseFrame = 0;
+    showcaseObserver?.disconnect();
+    refreshShowcaseLayer();
+    observeShowcaseChanges();
+  });
+}
+
 injectShowcaseStyles();
 applyPrivacyMode(readPrivacyPreference());
 refreshShowcaseLayer();
 
-new MutationObserver(refreshShowcaseLayer).observe(document.body, {
-  childList: true,
-  subtree: true
-});
+showcaseObserver = new MutationObserver(scheduleShowcaseRefresh);
+observeShowcaseChanges();
