@@ -1,0 +1,72 @@
+name: Deploy Apex Cloud
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: apex-detailers-cloud
+  cancel-in-progress: false
+
+jobs:
+  deploy-functions:
+    name: Deploy Calendar, Gmail and Booking Functions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: apex-detailers
+          workload_identity_provider: projects/845997886809/locations/global/workloadIdentityPools/github-actions/providers/apex-detailers
+          service_account: github-deployer@apex-detailers.iam.gserviceaccount.com
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable required Google APIs
+        run: |
+          gcloud services enable \
+            calendar-json.googleapis.com \
+            gmail.googleapis.com \
+            cloudfunctions.googleapis.com \
+            run.googleapis.com \
+            artifactregistry.googleapis.com \
+            cloudbuild.googleapis.com \
+            secretmanager.googleapis.com \
+            eventarc.googleapis.com \
+            pubsub.googleapis.com \
+            iamcredentials.googleapis.com \
+            --project=apex-detailers
+
+      - name: Verify required secrets
+        run: |
+          set -e
+          for secret in GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET TOKEN_ENCRYPTION_KEY; do
+            gcloud secrets describe "$secret" --project=apex-detailers >/dev/null 2>&1 || {
+              echo "Missing Secret Manager secret: $secret"
+              exit 1
+            }
+          done
+
+      - name: Install Functions dependencies
+        working-directory: functions
+        run: npm install
+
+      - name: Validate Functions source
+        working-directory: functions
+        run: npm run lint
+
+      - name: Deploy Firebase Functions
+        run: npx firebase-tools@latest deploy --only functions --project apex-detailers --non-interactive
