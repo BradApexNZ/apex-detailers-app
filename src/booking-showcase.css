@@ -1,0 +1,91 @@
+.showcasePage .mark {
+  overflow: hidden;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.showcasePage .mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  clip-path: circle(48% at 50% 50%);
+}
+
+.showcaseHero {
+  min-height: 370px;
+}
+
+.showcaseHero aside {
+  min-width: 220px;
+  background: rgba(17, 17, 20, 0.78);
+  backdrop-filter: blur(14px);
+}
+
+.showcaseCard > p {
+  max-width: 680px;
+  line-height: 1.6;
+}
+
+.showcaseCta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.42fr);
+  align-items: center;
+  gap: 28px;
+  margin-top: 28px;
+  padding: 25px;
+  border: 1px solid rgba(255, 210, 31, 0.28);
+  border-radius: 21px;
+  background:
+    linear-gradient(135deg, rgba(255, 210, 31, 0.08), transparent 58%),
+    #151518;
+}
+
+.showcaseCta h3 {
+  margin: 8px 0 7px;
+  font-size: clamp(24px, 4vw, 34px);
+  letter-spacing: -0.045em;
+}
+
+.showcaseCta p {
+  margin: 0;
+  color: #aaa69e;
+  line-height: 1.6;
+}
+
+.showcaseButton {
+  width: 100%;
+  min-height: 56px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 13px 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff0a1, #ffd21f 48%, #ffb800);
+  color: #111 !important;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1.25;
+}
+
+.showcaseButton:hover,
+.showcaseButton:focus-visible {
+  filter: brightness(1.04);
+}
+
+@media (max-width: 720px) {
+  .showcaseHero {
+    min-height: 320px;
+  }
+
+  .showcaseCta {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+
+  .showcaseButton {
+    min-height: 54px;
+  }
+}
