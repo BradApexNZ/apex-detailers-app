@@ -1,17 +1,45 @@
-const CACHE_NAME = "apex-hq-shell-v1";
-const PRECACHE_URLS = [
-  "/hq",
-  "/hq.html",
+const CACHE_NAME = "apex-hq-shell-v2";
+const CORE_URLS = [
   "/apex-hq.webmanifest",
   "/apex-logo-official.svg"
 ];
 
+async function cacheUrl(cache, url) {
+  try {
+    const response = await fetch(url, { cache: "reload" });
+    if (response.ok && response.type === "basic") {
+      await cache.put(url, response);
+    }
+  } catch {
+    // Individual optional assets must not prevent the app shell installing.
+  }
+}
+
+async function precacheAppShell() {
+  const cache = await caches.open(CACHE_NAME);
+  const response = await fetch("/hq", { cache: "reload" });
+  if (!response.ok) throw new Error("Apex HQ shell could not be downloaded.");
+
+  const html = await response.clone().text();
+  await cache.put("/hq", response.clone());
+  await cache.put("/hq.html", new Response(html, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers
+  }));
+
+  const assetUrls = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/g)]
+    .map(match => match[1])
+    .filter(url => url.startsWith("/") && url !== "/apex-hq-sw.js");
+
+  await Promise.all([
+    ...CORE_URLS.map(url => cacheUrl(cache, url)),
+    ...[...new Set(assetUrls)].map(url => cacheUrl(cache, url))
+  ]);
+}
+
 self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil(precacheAppShell().then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", event => {
