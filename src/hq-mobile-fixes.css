@@ -1,0 +1,63 @@
+.apexPrivacyToggle {
+  min-width: 126px !important;
+  min-height: 36px !important;
+  border-radius: 12px !important;
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transform: none !important;
+  filter: none !important;
+  transition: border-color .12s ease, background-color .12s ease, color .12s ease !important;
+  contain: layout paint;
+}
+
+.apexPrivacyToggle:hover,
+.apexPrivacyToggle:active,
+.apexPrivacyToggle:focus {
+  transform: none !important;
+  filter: none !important;
+}
+
+.apexPrivacyToggle:focus-visible {
+  outline: 2px solid rgba(244,201,0,.55);
+  outline-offset: 2px;
+}
+
+.command .heroActions {
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  overflow: visible !important;
+}
+
+.command .heroActions > button {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  border-radius: 16px !important;
+  clip-path: none !important;
+  transform: none !important;
+  overflow: hidden !important;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.command .heroActions > button::before,
+.command .heroActions > button::after {
+  border-radius: inherit !important;
+}
+
+@media (max-width: 720px) {
+  .apexPrivacyToggle {
+    min-width: 122px !important;
+    min-height: 34px !important;
+  }
+
+  .command .heroActions {
+    gap: 10px !important;
+  }
+}
