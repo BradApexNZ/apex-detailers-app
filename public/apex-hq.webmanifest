@@ -1,0 +1,13 @@
+{
+  "name": "Apex HQ",
+  "short_name": "Apex HQ",
+  "description": "Apex Detailers bookings, customers, jobs, photos, invoicing and payment follow-ups.",
+  "start_url": "/hq",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "categories": ["business", "productivity"],
+  "lang": "en-NZ"
+}
