@@ -25,7 +25,8 @@ export default defineConfig({
       input: {
         main: resolve(process.cwd(), "index.html"),
         hq: resolve(process.cwd(), "hq.html"),
-        booking: resolve(process.cwd(), "booking.html")
+        booking: resolve(process.cwd(), "booking.html"),
+        dataTools: resolve(process.cwd(), "data-tools.html")
       }
     }
   }
