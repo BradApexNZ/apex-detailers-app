@@ -1,0 +1,133 @@
+/* Apex HQ dual-workspace layer: desktop admin command centre + mobile owner field app. */
+
+html[data-workspace="desktop-admin"] body {
+  padding-bottom: 0;
+}
+
+html[data-workspace="desktop-admin"] .appMain,
+html[data-workspace="desktop-admin"] .content,
+html[data-workspace="desktop-admin"] main {
+  width: min(100%, 1500px);
+  margin-inline: auto;
+}
+
+html[data-workspace="desktop-admin"] .mobile,
+html[data-workspace="desktop-admin"] .bottomNav {
+  display: none !important;
+}
+
+html[data-workspace="desktop-admin"] .top,
+html[data-workspace="desktop-admin"] .appHeader {
+  padding-inline: clamp(24px, 4vw, 64px);
+}
+
+html[data-workspace="desktop-admin"] .stats,
+html[data-workspace="desktop-admin"] .statGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+html[data-workspace="desktop-admin"] .customerGrid,
+html[data-workspace="desktop-admin"] .jobGrid,
+html[data-workspace="desktop-admin"] .bookingGrid,
+html[data-workspace="desktop-admin"] .photoGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+html[data-workspace="desktop-admin"] .settings {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+html[data-workspace="desktop-admin"] .modal {
+  width: min(920px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+}
+
+html[data-workspace="desktop-admin"] input,
+html[data-workspace="desktop-admin"] select,
+html[data-workspace="desktop-admin"] textarea {
+  min-height: 46px;
+}
+
+html[data-workspace="desktop-admin"] .apexInstallButton {
+  width: auto;
+  white-space: nowrap;
+}
+
+html[data-workspace="mobile-owner"] body {
+  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+}
+
+html[data-workspace="mobile-owner"] .content,
+html[data-workspace="mobile-owner"] .appMain,
+html[data-workspace="mobile-owner"] main {
+  width: 100%;
+  padding-inline: 14px;
+}
+
+html[data-workspace="mobile-owner"] .stats,
+html[data-workspace="mobile-owner"] .statGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+html[data-workspace="mobile-owner"] .customerGrid,
+html[data-workspace="mobile-owner"] .jobGrid,
+html[data-workspace="mobile-owner"] .bookingGrid,
+html[data-workspace="mobile-owner"] .photoGrid,
+html[data-workspace="mobile-owner"] .settings {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+html[data-workspace="mobile-owner"] .mobile,
+html[data-workspace="mobile-owner"] .bottomNav {
+  position: fixed;
+  z-index: 40;
+  left: 10px;
+  right: 10px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 22px;
+  background: rgba(10,10,12,.94);
+  box-shadow: 0 18px 50px rgba(0,0,0,.45);
+  backdrop-filter: blur(22px);
+}
+
+html[data-workspace="mobile-owner"] .mobile button,
+html[data-workspace="mobile-owner"] .bottomNav button {
+  min-width: 0;
+  min-height: 58px;
+  padding: 8px 4px;
+  border-radius: 16px;
+  font-size: 10px;
+}
+
+html[data-workspace="mobile-owner"] .top,
+html[data-workspace="mobile-owner"] .appHeader {
+  padding-inline: 14px;
+}
+
+html[data-workspace="mobile-owner"] .heroActions,
+html[data-workspace="mobile-owner"] .customerActions,
+html[data-workspace="mobile-owner"] .commandActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html[data-workspace="mobile-owner"] .modal {
+  width: calc(100vw - 20px);
+  max-height: calc(100dvh - 20px);
+  border-radius: 22px;
+}
+
+@media (min-width: 1200px) {
+  html[data-workspace="desktop-admin"] .customerGrid,
+  html[data-workspace="desktop-admin"] .jobGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html[data-workspace="mobile-owner"] .stats,
+  html[data-workspace="mobile-owner"] .statGrid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
