@@ -1,4 +1,4 @@
-const BRAND_LOGO = "/assets/apex-logo-official.svg";
+const BRAND_LOGO = new URL("../assets/apex-logo-official.svg", import.meta.url).href;
 
 const textReplacements = new Map([
   ["HQ / V5", "Operations Centre"],
@@ -87,10 +87,22 @@ async function removeLegacyPwaState() {
   }
 }
 
+let polishScheduled = false;
+
+function schedulePolish() {
+  if (polishScheduled) return;
+  polishScheduled = true;
+
+  requestAnimationFrame(() => {
+    polishScheduled = false;
+    polishApexHq();
+  });
+}
+
 polishApexHq();
 removeLegacyPwaState();
 
-new MutationObserver(() => polishApexHq()).observe(document.body, {
+new MutationObserver(schedulePolish).observe(document.body, {
   childList: true,
   subtree: true
 });
