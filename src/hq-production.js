@@ -91,16 +91,30 @@ function applyNavigationIcons(root) {
   });
 }
 
+function applyLogoPresentation(image) {
+  image.style.width = "52px";
+  image.style.height = "52px";
+  image.style.objectFit = "cover";
+  image.style.objectPosition = "center";
+  image.style.borderRadius = "50%";
+  image.style.clipPath = "circle(48% at 50% 50%)";
+  image.style.background = "transparent";
+  image.style.boxShadow = "none";
+  image.style.border = "0";
+}
+
 function polishApexHq(root = document) {
   document.title = "Apex HQ";
   cleanVisibleText(root);
 
   root.querySelectorAll(".hqBrand img").forEach(image => {
+    applyLogoPresentation(image);
     if (image.dataset.apexLogoReady) return;
 
     image.dataset.apexLogoReady = "true";
     image.alt = "Apex Detailers";
     image.src = BRAND_LOGO;
+    image.addEventListener("load", () => applyLogoPresentation(image));
     image.addEventListener("error", () => image.classList.add("logoUnavailable"), { once: true });
   });
 
