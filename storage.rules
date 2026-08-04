@@ -4,17 +4,17 @@ service firebase.storage {
   match /b/{bucket}/o {
     function isApexOwner() {
       return request.auth != null
-        && (request.auth.uid == "fnc4G85CtmQVy0OooOzfOoSC9u22"
-          || request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42");
+        && request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42";
     }
 
     function isSafeImageUpload() {
       return request.resource != null
+        && request.resource.size > 0
         && request.resource.size <= 10 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+        && request.resource.contentType.matches('image/(jpeg|png|webp|heic|heif)');
     }
 
-    match /jobs/{customerId}/{fileName} {
+    match /jobs/{jobId}/{fileName} {
       allow read, delete: if isApexOwner();
       allow create, update: if isApexOwner() && isSafeImageUpload();
     }
