@@ -51,6 +51,34 @@
   border-radius: inherit !important;
 }
 
+/* iPhone/PWA safe-area correction: keep the Apex header below the clock,
+   Dynamic Island and status bar instead of letting them overlap the brand. */
+@supports (padding: max(0px)) {
+  body {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .shell > main,
+  .shell > header,
+  .topbar,
+  .hqTopbar,
+  .appHeader {
+    scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 16px);
+  }
+
+  .topbar,
+  .hqTopbar,
+  .appHeader {
+    top: env(safe-area-inset-top, 0px) !important;
+  }
+}
+
+@media (display-mode: standalone) {
+  body {
+    padding-top: max(env(safe-area-inset-top, 0px), 18px);
+  }
+}
+
 @media (max-width: 720px) {
   .apexPrivacyToggle {
     min-width: 122px !important;
@@ -59,5 +87,15 @@
 
   .command .heroActions {
     gap: 10px !important;
+  }
+
+  .shell {
+    min-height: calc(100dvh - env(safe-area-inset-top, 0px));
+  }
+
+  .topbar,
+  .hqTopbar,
+  .appHeader {
+    padding-top: max(14px, env(safe-area-inset-top, 0px)) !important;
   }
 }
