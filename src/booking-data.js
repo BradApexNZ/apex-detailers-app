@@ -18,7 +18,7 @@ export const vehicleTypes = [
 ];
 
 export const defaultBookingSettings = {
-  enabled: false,
+  enabled: true,
   minimumNoticeHours: 24,
   bookingWindowDays: 60,
   slotIntervalMinutes: 30,
@@ -26,9 +26,9 @@ export const defaultBookingSettings = {
   closingTime: "18:00",
   workDays: [1, 2, 3, 4, 5, 6],
   serviceAreas: ["Napier", "Hastings", "Havelock North", "Taradale", "Ahuriri", "Poraiti"],
-  note: "Online booking automation is launching later. Contact Apex directly for current availability.",
-  customerEmails: false,
-  ownerEmails: false
+  note: "Your selected time is submitted as a booking request until Apex confirms the vehicle details and final price.",
+  customerEmails: true,
+  ownerEmails: true
 };
 
 export const money = value => new Intl.NumberFormat("en-NZ", {
