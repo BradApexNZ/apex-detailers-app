@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
-import { getAuth } from "firebase/auth";
+import { browserLocalPersistence, getAuth, setPersistence } from "firebase/auth";
 import {
   initializeFirestore,
   memoryLocalCache,
@@ -46,6 +46,13 @@ const privateOfflinePath = typeof window !== "undefined"
 
 export const offlinePersistenceEnabled = privateOfflinePath;
 export const auth = getAuth(app);
+
+// Keep the signed-in Firebase user on this device across app closes and reloads.
+// The catch prevents storage-restricted browsers from blocking the app startup.
+export const authPersistenceReady = setPersistence(auth, browserLocalPersistence).catch(error => {
+  console.warn("Persistent Firebase login is unavailable in this browser.", error);
+});
+
 export const db = initializeFirestore(app, {
   localCache: privateOfflinePath
     ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
