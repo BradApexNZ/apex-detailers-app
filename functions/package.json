@@ -3,16 +3,15 @@
   "private": true,
   "type": "module",
   "engines": { "node": "22" },
-  "main": "index.js",
+  "main": "booking-only.js",
   "scripts": {
-    "lint": "node --check index.js",
+    "lint": "node --check booking-only.js",
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions"
   },
   "dependencies": {
     "firebase-admin": "latest",
     "firebase-functions": "latest",
-    "googleapis": "latest",
     "luxon": "latest"
   }
 }
