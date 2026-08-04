@@ -4,17 +4,45 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isApexOwner() {
       return request.auth != null
-        && (request.auth.uid == "fnc4G85CtmQVy0OooOzfOoSC9u22"
-          || request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42");
+        && request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42";
     }
 
-    match /customers/{id} { allow read, write: if isApexOwner(); }
-    match /jobs/{id} { allow read, write: if isApexOwner(); }
-    match /vouchers/{id} { allow read, write: if isApexOwner(); }
-    match /bookingRequests/{id} { allow read, write: if isApexOwner(); }
-    match /inquiries/{id} { allow read, write: if isApexOwner(); }
-    match /settings/{id} { allow read, write: if isApexOwner(); }
+    function isReasonableDocument() {
+      return request.resource.data.size() <= 100;
+    }
 
-    match /{document=**} { allow read, write: if false; }
+    match /customers/{id} {
+      allow read, delete: if isApexOwner();
+      allow create, update: if isApexOwner() && isReasonableDocument();
+    }
+
+    match /jobs/{id} {
+      allow read, delete: if isApexOwner();
+      allow create, update: if isApexOwner() && isReasonableDocument();
+    }
+
+    match /vouchers/{id} {
+      allow read, delete: if isApexOwner();
+      allow create, update: if isApexOwner() && isReasonableDocument();
+    }
+
+    match /bookingRequests/{id} {
+      allow read, delete: if isApexOwner();
+      allow create, update: if isApexOwner() && isReasonableDocument();
+    }
+
+    match /inquiries/{id} {
+      allow read, delete: if isApexOwner();
+      allow create, update: if isApexOwner() && isReasonableDocument();
+    }
+
+    match /settings/{id} {
+      allow read, delete: if isApexOwner();
+      allow create, update: if isApexOwner() && isReasonableDocument();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }
