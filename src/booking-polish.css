@@ -1,44 +1,46 @@
-/* Public booking polish — mobile-first, using the existing Apex brand system. */
+/* Apex public booking — premium mobile-first header and hero. */
 .publicPage{padding-top:env(safe-area-inset-top)}
-.publicPage>header{height:auto;min-height:82px;padding:14px 0;gap:12px;position:relative;z-index:2}
+.publicPage>header{position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;min-height:76px;margin-top:10px;padding:10px 12px;border:1px solid rgba(255,255,255,.09);border-radius:22px;background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018));box-shadow:0 18px 45px rgba(0,0,0,.28);backdrop-filter:blur(18px)}
 .brand{min-width:0;display:flex;align-items:center;gap:12px}
-.brand .mark{display:grid;width:58px;height:58px;flex:0 0 58px;padding:3px;border:0;border-radius:50%;background:transparent;overflow:hidden}
-.brand .mark img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 10px rgba(255,210,31,.18))}
+.brand .mark{display:grid;width:58px;height:58px;flex:0 0 58px;padding:0;border:0;border-radius:0;background:transparent;overflow:visible}
+.brand .mark img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 7px 16px rgba(0,0,0,.4)) drop-shadow(0 0 10px rgba(255,210,31,.14))}
 .brand>div{min-width:0}
-.brand strong{font-size:clamp(17px,5vw,27px);line-height:1;letter-spacing:.14em;white-space:nowrap}
-.brand small{font-size:9px;letter-spacing:.22em;margin-top:7px}
-.publicPage>header>a{flex:0 0 auto;padding:9px 0;font-size:clamp(13px,3.8vw,18px);white-space:nowrap}
-.hero{min-height:0;padding:42px 0 34px;align-items:start}
-.hero h1{max-width:760px;font-size:clamp(52px,13.6vw,92px);line-height:.91;letter-spacing:-.064em;margin:14px 0 23px;text-wrap:balance}
-.hero p{max-width:690px;font-size:clamp(17px,4.4vw,20px);line-height:1.52;margin:0}
-.steps{margin:6px 0 24px}
-.steps i{width:42px}
+.brand strong{display:block;font-size:clamp(17px,4.6vw,26px);line-height:1;letter-spacing:.145em;white-space:nowrap}
+.brand small{display:block;margin-top:7px;color:#ffd21f;font-size:9px;font-weight:800;letter-spacing:.24em}
+.publicPage>header>a{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 14px;border:1px solid rgba(255,210,31,.32);border-radius:999px;background:rgba(255,210,31,.09);color:#ffd21f;font-size:13px;font-weight:900;white-space:nowrap}
+.publicPage>header::after{content:"";position:absolute;left:18px;right:18px;bottom:-15px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,210,31,.28),transparent)}
+.hero{min-height:0;padding:50px 0 34px;align-items:start}
+.hero h1{max-width:760px;margin:13px 0 22px;font-size:clamp(52px,13.2vw,90px);line-height:.91;letter-spacing:-.064em;text-wrap:balance}
+.hero p{max-width:680px;margin:0;color:#aaa69e;font-size:clamp(17px,4.35vw,20px);line-height:1.52}
+.steps{margin:7px 0 24px}
+.steps i{width:40px}
 .error{margin:0 0 22px;padding:17px 19px;border-radius:18px;font-size:16px;line-height:1.45}
 .card{padding:clamp(24px,6vw,38px);border-radius:26px}
-.card h2{font-size:clamp(36px,10vw,58px);line-height:1.02;margin:16px 0 18px;text-wrap:balance}
+.card h2{margin:16px 0 18px;font-size:clamp(36px,10vw,58px);line-height:1.02;text-wrap:balance}
 .services button{min-height:164px}
 @media(max-width:720px){
-  .publicPage{padding-left:18px;padding-right:18px;padding-bottom:42px}
-  .publicPage>header{min-height:84px;padding:12px 0}
+  .publicPage{padding-left:16px;padding-right:16px;padding-bottom:42px}
+  .publicPage>header{min-height:72px;margin-top:8px;padding:9px 10px;border-radius:19px}
   .brand{gap:9px}
-  .brand .mark{width:50px;height:50px;flex-basis:50px}
-  .brand strong{font-size:18px;letter-spacing:.115em}
-  .brand small{font-size:8px;margin-top:6px}
-  .publicPage>header>a{font-size:13px}
-  .hero{padding:42px 0 38px}
-  .hero h1{font-size:clamp(54px,15.5vw,70px);max-width:100%;margin-bottom:24px}
-  .hero p{font-size:18px;line-height:1.5}
-  .steps{margin-bottom:26px}
-  .steps i{height:6px;width:42px}
+  .brand .mark{width:48px;height:48px;flex-basis:48px}
+  .brand strong{font-size:17px;letter-spacing:.105em}
+  .brand small{margin-top:6px;font-size:7.5px;letter-spacing:.2em}
+  .publicPage>header>a{min-height:34px;padding:0 11px;font-size:11px}
+  .hero{padding:46px 0 36px}
+  .hero h1{max-width:100%;margin-bottom:23px;font-size:clamp(52px,15vw,68px)}
+  .hero p{font-size:17px;line-height:1.5}
+  .steps{margin-bottom:25px}
+  .steps i{width:40px;height:6px}
   .error{font-size:15px}
-  .card{padding:28px 24px}
+  .card{padding:27px 23px}
   .card h2{font-size:40px}
 }
 @media(max-width:390px){
-  .publicPage{padding-left:14px;padding-right:14px}
-  .brand .mark{width:46px;height:46px;flex-basis:46px}
-  .brand strong{font-size:15px;letter-spacing:.095em}
+  .publicPage{padding-left:12px;padding-right:12px}
+  .publicPage>header{padding:8px}
+  .brand .mark{width:43px;height:43px;flex-basis:43px}
+  .brand strong{font-size:14px;letter-spacing:.09em}
   .brand small{font-size:7px}
-  .publicPage>header>a{font-size:12px}
-  .hero h1{font-size:52px}
+  .publicPage>header>a{padding:0 9px;font-size:10px}
+  .hero h1{font-size:50px}
 }
