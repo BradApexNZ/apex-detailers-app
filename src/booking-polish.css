@@ -1,44 +1,44 @@
 /* Public booking polish — mobile-first, using the existing Apex brand system. */
 .publicPage{padding-top:env(safe-area-inset-top)}
-.publicPage>header{height:auto;min-height:88px;padding:18px 0;gap:14px;position:relative;z-index:2}
+.publicPage>header{height:auto;min-height:82px;padding:14px 0;gap:12px;position:relative;z-index:2}
 .brand{min-width:0;display:flex;align-items:center;gap:12px}
-.brand .mark{display:grid;width:52px;height:52px;flex:0 0 52px;padding:7px;border:1px solid rgba(255,210,31,.3);border-radius:14px;background:#111114;overflow:hidden}
-.brand .mark img{display:block;width:100%;height:100%;object-fit:contain}
+.brand .mark{display:grid;width:58px;height:58px;flex:0 0 58px;padding:3px;border:0;border-radius:50%;background:transparent;overflow:hidden}
+.brand .mark img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 10px rgba(255,210,31,.18))}
 .brand>div{min-width:0}
-.brand strong{font-size:clamp(17px,5.2vw,27px);line-height:1;letter-spacing:.145em;white-space:nowrap}
-.brand small{font-size:9px;letter-spacing:.23em;margin-top:8px}
-.publicPage>header>a{flex:0 0 auto;padding:10px 0;font-size:clamp(14px,4vw,19px);white-space:nowrap}
-.hero{min-height:0;padding:58px 0 38px;align-items:start}
-.hero h1{max-width:820px;font-size:clamp(54px,14.2vw,98px);line-height:.9;letter-spacing:-.068em;margin:15px 0 25px}
-.hero p{max-width:720px;font-size:clamp(17px,4.5vw,21px);line-height:1.55;margin:0}
-.steps{margin:8px 0 26px}
+.brand strong{font-size:clamp(17px,5vw,27px);line-height:1;letter-spacing:.14em;white-space:nowrap}
+.brand small{font-size:9px;letter-spacing:.22em;margin-top:7px}
+.publicPage>header>a{flex:0 0 auto;padding:9px 0;font-size:clamp(13px,3.8vw,18px);white-space:nowrap}
+.hero{min-height:0;padding:42px 0 34px;align-items:start}
+.hero h1{max-width:760px;font-size:clamp(52px,13.6vw,92px);line-height:.91;letter-spacing:-.064em;margin:14px 0 23px;text-wrap:balance}
+.hero p{max-width:690px;font-size:clamp(17px,4.4vw,20px);line-height:1.52;margin:0}
+.steps{margin:6px 0 24px}
 .steps i{width:42px}
-.error{margin:0 0 22px;padding:18px 20px;border-radius:18px;font-size:16px;line-height:1.45}
+.error{margin:0 0 22px;padding:17px 19px;border-radius:18px;font-size:16px;line-height:1.45}
 .card{padding:clamp(24px,6vw,38px);border-radius:26px}
-.card h2{font-size:clamp(36px,10vw,58px);line-height:1.02;margin:16px 0 18px}
+.card h2{font-size:clamp(36px,10vw,58px);line-height:1.02;margin:16px 0 18px;text-wrap:balance}
 .services button{min-height:164px}
 @media(max-width:720px){
   .publicPage{padding-left:18px;padding-right:18px;padding-bottom:42px}
-  .publicPage>header{min-height:92px;padding:16px 0}
-  .brand{gap:10px}
-  .brand .mark{width:46px;height:46px;flex-basis:46px;padding:6px;border-radius:12px}
-  .brand strong{font-size:18px;letter-spacing:.12em}
-  .brand small{font-size:8px;margin-top:7px}
-  .publicPage>header>a{font-size:14px}
-  .hero{padding:58px 0 44px}
-  .hero h1{font-size:clamp(56px,16.2vw,74px);max-width:100%;margin-bottom:27px}
-  .hero p{font-size:18px;line-height:1.55}
-  .steps{margin-bottom:28px}
-  .steps i{height:6px;width:44px}
+  .publicPage>header{min-height:84px;padding:12px 0}
+  .brand{gap:9px}
+  .brand .mark{width:50px;height:50px;flex-basis:50px}
+  .brand strong{font-size:18px;letter-spacing:.115em}
+  .brand small{font-size:8px;margin-top:6px}
+  .publicPage>header>a{font-size:13px}
+  .hero{padding:42px 0 38px}
+  .hero h1{font-size:clamp(54px,15.5vw,70px);max-width:100%;margin-bottom:24px}
+  .hero p{font-size:18px;line-height:1.5}
+  .steps{margin-bottom:26px}
+  .steps i{height:6px;width:42px}
   .error{font-size:15px}
   .card{padding:28px 24px}
-  .card h2{font-size:42px}
+  .card h2{font-size:40px}
 }
 @media(max-width:390px){
   .publicPage{padding-left:14px;padding-right:14px}
-  .brand .mark{width:42px;height:42px;flex-basis:42px}
-  .brand strong{font-size:16px;letter-spacing:.105em}
+  .brand .mark{width:46px;height:46px;flex-basis:46px}
+  .brand strong{font-size:15px;letter-spacing:.095em}
   .brand small{font-size:7px}
   .publicPage>header>a{font-size:12px}
-  .hero h1{font-size:54px}
+  .hero h1{font-size:52px}
 }
