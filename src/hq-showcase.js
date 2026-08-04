@@ -8,20 +8,65 @@ function injectShowcaseStyles() {
   const style = document.createElement("style");
   style.id = "apex-showcase-styles";
   style.textContent = `
-    .apexPrivacyToggle {
-      min-height: 36px !important;
-      padding: 0 12px !important;
-      border-color: rgba(255,255,255,.12) !important;
-      background: #181d22 !important;
-      color: #f4f3ee !important;
-      font-size: 10px !important;
-      white-space: nowrap;
+    .apexPrivacySetting {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
     }
 
-    .apexPrivacyToggle[aria-pressed="true"] {
-      border-color: rgba(244,201,0,.36) !important;
-      background: rgba(244,201,0,.1) !important;
-      color: #f5da53 !important;
+    .apexPrivacySettingCopy {
+      min-width: 0;
+    }
+
+    .apexPrivacySettingCopy h3 {
+      margin-bottom: 6px !important;
+    }
+
+    .apexPrivacySettingCopy p {
+      margin: 0 !important;
+      color: #aaa69e !important;
+      font-size: 12px !important;
+      line-height: 1.5;
+    }
+
+    .apexPrivacySwitch {
+      position: relative;
+      flex: 0 0 auto;
+      width: 58px !important;
+      min-width: 58px !important;
+      height: 32px !important;
+      min-height: 32px !important;
+      padding: 0 !important;
+      border: 1px solid rgba(255,255,255,.15) !important;
+      border-radius: 999px !important;
+      background: #252a30 !important;
+      box-shadow: none !important;
+      transform: none !important;
+      overflow: hidden !important;
+    }
+
+    .apexPrivacySwitch::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #f4f3ee;
+      box-shadow: 0 2px 8px rgba(0,0,0,.35);
+      transition: transform .18s ease;
+    }
+
+    .apexPrivacySwitch[aria-checked="true"] {
+      border-color: rgba(244,201,0,.5) !important;
+      background: rgba(244,201,0,.24) !important;
+    }
+
+    .apexPrivacySwitch[aria-checked="true"]::after {
+      transform: translateX(26px);
+      background: #f4c900;
     }
 
     .apexPrivacyMode .customerGrid article h3,
@@ -84,9 +129,8 @@ function injectShowcaseStyles() {
     }
 
     @media (max-width: 720px) {
-      .apexPrivacyToggle {
-        min-height: 34px !important;
-        padding-inline: 10px !important;
+      .apexPrivacySetting {
+        align-items: center;
       }
     }
   `;
@@ -99,45 +143,52 @@ function readPrivacyPreference() {
   return saved === "true";
 }
 
-function updatePrivacyButton(button, enabled) {
-  const pressed = String(enabled);
-  const text = enabled ? "Privacy on" : "Privacy off";
-  const title = enabled
-    ? "Customer details are blurred for recording"
-    : "Customer details are visible";
-
-  if (button.getAttribute("aria-pressed") !== pressed) {
-    button.setAttribute("aria-pressed", pressed);
-  }
-  if (button.textContent !== text) button.textContent = text;
-  if (button.title !== title) button.title = title;
+function updatePrivacyControl(control, enabled) {
+  control.setAttribute("aria-checked", String(enabled));
+  control.setAttribute("aria-label", enabled ? "Turn Privacy Mode off" : "Turn Privacy Mode on");
+  control.title = enabled
+    ? "Privacy Mode is on. Customer details are blurred."
+    : "Privacy Mode is off. Customer details are visible.";
 }
 
 function applyPrivacyMode(enabled) {
   document.body.classList.toggle("apexPrivacyMode", enabled);
   localStorage.setItem(PRIVACY_KEY, String(enabled));
 
-  const button = document.querySelector("[data-apex-privacy]");
-  if (button) updatePrivacyButton(button, enabled);
+  document.querySelectorAll("[data-apex-privacy-setting]").forEach(control => {
+    updatePrivacyControl(control, enabled);
+  });
 }
 
-function ensurePrivacyToggle() {
-  const actions = document.querySelector(".top > div:last-child");
-  if (!actions) return;
+function ensurePrivacySetting() {
+  document.querySelectorAll("[data-apex-privacy], .apexPrivacyToggle").forEach(button => button.remove());
 
-  let button = actions.querySelector("[data-apex-privacy]");
-  if (!button) {
-    button = document.createElement("button");
-    button.type = "button";
-    button.className = "secondaryTop apexPrivacyToggle";
-    button.dataset.apexPrivacy = "true";
-    button.addEventListener("click", () => {
+  const settings = document.querySelector(".settings");
+  if (!settings) return;
+
+  let section = settings.querySelector("[data-apex-privacy-section]");
+  if (!section) {
+    section = document.createElement("section");
+    section.dataset.apexPrivacySection = "true";
+    section.className = "apexPrivacySetting";
+    section.innerHTML = `
+      <div class="apexPrivacySettingCopy">
+        <h3>Privacy Mode</h3>
+        <p>Blur customer, vehicle, job and revenue details when recording or showing the app to someone.</p>
+      </div>
+      <button type="button" class="apexPrivacySwitch" role="switch" data-apex-privacy-setting="true"></button>
+    `;
+
+    const control = section.querySelector("[data-apex-privacy-setting]");
+    control.addEventListener("click", () => {
       applyPrivacyMode(!document.body.classList.contains("apexPrivacyMode"));
     });
-    actions.prepend(button);
+
+    settings.prepend(section);
   }
 
-  updatePrivacyButton(button, document.body.classList.contains("apexPrivacyMode"));
+  const control = section.querySelector("[data-apex-privacy-setting]");
+  if (control) updatePrivacyControl(control, document.body.classList.contains("apexPrivacyMode"));
 }
 
 function maskPinInputs(root = document) {
@@ -164,7 +215,7 @@ function pauseCloudSections(root = document) {
   if (CLOUD_ENABLED) return;
 
   root.querySelectorAll("button").forEach(button => {
-    if (button.dataset.apexPrivacy || button.dataset.apexInstall) return;
+    if (button.dataset.apexPrivacySetting || button.dataset.apexInstall) return;
     const label = button.textContent.trim().toLowerCase();
 
     if (label.includes("booking")) {
@@ -177,6 +228,7 @@ function pauseCloudSections(root = document) {
   });
 
   root.querySelectorAll(".settings > section").forEach(section => {
+    if (section.dataset.apexPrivacySection) return;
     const heading = section.querySelector("h3")?.textContent.trim().toLowerCase();
     if (heading !== "online booking" && heading !== "google calendar") return;
 
@@ -201,7 +253,7 @@ function pauseCloudSections(root = document) {
 function refreshShowcaseLayer() {
   injectShowcaseStyles();
   maskPinInputs();
-  ensurePrivacyToggle();
+  ensurePrivacySetting();
   pauseCloudSections();
 }
 
