@@ -1,0 +1,56 @@
+name: Deploy Apex HQ Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: apex-production
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install website dependencies
+        run: npm ci
+
+      - name: Build website
+        run: npm run build
+
+      - name: Install and check Functions
+        run: |
+          npm --prefix functions install
+          npm --prefix functions run lint
+
+      - name: Authenticate to Firebase
+        shell: bash
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_APEX_DETAILERS }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "Missing FIREBASE_SERVICE_ACCOUNT_APEX_DETAILERS repository secret."
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
+
+      - name: Deploy backend and rules
+        run: npx firebase-tools deploy --project apex-detailers --only functions,firestore:rules,storage --force --non-interactive
+
+      - name: Deploy Hosting last
+        run: npx firebase-tools deploy --project apex-detailers --only hosting --non-interactive
