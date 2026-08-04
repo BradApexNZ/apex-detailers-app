@@ -6,10 +6,10 @@ const findSettingsSection = () => [...document.querySelectorAll(".settings > sec
 function messageFor(error) {
   const raw = error?.message || "Google Calendar connection failed.";
   if (/secret|oauth|client|configuration|internal/i.test(raw)) {
-    return "Google Calendar is live, but its Google OAuth credentials or Firebase Function secrets still need configuration.";
+    return "Google Calendar needs its OAuth credentials or Firebase Function secrets configured.";
   }
   if (/not[- ]found|unavailable|failed-precondition/i.test(raw)) {
-    return "The Calendar backend is not available yet. Check the latest Firebase Functions deployment.";
+    return "The Calendar backend is unavailable. Check the latest Firebase Functions deployment.";
   }
   return raw.replace(/^Firebase:\s*/i, "");
 }
@@ -55,6 +55,49 @@ function enable(control) {
   control.removeAttribute("title");
 }
 
+function injectStyles() {
+  if (document.getElementById("apex-google-calendar-live-styles")) return;
+  const style = document.createElement("style");
+  style.id = "apex-google-calendar-live-styles";
+  style.textContent = `
+    .apexGoogleQuickConnect{position:fixed;right:18px;bottom:22px;z-index:9998;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 18px;border:1px solid rgba(255,210,31,.55);border-radius:999px;background:linear-gradient(135deg,#ffe45f,#ffd21f 55%,#ffb800);color:#111;font-weight:950;box-shadow:0 16px 45px rgba(0,0,0,.5),0 0 24px rgba(255,210,31,.2)}
+    .apexGoogleQuickConnect::before{content:"G";display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#fff;color:#111;font-size:14px;font-weight:1000}
+    .apexGoogleQuickConnect.connected{background:#1f2b23;color:#dff7e5;border-color:#4f9b65}
+    .apexGoogleQuickConnect.connected::before{content:"✓";background:#66c77e;color:#0c1b10}
+    .apexGoogleCalendarPanel{border-color:rgba(255,210,31,.35)!important;background:linear-gradient(145deg,rgba(255,210,31,.08),rgba(255,255,255,.025))!important}
+    .apexGoogleCalendarActions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    @media(max-width:720px){.apexGoogleQuickConnect{left:12px;right:12px;bottom:82px;justify-content:center}.apexGoogleCalendarActions>*{width:100%}}
+  `;
+  document.head.appendChild(style);
+}
+
+async function ensureQuickConnect() {
+  const shell = document.querySelector(".shell");
+  if (!shell) {
+    document.querySelector("[data-apex-google-quick]")?.remove();
+    return;
+  }
+
+  let button = document.querySelector("[data-apex-google-quick]");
+  if (!button) {
+    button = document.createElement("button");
+    button.type = "button";
+    button.dataset.apexGoogleQuick = "true";
+    button.className = "apexGoogleQuickConnect";
+    button.textContent = "Connect Google Calendar";
+    button.addEventListener("click", () => openGoogle(button));
+    document.body.appendChild(button);
+  }
+
+  enable(button);
+  const current = await status();
+  button.classList.toggle("connected", Boolean(current.connected));
+  button.textContent = current.connected ? "Google Calendar connected" : "Connect Google Calendar";
+  button.title = current.connected
+    ? `Connected${current.email ? ` as ${current.email}` : ""}`
+    : (current.error || "Connect Apex HQ to Google Calendar");
+}
+
 async function refreshSettings(section) {
   const current = await status();
   const card = section.querySelector(".integration");
@@ -70,12 +113,10 @@ async function refreshSettings(section) {
 function wireSettings() {
   const section = findSettingsSection();
   if (!section) return;
-
   section.querySelector("[data-apex-cloud-notice]")?.remove();
   const buttons = [...section.querySelectorAll("button")];
   let connect = buttons.find(button => /connect(?: google)? calendar/i.test(button.textContent));
   let refresh = buttons.find(button => /refresh status/i.test(button.textContent));
-
   enable(connect);
   enable(refresh);
 
@@ -99,10 +140,10 @@ function wireSettings() {
       refresh.disabled = true;
       await refreshSettings(section);
       enable(refresh);
+      await ensureQuickConnect();
       showToast("Calendar status refreshed.");
     });
   }
-
   refreshSettings(section);
 }
 
@@ -115,7 +156,6 @@ function findCalendarPage() {
 async function ensureCalendarPanel() {
   const page = findCalendarPage();
   if (!page) return;
-
   let panel = page.querySelector("[data-apex-google-panel]");
   if (!panel) {
     panel = document.createElement("section");
@@ -132,13 +172,11 @@ async function ensureCalendarPanel() {
     const intro = page.querySelector(".intro");
     if (intro?.nextSibling) page.insertBefore(panel, intro.nextSibling);
     else page.prepend(panel);
-
     const connect = panel.querySelector("[data-apex-google-connect]");
     const refresh = panel.querySelector("[data-apex-google-refresh]");
     connect.addEventListener("click", () => openGoogle(connect));
     refresh.addEventListener("click", () => updateCalendarPanel(panel, true));
   }
-
   panel.querySelectorAll("button").forEach(enable);
   await updateCalendarPanel(panel, false);
 }
@@ -153,11 +191,14 @@ async function updateCalendarPanel(panel, notify = false) {
     : (current.error || "Not connected. Connect Google to activate live availability and booking sync.");
   if (connect) connect.textContent = current.connected ? "Reconnect Google Calendar" : "Connect Google Calendar";
   if (notify) showToast(current.connected ? "Google Calendar is connected." : "Google Calendar is not connected yet.");
+  await ensureQuickConnect();
 }
 
 function refreshCalendarControls() {
+  injectStyles();
   wireSettings();
   ensureCalendarPanel();
+  ensureQuickConnect();
 }
 
 let frame = 0;
