@@ -5,6 +5,7 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Production deploy: backend and rules first, Hosting last.
 concurrency:
   group: apex-production
   cancel-in-progress: true
