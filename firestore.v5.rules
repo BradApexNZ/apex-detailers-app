@@ -11,6 +11,52 @@ service cloud.firestore {
       return request.resource.data.size() <= 100;
     }
 
+    function validPublicBooking() {
+      return request.auth == null
+        && request.resource.data.keys().hasOnly([
+          "serviceId", "serviceName", "durationMinutes", "estimatedPrice", "vehicleType",
+          "bookingDate", "bookingTime", "bookingEndTime", "customerName", "phone", "email",
+          "address", "area", "vehicleYear", "vehicleMake", "vehicleModel", "rego", "condition",
+          "petHair", "heavyStains", "notes", "acceptedTerms", "source", "lockId", "status",
+          "reference", "createdAt", "updatedAt"
+        ])
+        && request.resource.data.status == "pending"
+        && request.resource.data.acceptedTerms == true
+        && request.resource.data.customerName is string
+        && request.resource.data.customerName.size() > 1
+        && request.resource.data.customerName.size() <= 120
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 180
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() <= 40
+        && request.resource.data.address is string
+        && request.resource.data.address.size() <= 240
+        && request.resource.data.bookingDate is string
+        && request.resource.data.bookingDate.size() == 10
+        && request.resource.data.bookingTime is string
+        && request.resource.data.bookingTime.size() == 5
+        && request.resource.data.bookingEndTime is string
+        && request.resource.data.bookingEndTime.size() == 5
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 1200;
+    }
+
+    function validPublicLock() {
+      return request.auth == null
+        && request.resource.data.keys().hasOnly([
+          "date", "startTime", "endTime", "status", "requestId", "createdAt"
+        ])
+        && request.resource.data.status == "pending"
+        && request.resource.data.date is string
+        && request.resource.data.date.size() == 10
+        && request.resource.data.startTime is string
+        && request.resource.data.startTime.size() == 5
+        && request.resource.data.endTime is string
+        && request.resource.data.endTime.size() == 5
+        && request.resource.data.requestId is string
+        && request.resource.data.requestId.size() <= 100;
+    }
+
     match /customers/{id} {
       allow read, delete: if isApexOwner();
       allow create, update: if isApexOwner() && isReasonableDocument();
@@ -28,7 +74,14 @@ service cloud.firestore {
 
     match /bookingRequests/{id} {
       allow read, delete: if isApexOwner();
-      allow create, update: if isApexOwner() && isReasonableDocument();
+      allow create: if (isApexOwner() && isReasonableDocument()) || validPublicBooking();
+      allow update: if isApexOwner() && isReasonableDocument();
+    }
+
+    match /bookingLocks/{id} {
+      allow read: if true;
+      allow create: if (isApexOwner() && isReasonableDocument()) || validPublicLock();
+      allow update, delete: if isApexOwner();
     }
 
     match /inquiries/{id} {
