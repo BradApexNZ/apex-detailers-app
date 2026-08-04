@@ -24,17 +24,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Install website dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Build website
         run: npm run build
 
       - name: Install and check Functions
         run: |
-          npm --prefix functions install
+          npm --prefix functions install --no-audit --no-fund
           npm --prefix functions run lint
 
       - name: Authenticate to Firebase
@@ -50,7 +49,7 @@ jobs:
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
 
       - name: Deploy backend and rules
-        run: npx firebase-tools deploy --project apex-detailers --only functions,firestore:rules,storage --force --non-interactive
+        run: npx --yes firebase-tools deploy --project apex-detailers --only functions,firestore:rules,storage --force --non-interactive
 
       - name: Deploy Hosting last
-        run: npx firebase-tools deploy --project apex-detailers --only hosting --non-interactive
+        run: npx --yes firebase-tools deploy --project apex-detailers --only hosting --non-interactive
