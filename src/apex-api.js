@@ -1,5 +1,5 @@
 import { httpsCallable } from "firebase/functions";
-import { functions } from "./firebase";
+import { auth, authPersistenceReady, functions } from "./firebase";
 import {
   fallbackAvailability,
   fallbackConfig,
@@ -25,8 +25,17 @@ const resilientPublicCall = (name, fallback) => async payload => {
   }
 };
 
+async function ensureAuthenticatedUser() {
+  await authPersistenceReady;
+  await auth.authStateReady();
+  const user = auth.currentUser;
+  if (!user) throw new Error("Sign in to Apex HQ again to use cloud tools.");
+  await user.getIdToken();
+}
+
 const privateCall = name => async payload => {
   try {
+    await ensureAuthenticatedUser();
     return await cloudCall(name)(payload);
   } catch (error) {
     const message = error?.message || "Apex cloud services are temporarily unavailable.";
