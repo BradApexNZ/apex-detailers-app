@@ -5,7 +5,7 @@
   "engines": { "node": "22" },
   "main": "entry.js",
   "scripts": {
-    "lint": "node --check index.js && node --check calendar-prospects.js && node --check entry.js",
+    "lint": "node --check index.js && node --check calendar-prospects.js && node --check calendar-import.js && node --check entry.js",
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions"
   },
