@@ -6,6 +6,23 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "redirects": [
+      {
+        "source": "/HQ",
+        "destination": "/hq",
+        "type": 301
+      },
+      {
+        "source": "/HQ/",
+        "destination": "/hq",
+        "type": 301
+      },
+      {
+        "source": "/hq/",
+        "destination": "/hq",
+        "type": 301
+      }
+    ],
     "rewrites": [
       {
         "source": "/hq",
