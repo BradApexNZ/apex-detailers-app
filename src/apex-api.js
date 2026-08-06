@@ -52,6 +52,11 @@ export const declineBookingRequest = privateCall("declineBookingRequest");
 export const createManualBooking = privateCall("createManualBooking");
 export const startGoogleCalendarConnect = privateCall("startGoogleCalendarConnect");
 export const syncJobToCalendar = privateCall("syncJobToCalendar");
+export const listGoogleCalendars = privateCall("listGoogleCalendars");
+export const saveGoogleCalendarSelection = privateCall("saveGoogleCalendarSelection");
+export const scanGoogleCalendarProspects = privateCall("scanGoogleCalendarProspects");
+export const saveGoogleCalendarProspect = privateCall("saveGoogleCalendarProspect");
+export const dismissGoogleCalendarProspect = privateCall("dismissGoogleCalendarProspect");
 
 export const getGoogleCalendarStatus = apexCloudEnabled
   ? privateCall("getGoogleCalendarStatus")
