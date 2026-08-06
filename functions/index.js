@@ -10,7 +10,7 @@ initializeApp();
 const db = getFirestore();
 const REGION = "australia-southeast1";
 const ZONE = defineString("APEX_TIME_ZONE", { default: "Pacific/Auckland" });
-const OWNER_UIDS = defineString("APEX_OWNER_UIDS", { default: "fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42" });
+const OWNER_UIDS = defineString("APEX_OWNER_UIDS", { default: "fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42,maefd5cQ9qcIKSeU4b3yZKUL8UW2" });
 const OWNER_EMAIL = defineString("APEX_OWNER_EMAIL", { default: "bookings@apexdetailers.co.nz" });
 const APP_BASE_URL = defineString("APP_BASE_URL", { default: "https://apex-detailers.web.app" });
 const GOOGLE_CALLBACK_URL = defineString("GOOGLE_CALLBACK_URL", { default: "https://australia-southeast1-apex-detailers.cloudfunctions.net/googleCalendarCallback" });

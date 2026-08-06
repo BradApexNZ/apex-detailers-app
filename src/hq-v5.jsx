@@ -8,7 +8,7 @@ import{defaultBookingSettings,formatDate,money,servicePackages,vehicleTypes}from
 import{disableDeviceLock,hasBiometricLock,hasPinLock,isDeviceLockEnabled,isSessionUnlocked,lockSession,markSessionUnlocked,registerBiometricLock,setPin,supportsBiometrics,verifyBiometricLock,verifyPin}from"./device-lock";
 import"./hq-v5.css";
 
-const ownerUids=(import.meta.env.VITE_APEX_OWNER_UIDS||"fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42").split(",").map(v=>v.trim());
+const ownerUids=(import.meta.env.VITE_APEX_OWNER_UIDS||"fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42,maefd5cQ9qcIKSeU4b3yZKUL8UW2").split(",").map(v=>v.trim());
 const nav=[["dashboard","Command","âŒ‚"],["inbox","Inbox","â†§"],["calendar","Calendar","â—·"],["jobs","Jobs","â—†"],["customers","Customers","â—Ž"],["settings","Settings","âš™"]];
 const statusList=["Quote Sent","Booked","Confirmed","In Progress","Completed","Prepare Hnry Invoice","Invoice Sent","Paid","Review Request Sent","Archived"];
 const blankBooking={customerName:"",phone:"",email:"",address:"",area:"Napier",vehicleYear:"",vehicleMake:"",vehicleModel:"",rego:"",vehicleType:"small",serviceId:"deep",bookingDate:"",bookingTime:"08:30",notes:"",overrideConflict:false};
