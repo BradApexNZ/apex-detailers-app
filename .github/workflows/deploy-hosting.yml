@@ -39,6 +39,8 @@ jobs:
     name: Deploy Apex Hosting
     needs: validate-cloud
     runs-on: ubuntu-latest
+    env:
+      VITE_APEX_CLOUD_ENABLED: "true"
 
     steps:
       - name: Checkout repository
@@ -62,7 +64,7 @@ jobs:
       - name: Install app dependencies
         run: npm install
 
-      - name: Build app
+      - name: Build app with Apex Cloud enabled
         run: npm run build
 
       - name: Deploy Firebase Hosting
