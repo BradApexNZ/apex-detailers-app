@@ -10,7 +10,7 @@ if (!getApps().length) initializeApp();
 const db = getFirestore();
 const REGION = "australia-southeast1";
 const ZONE = defineString("APEX_TIME_ZONE", { default: "Pacific/Auckland" });
-const OWNER_UIDS = defineString("APEX_OWNER_UIDS", { default: "fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42" });
+const OWNER_UIDS = defineString("APEX_OWNER_UIDS", { default: "fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42,maefd5cQ9qcIKSeU4b3yZKUL8UW2" });
 const GOOGLE_CALLBACK_URL = defineString("GOOGLE_CALLBACK_URL", { default: "https://australia-southeast1-apex-detailers.cloudfunctions.net/googleCalendarCallback" });
 const GOOGLE_CLIENT_ID = defineSecret("GOOGLE_OAUTH_CLIENT_ID");
 const GOOGLE_CLIENT_SECRET = defineSecret("GOOGLE_OAUTH_CLIENT_SECRET");
@@ -219,26 +219,27 @@ export const saveGoogleCalendarProspect = onCall({ region: REGION, secrets: GOOG
   await reference.set({
     firstName: parts[0] || "",
     lastName: parts.slice(1).join(" "),
-    businessName: text(data.businessName, 160),
-    email,
+    businessName: "",
     phone,
+    email,
     address: text(data.address, 300),
-    area: text(data.area, 100) || "Napier",
+    area: "",
     preferredContact: email ? "email" : "text",
     customerType: "standard",
     notes: text(data.notes, 1500),
-    calendarSource: { eventId: text(data.eventId, 300), calendarId: text(data.calendarId, 300), eventTitle: text(data.eventTitle, 300) },
-    ownerUid: request.auth.uid,
+    googleCalendarSource: true,
+    googleCalendarEventId: text(data.eventId, 300),
+    googleCalendarId: text(data.calendarId, 300),
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp()
   });
   return { customerId: reference.id };
 });
 
-export const dismissGoogleCalendarProspect = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
+export const dismissGoogleCalendarProspect = onCall({ region: REGION }, async request => {
   requireOwner(request);
   const eventId = text(request.data?.eventId, 300);
-  if (!eventId) throw new HttpsError("invalid-argument", "Calendar event is required.");
-  await db.doc(`calendarProspectDismissals/${eventId}`).set({ dismissedBy: request.auth.uid, dismissedAt: FieldValue.serverTimestamp() });
-  return { dismissed: true };
+  if (!eventId) throw new HttpsError("invalid-argument", "Event ID is required.");
+  await db.doc(`calendarProspectDismissals/${eventId}`).set({ dismissedAt: FieldValue.serverTimestamp(), uid: request.auth.uid });
+  return { ok: true };
 });
