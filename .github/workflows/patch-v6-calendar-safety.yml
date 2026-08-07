@@ -1,0 +1,120 @@
+name: Patch V6 Calendar Safety
+
+on:
+  push:
+    branches:
+      - launch-hardening-2026-08
+    paths:
+      - ".github/workflows/patch-v6-calendar-safety.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: launch-hardening-2026-08
+
+      - name: Apply exact V6 Calendar safety fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('functions/launch-v6.js')
+          s = p.read_text()
+
+          old = '''async function calendarConfig(connected) {
+            const rows = await calendarRows(connected.client);
+            const allowed = new Set(rows.map(row => row.id));
+            const configured = Array.isArray(connected.data.selectedCalendarIds) ? connected.data.selectedCalendarIds.filter(id => allowed.has(id)) : [];
+            const fallback = rows.filter(row => row.primary).map(row => row.id);
+            const selectedCalendarIds = configured.length ? configured : fallback;
+            const requestedPrimary = text(connected.data.primaryCalendarId, 300);
+            const primaryCalendarId = selectedCalendarIds.includes(requestedPrimary)
+              ? requestedPrimary
+              : selectedCalendarIds[0] || rows[0]?.id || "primary";
+            return { rows, selectedCalendarIds, primaryCalendarId };
+          }'''
+          new = '''async function calendarConfig(connected) {
+            const rows = await calendarRows(connected.client);
+            const allowed = new Set(rows.map(row => row.id));
+            const writableIds = new Set(rows.filter(row => ["owner", "writer"].includes(row.accessRole)).map(row => row.id));
+            const configured = Array.isArray(connected.data.selectedCalendarIds) ? connected.data.selectedCalendarIds.filter(id => allowed.has(id)) : [];
+            const fallback = rows.filter(row => row.primary).map(row => row.id);
+            const selectedCalendarIds = configured.length ? configured : fallback;
+            const requestedPrimary = text(connected.data.primaryCalendarId, 300);
+            const primaryCalendarId = selectedCalendarIds.includes(requestedPrimary) && writableIds.has(requestedPrimary)
+              ? requestedPrimary
+              : selectedCalendarIds.find(id => writableIds.has(id)) || "";
+            return { rows, selectedCalendarIds, primaryCalendarId };
+          }'''
+          if old not in s:
+              raise SystemExit('calendarConfig target not found')
+          s = s.replace(old, new, 1)
+
+          old = '''  } catch (error) {
+            console.error("V6 Calendar freebusy failed", error);
+            return [];
+          }
+          }'''
+          new = '''  } catch (error) {
+            console.error("V6 Calendar freebusy failed", error);
+            throw new HttpsError("unavailable", "Google Calendar availability could not be verified. Please try again shortly.");
+          }
+          }'''
+          if old not in s:
+              raise SystemExit('calendarBusy target not found')
+          s = s.replace(old, new, 1)
+
+          old = '''  const calendarId = existingCalendarId || config.primaryCalendarId;
+            const api = google.calendar({ version: "v3", auth: connected.client });'''
+          new = '''  const calendarId = existingCalendarId || config.primaryCalendarId;
+            if (!calendarId) throw new HttpsError("failed-precondition", "No writable primary Google Calendar is selected for Apex.");
+            const api = google.calendar({ version: "v3", auth: connected.client });'''
+          if old not in s:
+              raise SystemExit('upsert calendar target not found')
+          s = s.replace(old, new, 1)
+
+          marker = '''];\n\nconst defaults = {'''
+          if marker not in s:
+              raise SystemExit('services marker not found')
+          s = s.replace(marker, '''];\nconst publicServiceIds = new Set(["deep", "full", "tradie", "seats"]);\n\nconst defaults = {''', 1)
+
+          old = '''  const date = text(request.data?.date, 10);
+            const serviceId = text(request.data?.serviceId, 30);
+            return { date, slots: await availableSlots(date, serviceId) };'''
+          new = '''  const date = text(request.data?.date, 10);
+            const serviceId = text(request.data?.serviceId, 30);
+            if (!publicServiceIds.has(serviceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
+            return { date, slots: await availableSlots(date, serviceId) };'''
+          if old not in s:
+              raise SystemExit('availability service target not found')
+          s = s.replace(old, new, 1)
+
+          old = '''  const input = request.data || {};
+            if (input.website) throw new HttpsError("invalid-argument", "Unable to submit.");
+            const service = serviceById(text(input.serviceId, 30));'''
+          new = '''  const input = request.data || {};
+            if (input.website) throw new HttpsError("invalid-argument", "Unable to submit.");
+            const requestedServiceId = text(input.serviceId, 30);
+            if (!publicServiceIds.has(requestedServiceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
+            const service = serviceById(requestedServiceId);'''
+          if old not in s:
+              raise SystemExit('submit service target not found')
+          s = s.replace(old, new, 1)
+
+          p.write_text(s)
+          PY
+
+      - name: Validate patched Functions
+        run: npm --prefix functions install && npm --prefix functions run lint
+
+      - name: Commit patch
+        run: |
+          git config user.name "BradApexNZ"
+          git config user.email "brad@apexdetailers.co.nz"
+          git add functions/launch-v6.js
+          git commit -m "Harden V6 Google Calendar availability and writes"
+          git push origin HEAD:launch-hardening-2026-08
