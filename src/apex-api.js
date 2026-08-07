@@ -26,12 +26,7 @@ const availabilityCall = async payload => {
     return await cloudCall("listBookingAvailabilityV6")(payload);
   } catch (error) {
     console.error("Apex live availability unavailable.", error);
-    return {
-      date: payload?.date || "",
-      slots: [],
-      unavailable: true,
-      message: "Live booking availability is temporarily unavailable. Please contact Apex Detailers directly."
-    };
+    throw new Error("Live booking availability is temporarily unavailable. Please contact Apex Detailers directly.");
   }
 };
 
