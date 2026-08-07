@@ -21,11 +21,21 @@ replace(
     "editable customer modal",
 )
 
-replace(
-    '<label>Customer type<select value={form.customerType} onChange={e=>update("customerType",e.target.value)}><option value="standard">Standard</option><option value="friend">Friend - 10%</option><option value="family">Family / manual price</option><option value="fleet">Fleet / commercial</option></select></label><label>Year>',
-    '<label>Customer type<select value={form.customerType} onChange={e=>update("customerType",e.target.value)}><option value="standard">Standard</option><option value="friend">Friend - 10%</option><option value="family">Family / manual price</option><option value="fleet">Fleet / commercial</option></select></label><label>Quote status<select value={form.status} onChange={e=>update("status",e.target.value)}><option>Lead</option><option>Quote Requested</option><option>Quote Sent</option><option>Approved</option></select></label><label>Year>',
-    "quote status selector",
+# Insert quote status only inside QuoteModal so the CustomerModal's similar field cannot confuse the patch.
+quote_start = s.find('function QuoteModal(')
+quote_end = s.find('function VoucherModal(', quote_start)
+if quote_start < 0 or quote_end < 0:
+    raise SystemExit('QuoteModal bounds missing')
+quote = s[quote_start:quote_end]
+marker = '</select></label><label>Year<input value={form.vehicleYear}'
+if marker not in quote:
+    raise SystemExit('quote status selector target missing')
+quote = quote.replace(
+    marker,
+    '</select></label><label>Quote status<select value={form.status} onChange={e=>update("status",e.target.value)}><option>Lead</option><option>Quote Requested</option><option>Quote Sent</option><option>Approved</option></select></label><label>Year<input value={form.vehicleYear}',
+    1,
 )
+s = s[:quote_start] + quote + s[quote_end:]
 
 replace(
     'function JobModal({job,close,save,upload,busy,notify}){const[form,setForm]=useState({...job,paidAmount:job.paidAmount||"",invoiceNumber:job.invoiceNumber||"",notes:job.notes||""}),',
