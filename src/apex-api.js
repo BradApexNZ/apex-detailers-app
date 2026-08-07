@@ -14,7 +14,7 @@ const cloudCall = name => async payload => {
 
 const configCall = async payload => {
   try {
-    return await cloudCall("getPublicBookingConfigV6")(payload);
+    return await cloudCall("getPublicBookingConfigLaunch")(payload);
   } catch (error) {
     console.warn("Apex booking config unavailable; using static service information only.", error);
     return fallbackConfig(payload || {});
