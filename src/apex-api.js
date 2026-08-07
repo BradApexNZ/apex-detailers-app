@@ -1,10 +1,6 @@
 import { httpsCallable } from "firebase/functions";
 import { auth, authPersistenceReady, functions } from "./firebase";
-import {
-  fallbackAvailability,
-  fallbackConfig,
-  fallbackSubmit
-} from "./public-booking-fallback";
+import { fallbackConfig } from "./public-booking-fallback";
 
 const cloudOverride = import.meta.env.VITE_APEX_CLOUD_ENABLED;
 export const apexCloudEnabled = cloudOverride == null
@@ -16,12 +12,35 @@ const cloudCall = name => async payload => {
   return (await httpsCallable(functions, name)(payload || {})).data;
 };
 
-const resilientPublicCall = (name, fallback) => async payload => {
+const configCall = async payload => {
   try {
-    return await cloudCall(name)(payload);
+    return await cloudCall("getPublicBookingConfigV6")(payload);
   } catch (error) {
-    console.warn(`${name} unavailable; using Apex direct booking fallback.`, error);
-    return fallback(payload || {});
+    console.warn("Apex booking config unavailable; using static service information only.", error);
+    return fallbackConfig(payload || {});
+  }
+};
+
+const availabilityCall = async payload => {
+  try {
+    return await cloudCall("listBookingAvailabilityV6")(payload);
+  } catch (error) {
+    console.error("Apex live availability unavailable.", error);
+    return {
+      date: payload?.date || "",
+      slots: [],
+      unavailable: true,
+      message: "Live booking availability is temporarily unavailable. Please contact Apex Detailers directly."
+    };
+  }
+};
+
+const bookingSubmitCall = async payload => {
+  try {
+    return await cloudCall("submitBookingRequestV6")(payload);
+  } catch (error) {
+    console.error("Apex booking submission unavailable.", error);
+    throw new Error(error?.message || "Live booking validation is temporarily unavailable. Please contact Apex Detailers directly.");
   }
 };
 
@@ -43,17 +62,17 @@ const privateCall = name => async payload => {
   }
 };
 
-// Launch V6: these are the authoritative booking/calendar paths.
-export const getPublicBookingConfig = resilientPublicCall("getPublicBookingConfigV6", fallbackConfig);
-export const listBookingAvailability = resilientPublicCall("listBookingAvailabilityV6", fallbackAvailability);
-export const submitBookingRequest = resilientPublicCall("submitBookingRequestV6", fallbackSubmit);
+// Launch V6: authoritative booking/calendar paths. Booking fails closed if live conflict validation is unavailable.
+export const getPublicBookingConfig = configCall;
+export const listBookingAvailability = availabilityCall;
+export const submitBookingRequest = bookingSubmitCall;
 export const approveBookingRequest = privateCall("approveBookingRequestV6");
 export const declineBookingRequest = privateCall("declineBookingRequestV6");
 export const createManualBooking = privateCall("createManualBookingV6");
 export const syncJobToCalendar = privateCall("syncJobToCalendarV6");
 export const getCalendarHealth = privateCall("getCalendarHealthV6");
 
-// Existing integrations retained where they are already built around selectedCalendarIds/primaryCalendarId.
+// Existing integrations retained where they already use selectedCalendarIds/primaryCalendarId.
 export const submitInquiry = privateCall("submitInquiry");
 export const startGoogleCalendarConnect = privateCall("startGoogleCalendarConnect");
 export const importGoogleCalendarEvents = privateCall("importGoogleCalendarEvents");
