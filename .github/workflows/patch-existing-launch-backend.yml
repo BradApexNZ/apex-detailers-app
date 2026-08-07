@@ -18,29 +18,10 @@ jobs:
         with:
           ref: launch-hardening-2026-08
 
-      - name: Harden existing production endpoints
+      - name: Apply backend hardening patch
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import re
-
-          p = Path('functions/index.js')
-          s = p.read_text()
-
-          def sub_once(pattern, replacement, label, flags=re.S):
-              global s
-              updated, count = re.subn(pattern, replacement, s, count=1, flags=flags)
-              if count != 1:
-                  raise SystemExit(f'{label} target count={count}')
-              s = updated
-
-          # Public packages are deliberately narrower than internal HQ packages.
-          if 'const publicServiceIds' not in s:
-              s = s.replace('];\n\nconst defaults = {', '];\nconst publicServiceIds = new Set(["deep", "full", "tradie", "seats"]);\n\nconst defaults = {', 1)
-
-          sub_once(
-              r'async function connectedGoogle\(\) \{.*?\n\}\n\nasync function calendarBusy\(start, end\) \{.*?\n\}\n\nasync function availableSlots',
-              '''async function connectedGoogle() {
+          echo 'CmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAppbXBvcnQgcmUKCnAgPSBQYXRoKCJmdW5jdGlvbnMvaW5kZXguanMiKQpzID0gcC5yZWFkX3RleHQoKQoKZGVmIHN1Yl9vbmNlKHBhdHRlcm4sIHJlcGxhY2VtZW50LCBsYWJlbCwgZmxhZ3M9cmUuUyk6CiAgICBnbG9iYWwgcyAgICAKICAgIHVwZGF0ZWQsIGNvdW50ID0gcmUuc3VibihwYXR0ZXJuLCByZXBsYWNlbWVudCwgcywgY291bnQ9MSwgZmxhZ3M9ZmxhZ3MpCiAgICBpZiBjb3VudCAhPSAxOgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoZiJ7bGFiZWx9IHRhcmdldCBjb3VudD17Y291bnR9IikKICAgIHMgPSB1cGRhdGVkCgppZiAiY29uc3QgcHVibGljU2VydmljZUlkcyIgbm90IGluIHM6CiAgICBzID0gcy5yZXBsYWNlKCddO1xuXG5jb25zdCBkZWZhdWx0cyA9IHsnLCAnXTtcbmNvbnN0IHB1YmxpY1NlcnZpY2VJZHMgPSBuZXcgU2V0KFsiZGVlcCIsICJmdWxsIiwgInRyYWRpZSIsICJzZWF0cyJdKTtcblxuY29uc3QgZGVmYXVsdHMgPSB7JywgMSkKCnN1Yl9vbmNlKAogICAgcidhc3luYyBmdW5jdGlvbiBjb25uZWN0ZWRHb29nbGVcKFwpIFx7Lio/XG5cfVxuXG5hc3luYyBmdW5jdGlvbiBjYWxlbmRhckJ1c3lcKHN0YXJ0LCBlbmRcKSBc{.*?}\n\}\n\nasync function availableSlots',
+    '''async function connectedGoogle() {
   const snapshot = await db.doc("integrations/google").get();
   if (!snapshot.exists || !snapshot.data().refreshToken) return null;
   const data = snapshot.data();
@@ -105,12 +86,12 @@ async function calendarBusy(start, end) {
 }
 
 async function availableSlots''',
-              'Google connection/calendar helpers'
-          )
+    "Google connection/calendar helpers",
+)
 
-          sub_once(
-              r'async function createCalendarEvent\(data, eventId\) \{.*?\n\}\n\nasync function deleteCalendarEvent\(eventId\) \{.*?\n\}\n\nexport const getPublicBookingConfig',
-              '''async function createCalendarEvent(data, eventId = "", existingCalendarId = "") {
+sub_once(
+    r'async function createCalendarEvent\(data, eventId\) \{.*?\n\}\n\nasync function deleteCalendarEvent\(eventId\) \{.*?\n\}\n\nexport const getPublicBookingConfig',
+    '''async function createCalendarEvent(data, eventId = "", existingCalendarId = "") {
   const connected = await connectedGoogle();
   if (!connected) return { eventId: "", calendarId: "" };
   const config = await calendarConfig(connected);
@@ -170,56 +151,128 @@ async function findCustomer(data) {
 }
 
 export const getPublicBookingConfig''',
-              'Calendar CRUD and customer matching'
-          )
+    "Calendar CRUD/customer matching",
+)
 
-          # Public config never exposes Maintenance Clean.
-          s = s.replace('    services\n  };\n});', '    services: services.filter(service => publicServiceIds.has(service.id))\n  };\n});', 1)
+old = '''    services
+  };
+});'''
+new = '''    services: services.filter(service => publicServiceIds.has(service.id))
+  };
+});'''
+if old not in s:
+    raise SystemExit("public config services target not found")
+s = s.replace(old, new, 1)
 
-          # Public availability and submission reject internal-only services.
-          s = s.replace(
-              '  const serviceId = text(request.data?.serviceId, 30);\n  return { date, slots: await availableSlots(date, serviceId) };',
-              '  const serviceId = text(request.data?.serviceId, 30);\n  if (!publicServiceIds.has(serviceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");\n  return { date, slots: await availableSlots(date, serviceId) };', 1)
-          s = s.replace(
-              '  if (input.website) throw new HttpsError("invalid-argument", "Unable to submit.");\n  const service = serviceById(text(input.serviceId, 30));',
-              '  if (input.website) throw new HttpsError("invalid-argument", "Unable to submit.");\n  const requestedServiceId = text(input.serviceId, 30);\n  if (!publicServiceIds.has(requestedServiceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");\n  const service = serviceById(requestedServiceId);', 1)
+old = '''  const serviceId = text(request.data?.serviceId, 30);
+  return { date, slots: await availableSlots(date, serviceId) };'''
+new = '''  const serviceId = text(request.data?.serviceId, 30);
+  if (!publicServiceIds.has(serviceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
+  return { date, slots: await availableSlots(date, serviceId) };'''
+if old not in s:
+    raise SystemExit("availability guard target not found")
+s = s.replace(old, new, 1)
 
-          # Never trust a browser-supplied booking end time.
-          s = s.replace('    bookingEndTime: text(input.bookingEndTime, 5),', '    bookingEndTime: "",', 1)
-          marker = '  if (!data.customerName || !data.phone || !data.email || !data.address || !data.vehicleMake || !data.vehicleModel || !data.bookingDate || !data.bookingTime) {\n    throw new HttpsError("invalid-argument", "Complete the required booking details.");\n  }\n\n  const options = await availableSlots(data.bookingDate, data.serviceId);'
-          replacement = '  if (!data.customerName || !data.phone || !data.email || !data.address || !data.vehicleMake || !data.vehicleModel || !data.bookingDate || !data.bookingTime) {\n    throw new HttpsError("invalid-argument", "Complete the required booking details.");\n  }\n  const requestedStart = parseLocal(data.bookingDate, data.bookingTime);\n  data.bookingEndTime = requestedStart.plus({ minutes: service.durationMinutes }).toFormat("HH:mm");\n\n  const options = await availableSlots(data.bookingDate, data.serviceId);'
-          if marker not in s: raise SystemExit('public end-time marker not found')
-          s = s.replace(marker, replacement, 1)
+old = '''  if (input.website) throw new HttpsError("invalid-argument", "Unable to submit.");
+  const service = serviceById(text(input.serviceId, 30));'''
+new = '''  if (input.website) throw new HttpsError("invalid-argument", "Unable to submit.");
+  const requestedServiceId = text(input.serviceId, 30);
+  if (!publicServiceIds.has(requestedServiceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
+  const service = serviceById(requestedServiceId);'''
+if old not in s:
+    raise SystemExit("submit guard target not found")
+s = s.replace(old, new, 1)
 
-          # Store exact calendar IDs for pending holds.
-          sub_once(
-              r'let eventId = null;\n  try \{\n    eventId = await createCalendarEvent\(\{ \.\.\.data, requestId: requestReference\.id, serviceName: `PENDING — \$\{service\.name\}` \}\);\n    if \(eventId\) await requestReference\.set\(\{ calendarEventId: eventId \}, \{ merge: true \}\);',
-              'let eventId = "";\n  try {\n    const calendarResult = await createCalendarEvent({ ...data, requestId: requestReference.id, serviceName: `PENDING — ${service.name}` });\n    eventId = calendarResult.eventId;\n    if (eventId) await requestReference.set({ calendarEventId: eventId, calendarId: calendarResult.calendarId, calendarSyncStatus: "pending-hold-synced", calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });',
-              'pending Calendar result'
-          )
+if 'bookingEndTime: text(input.bookingEndTime, 5),' not in s:
+    raise SystemExit("booking end input target not found")
+s = s.replace('bookingEndTime: text(input.bookingEndTime, 5),', 'bookingEndTime: "",', 1)
 
-          # Approval updates the same event on the same calendar.
-          s = s.replace(
-              '  const eventId = await createCalendarEvent({ ...job, jobId: jobReference.id }, item.calendarEventId);\n  if (eventId) await jobReference.set({ calendarEventId: eventId }, { merge: true });',
-              '  const calendarResult = await createCalendarEvent({ ...job, jobId: jobReference.id }, item.calendarEventId || "", item.calendarId || "");\n  const eventId = calendarResult.eventId;\n  if (eventId) await jobReference.set({ calendarEventId: eventId, calendarId: calendarResult.calendarId, calendarSyncStatus: "synced", calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });', 1)
-          s = s.replace('  await deleteCalendarEvent(item.calendarEventId);', '  await deleteCalendarEvent(item.calendarEventId, item.calendarId);', 1)
+old = '''  if (!data.customerName || !data.phone || !data.email || !data.address || !data.vehicleMake || !data.vehicleModel || !data.bookingDate || !data.bookingTime) {
+    throw new HttpsError("invalid-argument", "Complete the required booking details.");
+  }
 
-          # Manual booking email is optional and matching customers are reused.
-          s = s.replace('  if (!data.customerName || !data.email || !data.phone || !data.bookingDate || !data.bookingTime) {', '  if (!data.customerName || !data.phone || !data.bookingDate || !data.bookingTime) {', 1)
-          s = s.replace('  const customerReference = db.collection("customers").doc();', '  const customerReference = await findCustomer(data);\n  const existingCustomer = await customerReference.get();', 1)
-          s = s.replace('  batch.set(customerReference, {\n    firstName:', '  batch.set(customerReference, {\n    ...(existingCustomer.exists ? {} : { firstName:', 1)
-          # Close the conditional object at the customer seed boundary.
-          s = s.replace('    preferredContact: "email",\n    createdAt: FieldValue.serverTimestamp(),', '    preferredContact: "email", createdAt: FieldValue.serverTimestamp() }),', 1)
+  const options = await availableSlots(data.bookingDate, data.serviceId);'''
+new = '''  if (!data.customerName || !data.phone || !data.email || !data.address || !data.vehicleMake || !data.vehicleModel || !data.bookingDate || !data.bookingTime) {
+    throw new HttpsError("invalid-argument", "Complete the required booking details.");
+  }
+  const requestedStart = parseLocal(data.bookingDate, data.bookingTime);
+  data.bookingEndTime = requestedStart.plus({ minutes: service.durationMinutes }).toFormat("HH:mm");
 
-          # Manual Calendar result stores calendar ID and sync state.
-          s = s.replace(
-              '  const eventId = await createCalendarEvent({ ...data, vehicle, jobId: jobReference.id });\n  if (eventId) await jobReference.set({ calendarEventId: eventId }, { merge: true });',
-              '  const calendarResult = await createCalendarEvent({ ...data, vehicle, jobId: jobReference.id });\n  const eventId = calendarResult.eventId;\n  if (eventId) await jobReference.set({ calendarEventId: eventId, calendarId: calendarResult.calendarId, calendarSyncStatus: "synced", calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });', 1)
+  const options = await availableSlots(data.bookingDate, data.serviceId);'''
+if old not in s:
+    raise SystemExit("server end time target not found")
+s = s.replace(old, new, 1)
 
-          # Rich status endpoint: connection + accessible calendars + selected/writable primary.
-          sub_once(
-              r'export const getGoogleCalendarStatus = onCall\(\{ region: REGION, secrets: GOOGLE_SECRETS \}, async request => \{.*?\n\}\);\n\nexport const startGoogleCalendarConnect',
-              '''export const getGoogleCalendarStatus = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
+old = '''  let eventId = null;
+  try {
+    eventId = await createCalendarEvent({ ...data, requestId: requestReference.id, serviceName: `PENDING — ${service.name}` });
+    if (eventId) await requestReference.set({ calendarEventId: eventId }, { merge: true });'''
+new = '''  let eventId = "";
+  try {
+    const calendarResult = await createCalendarEvent({ ...data, requestId: requestReference.id, serviceName: `PENDING — ${service.name}` });
+    eventId = calendarResult.eventId;
+    if (eventId) await requestReference.set({ calendarEventId: eventId, calendarId: calendarResult.calendarId, calendarSyncStatus: "pending-hold-synced", calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });'''
+if old not in s:
+    raise SystemExit("pending calendar target not found")
+s = s.replace(old, new, 1)
+
+old = '''  const eventId = await createCalendarEvent({ ...job, jobId: jobReference.id }, item.calendarEventId);
+  if (eventId) await jobReference.set({ calendarEventId: eventId }, { merge: true });'''
+new = '''  const calendarResult = await createCalendarEvent({ ...job, jobId: jobReference.id }, item.calendarEventId || "", item.calendarId || "");
+  const eventId = calendarResult.eventId;
+  if (eventId) await jobReference.set({ calendarEventId: eventId, calendarId: calendarResult.calendarId, calendarSyncStatus: "synced", calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });'''
+if old not in s:
+    raise SystemExit("approval calendar target not found")
+s = s.replace(old, new, 1)
+
+s = s.replace('await deleteCalendarEvent(item.calendarEventId);', 'await deleteCalendarEvent(item.calendarEventId, item.calendarId);', 1)
+
+s = s.replace(
+    'if (!data.customerName || !data.email || !data.phone || !data.bookingDate || !data.bookingTime)',
+    'if (!data.customerName || !data.phone || !data.bookingDate || !data.bookingTime)',
+    1,
+)
+
+old = '  const customerReference = db.collection("customers").doc();\n  const jobReference = db.collection("jobs").doc();'
+new = '  const customerReference = await findCustomer(data);\n  const existingCustomer = await customerReference.get();\n  const jobReference = db.collection("jobs").doc();'
+if old not in s:
+    raise SystemExit("manual customer target not found")
+s = s.replace(old, new, 1)
+
+sub_once(
+    r'  batch\.set\(customerReference, \{\n    firstName:.*?\n    updatedAt: FieldValue\.serverTimestamp\(\)\n  \}\);',
+    '''  batch.set(customerReference, {
+    ...(existingCustomer.exists ? {} : {
+      firstName: parts.shift() || data.customerName,
+      lastName: parts.join(" "),
+      customerName: data.customerName,
+      customerType: "standard",
+      preferredContact: "email",
+      createdAt: FieldValue.serverTimestamp()
+    }),
+    phone: data.phone,
+    email: data.email,
+    address: data.address,
+    area: data.area,
+    lastVehicle: vehicle,
+    lastJobStatus: "Booked",
+    updatedAt: FieldValue.serverTimestamp()
+  }, { merge: true });''',
+    "manual customer upsert",
+)
+
+old = '''  const eventId = await createCalendarEvent({ ...data, vehicle, jobId: jobReference.id });
+  if (eventId) await jobReference.set({ calendarEventId: eventId }, { merge: true });'''
+new = '''  const calendarResult = await createCalendarEvent({ ...data, vehicle, jobId: jobReference.id });
+  const eventId = calendarResult.eventId;
+  if (eventId) await jobReference.set({ calendarEventId: eventId, calendarId: calendarResult.calendarId, calendarSyncStatus: "synced", calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });'''
+if old not in s:
+    raise SystemExit("manual calendar target not found")
+s = s.replace(old, new, 1)
+
+sub_once(
+    r'export const getGoogleCalendarStatus = onCall\(\{ region: REGION, secrets: GOOGLE_SECRETS \}, async request => \{.*?\n\}\);\n\nexport const startGoogleCalendarConnect',
+    '''export const getGoogleCalendarStatus = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
   requireOwner(request);
   const connected = await connectedGoogle();
   if (!connected) return { connected: false, email: "", calendars: [], selectedCalendarIds: [], primaryCalendarId: "", healthy: false };
@@ -246,13 +299,12 @@ export const getPublicBookingConfig''',
 });
 
 export const startGoogleCalendarConnect''',
-              'rich Google status'
-          )
+    "rich Google status",
+)
 
-          # Sync/update/delete uses the recorded calendar instead of guessing.
-          sub_once(
-              r'export const syncJobToCalendar = onCall\(\{ region: REGION, secrets: GOOGLE_SECRETS \}, async request => \{.*?\n\}\);',
-              '''export const syncJobToCalendar = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
+sub_once(
+    r'export const syncJobToCalendar = onCall\(\{ region: REGION, secrets: GOOGLE_SECRETS \}, async request => \{.*?\n\}\);',
+    '''export const syncJobToCalendar = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
   requireOwner(request);
   const reference = db.doc(`jobs/${text(request.data?.jobId, 80)}`);
   const snapshot = await reference.get();
@@ -272,16 +324,17 @@ export const startGoogleCalendarConnect''',
     throw new HttpsError("internal", `Calendar sync failed: ${text(error?.message, 300)}`);
   }
 });''',
-              'sync job Calendar'
-          )
+    "sync job Calendar",
+)
 
-          p.write_text(s)
-          PY
+p.write_text(s)
+' | base64 -d > /tmp/patch.py
+          python /tmp/patch.py
 
-      - name: Validate patched backend
+      - name: Validate backend
         run: npm --prefix functions install && npm --prefix functions run lint
 
-      - name: Commit hardened backend
+      - name: Commit backend hardening
         run: |
           git config user.name "BradApexNZ"
           git config user.email "brad@apexdetailers.co.nz"
