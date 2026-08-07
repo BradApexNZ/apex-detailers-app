@@ -25,6 +25,10 @@
     ],
     "rewrites": [
       {
+        "source": "/assets/apex-logo-official.svg",
+        "destination": "/apex-logo-official.svg"
+      },
+      {
         "source": "/hq",
         "destination": "/hq.html"
       },
