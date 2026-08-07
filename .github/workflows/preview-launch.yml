@@ -1,0 +1,54 @@
+name: Preview Apex Launch
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "public/**"
+      - "*.html"
+      - "vite.config.js"
+      - "package.json"
+      - "firebase.json"
+      - ".github/workflows/preview-launch.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: apex-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: Build and deploy Firebase preview
+    runs-on: ubuntu-latest
+    env:
+      VITE_APEX_CLOUD_ENABLED: "true"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: apex-detailers
+          workload_identity_provider: projects/845997886809/locations/global/workloadIdentityPools/github-actions/providers/apex-detailers
+          service_account: github-deployer@apex-detailers.iam.gserviceaccount.com
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run launch verification
+        run: npm run check
+
+      - name: Deploy temporary Firebase Hosting preview
+        run: npx firebase-tools@latest hosting:channel:deploy launch-pr-${{ github.event.pull_request.number }} --expires 7d --project apex-detailers --non-interactive
