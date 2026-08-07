@@ -43,15 +43,19 @@ const privateCall = name => async payload => {
   }
 };
 
-export const getPublicBookingConfig = resilientPublicCall("getPublicBookingConfig", fallbackConfig);
-export const listBookingAvailability = resilientPublicCall("listBookingAvailability", fallbackAvailability);
-export const submitBookingRequest = resilientPublicCall("submitBookingRequest", fallbackSubmit);
+// Launch V6: these are the authoritative booking/calendar paths.
+export const getPublicBookingConfig = resilientPublicCall("getPublicBookingConfigV6", fallbackConfig);
+export const listBookingAvailability = resilientPublicCall("listBookingAvailabilityV6", fallbackAvailability);
+export const submitBookingRequest = resilientPublicCall("submitBookingRequestV6", fallbackSubmit);
+export const approveBookingRequest = privateCall("approveBookingRequestV6");
+export const declineBookingRequest = privateCall("declineBookingRequestV6");
+export const createManualBooking = privateCall("createManualBookingV6");
+export const syncJobToCalendar = privateCall("syncJobToCalendarV6");
+export const getCalendarHealth = privateCall("getCalendarHealthV6");
+
+// Existing integrations retained where they are already built around selectedCalendarIds/primaryCalendarId.
 export const submitInquiry = privateCall("submitInquiry");
-export const approveBookingRequest = privateCall("approveBookingRequest");
-export const declineBookingRequest = privateCall("declineBookingRequest");
-export const createManualBooking = privateCall("createManualBooking");
 export const startGoogleCalendarConnect = privateCall("startGoogleCalendarConnect");
-export const syncJobToCalendar = privateCall("syncJobToCalendar");
 export const importGoogleCalendarEvents = privateCall("importGoogleCalendarEvents");
 export const listGoogleCalendars = privateCall("listGoogleCalendars");
 export const saveGoogleCalendarSelection = privateCall("saveGoogleCalendarSelection");
