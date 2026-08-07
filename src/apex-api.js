@@ -1,5 +1,6 @@
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { auth, authPersistenceReady, functions } from "./firebase";
+import { auth, authPersistenceReady, db, functions } from "./firebase";
 import { fallbackConfig } from "./public-booking-fallback";
 
 const cloudOverride = import.meta.env.VITE_APEX_CLOUD_ENABLED;
@@ -14,7 +15,7 @@ const cloudCall = name => async payload => {
 
 const configCall = async payload => {
   try {
-    return await cloudCall("getPublicBookingConfigLaunch")(payload);
+    return await cloudCall("getPublicBookingConfig")(payload);
   } catch (error) {
     console.warn("Apex booking config unavailable; using static service information only.", error);
     return fallbackConfig(payload || {});
@@ -23,7 +24,7 @@ const configCall = async payload => {
 
 const availabilityCall = async payload => {
   try {
-    return await cloudCall("listBookingAvailabilityV6")(payload);
+    return await cloudCall("listBookingAvailability")(payload);
   } catch (error) {
     console.error("Apex live availability unavailable.", error);
     throw new Error("Live booking availability is temporarily unavailable. Please contact Apex Detailers directly.");
@@ -32,7 +33,7 @@ const availabilityCall = async payload => {
 
 const bookingSubmitCall = async payload => {
   try {
-    return await cloudCall("submitBookingRequestV6")(payload);
+    return await cloudCall("submitBookingRequest")(payload);
   } catch (error) {
     console.error("Apex booking submission unavailable.", error);
     throw new Error(error?.message || "Live booking validation is temporarily unavailable. Please contact Apex Detailers directly.");
@@ -45,6 +46,7 @@ async function ensureAuthenticatedUser() {
   const user = auth.currentUser;
   if (!user) throw new Error("Sign in to Apex HQ again to use cloud tools.");
   await user.getIdToken();
+  return user;
 }
 
 const privateCall = name => async payload => {
@@ -57,22 +59,19 @@ const privateCall = name => async payload => {
   }
 };
 
-// Launch V6: authoritative booking/calendar paths. Booking fails closed if live conflict validation is unavailable.
+// Launch path uses the already-deployed Apex endpoints. Their implementations are
+// hardened in place so Firebase does not need IAM permission to create new services.
 export const getPublicBookingConfig = configCall;
 export const listBookingAvailability = availabilityCall;
 export const submitBookingRequest = bookingSubmitCall;
-export const approveBookingRequest = privateCall("approveBookingRequestV6");
-export const declineBookingRequest = privateCall("declineBookingRequestV6");
-export const createManualBooking = privateCall("createManualBookingV6");
-export const syncJobToCalendar = privateCall("syncJobToCalendarV6");
-export const getCalendarHealth = privateCall("getCalendarHealthV6");
+export const approveBookingRequest = privateCall("approveBookingRequest");
+export const declineBookingRequest = privateCall("declineBookingRequest");
+export const createManualBooking = privateCall("createManualBooking");
+export const syncJobToCalendar = privateCall("syncJobToCalendar");
 
-// Google OAuth remains the proven connection flow; V6 owns calendar selection validation and booking behaviour.
 export const submitInquiry = privateCall("submitInquiry");
 export const startGoogleCalendarConnect = privateCall("startGoogleCalendarConnect");
 export const importGoogleCalendarEvents = privateCall("importGoogleCalendarEvents");
-export const listGoogleCalendars = privateCall("listGoogleCalendarsV6");
-export const saveGoogleCalendarSelection = privateCall("saveGoogleCalendarSelectionV6");
 export const scanGoogleCalendarProspects = privateCall("scanGoogleCalendarProspects");
 export const saveGoogleCalendarProspect = privateCall("saveGoogleCalendarProspect");
 export const dismissGoogleCalendarProspect = privateCall("dismissGoogleCalendarProspect");
@@ -80,3 +79,40 @@ export const dismissGoogleCalendarProspect = privateCall("dismissGoogleCalendarP
 export const getGoogleCalendarStatus = apexCloudEnabled
   ? privateCall("getGoogleCalendarStatus")
   : async () => ({ connected: false, disabled: true, email: "Cloud automation is off" });
+
+// The status endpoint now returns accessible calendars as well as connection state.
+export const listGoogleCalendars = async () => {
+  const status = await getGoogleCalendarStatus();
+  return {
+    connected: Boolean(status.connected),
+    email: status.email || "",
+    calendars: Array.isArray(status.calendars) ? status.calendars : [],
+    selectedCalendarIds: Array.isArray(status.selectedCalendarIds) ? status.selectedCalendarIds : [],
+    primaryCalendarId: status.primaryCalendarId || ""
+  };
+};
+
+// Calendar preferences are non-secret. Firestore rules permit an Apex owner to alter
+// only these fields on the existing Google integration document; OAuth credentials stay server-only.
+export const saveGoogleCalendarSelection = async payload => {
+  await ensureAuthenticatedUser();
+  const selectedCalendarIds = [...new Set((payload?.selectedCalendarIds || []).map(String).filter(Boolean))];
+  const primaryCalendarId = String(payload?.primaryCalendarId || "");
+  if (!selectedCalendarIds.length) throw new Error("Select at least one Google Calendar.");
+  if (!selectedCalendarIds.includes(primaryCalendarId)) throw new Error("Choose a selected calendar as the Apex primary calendar.");
+  await setDoc(doc(db, "integrations", "google"), {
+    selectedCalendarIds,
+    primaryCalendarId,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  return { selectedCalendarIds, primaryCalendarId };
+};
+
+export const getCalendarHealth = async () => {
+  const status = await getGoogleCalendarStatus();
+  return {
+    ...status,
+    healthy: Boolean(status.connected && status.primaryCalendarId && status.selectedCalendarIds?.length),
+    reason: status.connected ? (status.primaryCalendarId ? "ok" : "primary-calendar-required") : "not-connected"
+  };
+};
