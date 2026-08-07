@@ -142,12 +142,14 @@ async function calendarConfig(connected) {
   const rows = await calendarRows(connected.client);
   const allowed = new Set(rows.map(row => row.id));
   const writableIds = new Set(rows.filter(row => ["owner", "writer"].includes(row.accessRole)).map(row => row.id));
-  const configured = Array.isArray(connected.data.selectedCalendarIds)
-    ? connected.data.selectedCalendarIds.filter(id => allowed.has(id))
+  const preferenceSnapshot = await db.doc("settings/googleCalendar").get();
+  const preferences = preferenceSnapshot.exists ? preferenceSnapshot.data() : {};
+  const configured = Array.isArray(preferences.selectedCalendarIds)
+    ? preferences.selectedCalendarIds.filter(id => allowed.has(id))
     : [];
   const fallback = rows.filter(row => row.primary).map(row => row.id);
   const selectedCalendarIds = configured.length ? configured : fallback;
-  const requestedPrimary = text(connected.data.primaryCalendarId, 300);
+  const requestedPrimary = text(preferences.primaryCalendarId, 300);
   const primaryCalendarId = selectedCalendarIds.includes(requestedPrimary) && writableIds.has(requestedPrimary)
     ? requestedPrimary
     : selectedCalendarIds.find(id => writableIds.has(id)) || "";
