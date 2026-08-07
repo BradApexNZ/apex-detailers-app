@@ -20,16 +20,16 @@ old = '''    transaction.create(lockReference, {
       date: data.bookingDate,
       startTime: data.bookingTime,
       endTime: data.bookingEndTime,
-      status: "pending",
       requestId: requestReference.id,
+      status: "pending",
       createdAt: FieldValue.serverTimestamp()
     });'''
 new = '''    transaction.create(lockReference, {
       date: data.bookingDate,
       startTime: data.bookingTime,
       endTime: data.bookingEndTime,
-      status: "pending",
       requestId: requestReference.id,
+      status: "pending",
       serverVerified: true,
       createdAt: FieldValue.serverTimestamp()
     });'''
@@ -54,7 +54,6 @@ if old not in s:
     raise SystemExit("public request creation target missing")
 s = s.replace(old, new, 1)
 
-# Owner-created confirmed locks are trusted too.
 old = '''    source: "hq-manual",
     createdAt: FieldValue.serverTimestamp()'''
 new = '''    source: "hq-manual",
