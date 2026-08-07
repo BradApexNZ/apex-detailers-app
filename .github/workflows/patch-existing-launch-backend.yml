@@ -18,20 +18,16 @@ jobs:
         with:
           ref: launch-hardening-2026-08
 
-      - name: Preserve replacement text literally
-        run: >-
-          python -c 'from pathlib import Path; p=Path("scripts/patch-existing-launch-backend.py"); s=p.read_text(); old="updated, count = re.subn(pattern, replacement, s, count=1, flags=re.S)"; new="updated, count = re.subn(pattern, lambda _match: replacement, s, count=1, flags=re.S)"; assert old in s; p.write_text(s.replace(old,new,1))'
-
-      - name: Apply backend hardening patch
-        run: python scripts/patch-existing-launch-backend.py
+      - name: Move Calendar preferences to owner settings
+        run: python scripts/patch-calendar-preferences.py
 
       - name: Validate backend
         run: npm --prefix functions install && npm --prefix functions run lint
 
-      - name: Commit backend hardening
+      - name: Commit Calendar preference migration
         run: |
           git config user.name "BradApexNZ"
           git config user.email "brad@apexdetailers.co.nz"
           git add functions/index.js
-          git commit -m "Harden existing Apex booking and Calendar endpoints"
+          git commit -m "Read Calendar preferences from owner settings"
           git push origin HEAD:launch-hardening-2026-08
