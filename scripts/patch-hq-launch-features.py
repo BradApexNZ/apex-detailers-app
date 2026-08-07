@@ -21,7 +21,6 @@ replace(
     "editable customer modal",
 )
 
-# Insert quote status only inside QuoteModal so the CustomerModal's similar field cannot confuse the patch.
 quote_start = s.find('function QuoteModal(')
 quote_end = s.find('function VoucherModal(', quote_start)
 if quote_start < 0 or quote_end < 0:
@@ -43,11 +42,20 @@ replace(
     "job due-date state",
 )
 
-replace(
-    '<label>Total<input type="number" value={form.total||0} onChange={e=>update("total",Number(e.target.value))}/></label><label className="wide">Notes>',
-    '<label>Total<input type="number" value={form.total||0} onChange={e=>update("total",Number(e.target.value))}/></label><label>Booking date<input type="date" value={form.bookingDate||""} onChange={e=>update("bookingDate",e.target.value)}/></label><label>Booking time<input type="time" value={form.bookingTime||""} onChange={e=>update("bookingTime",e.target.value)}/></label><label>Follow-up due<input type="date" value={form.followUpDueDate} onChange={e=>update("followUpDueDate",e.target.value)}/></label><label>Maintenance due<input type="date" value={form.maintenanceDueDate} onChange={e=>update("maintenanceDueDate",e.target.value)}/></label><label className="wide">Notes>',
-    "job scheduling fields",
+job_start = s.find('function JobModal(')
+job_end = s.find('function CalendarSettings(', job_start)
+if job_start < 0 or job_end < 0:
+    raise SystemExit('JobModal bounds missing')
+job = s[job_start:job_end]
+notes_marker = '<label className="wide">Notes<textarea rows="4"'
+if notes_marker not in job:
+    raise SystemExit('job scheduling fields target missing')
+job = job.replace(
+    notes_marker,
+    '<label>Booking date<input type="date" value={form.bookingDate||""} onChange={e=>update("bookingDate",e.target.value)}/></label><label>Booking time<input type="time" value={form.bookingTime||""} onChange={e=>update("bookingTime",e.target.value)}/></label><label>Follow-up due<input type="date" value={form.followUpDueDate} onChange={e=>update("followUpDueDate",e.target.value)}/></label><label>Maintenance due<input type="date" value={form.maintenanceDueDate} onChange={e=>update("maintenanceDueDate",e.target.value)}/></label>' + notes_marker,
+    1,
 )
+s = s[:job_start] + job + s[job_end:]
 
 replace(
     '[customerModal,setCustomerModal]=useState(false),[quoteModal,setQuoteModal]=useState(false),',
