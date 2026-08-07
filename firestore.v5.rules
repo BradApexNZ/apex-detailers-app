@@ -50,8 +50,16 @@ service cloud.firestore {
       allow create, update: if isApexOwner() && isReasonableDocument();
     }
 
-    // OAuth tokens, rate limits and integration state are server-only.
-    match /integrations/{id} { allow read, write: if false; }
+    // OAuth credentials remain unreadable and server-owned. HQ may only change
+    // the non-secret calendar preferences on an already-connected Google record.
+    match /integrations/{id} {
+      allow read, create, delete: if false;
+      allow update: if isApexOwner()
+        && id == "google"
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["selectedCalendarIds", "primaryCalendarId", "updatedAt"]);
+    }
+
     match /oauthStates/{id} { allow read, write: if false; }
     match /rateLimits/{id} { allow read, write: if false; }
     match /calendarProspectDismissals/{id} { allow read, write: if isApexOwner(); }
