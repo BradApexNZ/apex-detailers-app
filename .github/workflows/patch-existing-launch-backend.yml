@@ -18,16 +18,16 @@ jobs:
         with:
           ref: launch-hardening-2026-08
 
-      - name: Move Calendar preferences to owner settings
-        run: python scripts/patch-calendar-preferences.py
+      - name: Stamp trusted booking requests and locks
+        run: python scripts/patch-server-verified-bookings.py
 
       - name: Validate backend
         run: npm --prefix functions install && npm --prefix functions run lint
 
-      - name: Commit Calendar preference migration
+      - name: Commit booking verification hardening
         run: |
           git config user.name "BradApexNZ"
           git config user.email "brad@apexdetailers.co.nz"
           git add functions/index.js
-          git commit -m "Read Calendar preferences from owner settings"
+          git commit -m "Require server-verified booking locks for availability"
           git push origin HEAD:launch-hardening-2026-08
