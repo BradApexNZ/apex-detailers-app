@@ -25,6 +25,7 @@ const services = [
   { id: "tradie", name: "Tradie Reset", price: 229, durationMinutes: 360, description: "Heavy-duty reset for work utes and vans." },
   { id: "seats", name: "Seats Out Reset", price: 399, durationMinutes: 480, description: "Maximum-access interior reset, subject to suitability confirmation." }
 ];
+const publicServiceIds = new Set(["deep", "full", "tradie", "seats"]);
 
 const defaults = {
   enabled: true,
@@ -102,13 +103,14 @@ async function calendarRows(client) {
 async function calendarConfig(connected) {
   const rows = await calendarRows(connected.client);
   const allowed = new Set(rows.map(row => row.id));
+  const writableIds = new Set(rows.filter(row => ["owner", "writer"].includes(row.accessRole)).map(row => row.id));
   const configured = Array.isArray(connected.data.selectedCalendarIds) ? connected.data.selectedCalendarIds.filter(id => allowed.has(id)) : [];
   const fallback = rows.filter(row => row.primary).map(row => row.id);
   const selectedCalendarIds = configured.length ? configured : fallback;
   const requestedPrimary = text(connected.data.primaryCalendarId, 300);
-  const primaryCalendarId = selectedCalendarIds.includes(requestedPrimary)
+  const primaryCalendarId = selectedCalendarIds.includes(requestedPrimary) && writableIds.has(requestedPrimary)
     ? requestedPrimary
-    : selectedCalendarIds[0] || rows[0]?.id || "primary";
+    : selectedCalendarIds.find(id => writableIds.has(id)) || "";
   return { rows, selectedCalendarIds, primaryCalendarId };
 }
 
@@ -136,7 +138,7 @@ async function calendarBusy(start, end) {
     return blocked;
   } catch (error) {
     console.error("V6 Calendar freebusy failed", error);
-    return [];
+    throw new HttpsError("unavailable", "Google Calendar availability could not be verified. Please try again shortly.");
   }
 }
 
@@ -243,6 +245,7 @@ async function upsertCalendarEvent(data, existingEventId = "", existingCalendarI
   if (!connected) return { eventId: "", calendarId: "" };
   const config = await calendarConfig(connected);
   const calendarId = existingCalendarId || config.primaryCalendarId;
+  if (!calendarId) throw new HttpsError("failed-precondition", "No writable primary Google Calendar is selected for Apex.");
   const api = google.calendar({ version: "v3", auth: connected.client });
   const start = parseLocal(data.bookingDate, data.bookingTime);
   const end = data.bookingEndTime ? parseLocal(data.bookingDate, data.bookingEndTime) : start.plus({ minutes: Number(data.durationMinutes || serviceById(data.packageId || data.serviceId).durationMinutes) });
@@ -299,6 +302,7 @@ export const listBookingAvailabilityV6 = onCall({ region: REGION, secrets: GOOGL
   await rateLimit(request, "availability-v6", 30, 10);
   const date = text(request.data?.date, 10);
   const serviceId = text(request.data?.serviceId, 30);
+  if (!publicServiceIds.has(serviceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
   return { date, slots: await availableSlots(date, serviceId) };
 });
 
@@ -306,7 +310,9 @@ export const submitBookingRequestV6 = onCall({ region: REGION, secrets: GOOGLE_S
   await rateLimit(request, "booking-v6", 6, 30);
   const input = request.data || {};
   if (input.website) throw new HttpsError("invalid-argument", "Unable to submit.");
-  const service = serviceById(text(input.serviceId, 30));
+  const requestedServiceId = text(input.serviceId, 30);
+  if (!publicServiceIds.has(requestedServiceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
+  const service = serviceById(requestedServiceId);
   const data = {
     customerName: text(input.customerName, 160), phone: phone(input.phone), email: email(input.email), address: text(input.address, 220), area: text(input.area, 100),
     vehicleYear: text(input.vehicleYear, 12), vehicleMake: text(input.vehicleMake, 80), vehicleModel: text(input.vehicleModel, 100), rego: text(input.rego, 20).toUpperCase(),
