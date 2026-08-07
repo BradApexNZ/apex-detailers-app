@@ -6,7 +6,6 @@ on:
       - launch-hardening-2026-08
     paths:
       - "functions/index.js"
-      - "firestore.v5.rules"
       - ".github/workflows/deploy-launch-existing.yml"
 
 permissions:
@@ -47,6 +46,6 @@ jobs:
       - name: Deploy existing launch endpoints
         run: >-
           npx firebase-tools@latest deploy
-          --only functions:getPublicBookingConfig,functions:listBookingAvailability,functions:submitBookingRequest,functions:approveBookingRequest,functions:declineBookingRequest,functions:createManualBooking,functions:getGoogleCalendarStatus,functions:syncJobToCalendar,firestore:rules
+          --only functions:getPublicBookingConfig,functions:listBookingAvailability,functions:submitBookingRequest,functions:approveBookingRequest,functions:declineBookingRequest,functions:createManualBooking,functions:getGoogleCalendarStatus,functions:syncJobToCalendar
           --project apex-detailers
           --non-interactive
