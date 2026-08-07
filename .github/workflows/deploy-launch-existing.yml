@@ -43,7 +43,7 @@ jobs:
       - name: Install and validate Functions
         run: npm --prefix functions install && npm --prefix functions run lint
 
-      - name: Deploy existing launch endpoints
+      - name: Deploy final hardened launch endpoints
         run: >-
           npx firebase-tools@latest deploy
           --only functions:getPublicBookingConfig,functions:listBookingAvailability,functions:submitBookingRequest,functions:approveBookingRequest,functions:declineBookingRequest,functions:createManualBooking,functions:getGoogleCalendarStatus,functions:syncJobToCalendar
