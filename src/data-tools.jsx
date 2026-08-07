@@ -5,7 +5,7 @@ import{createRoot}from"react-dom/client";
 import{auth,db}from"./firebase";
 import"./data-tools.css";
 
-const ownerUids=(import.meta.env.VITE_APEX_OWNER_UIDS||"fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42").split(",").map(value=>value.trim());
+const ownerUids=(import.meta.env.VITE_APEX_OWNER_UIDS||"fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42,maefd5cQ9qcIKSeU4b3yZKUL8UW2").split(",").map(value=>value.trim());
 const clean=value=>String(value??"").trim();
 const normal=value=>clean(value).toLowerCase().replace(/\s+/g," ");
 const phoneKey=value=>{const digits=clean(value).replace(/\D/g,"");return digits.startsWith("64")?`0${digits.slice(2)}`:digits};
