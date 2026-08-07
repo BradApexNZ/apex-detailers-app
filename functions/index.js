@@ -205,6 +205,7 @@ async function availableSlots(date, serviceId) {
   const blocked = [];
   lockSnapshot.forEach(document => {
     const data = document.data();
+    if (data.serverVerified !== true) return;
     blocked.push({ start: parseLocal(date, data.startTime), end: parseLocal(date, data.endTime) });
   });
   jobSnapshot.forEach(document => {
@@ -430,11 +431,13 @@ export const submitBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SEC
       endTime: data.bookingEndTime,
       requestId: requestReference.id,
       status: "pending",
+      serverVerified: true,
       createdAt: FieldValue.serverTimestamp()
     });
     transaction.create(requestReference, {
       ...data,
       lockId: lockReference.id,
+      serverVerified: true,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp()
     });
@@ -673,6 +676,7 @@ export const createManualBooking = onCall({ region: REGION, secrets: GOOGLE_SECR
     status: "confirmed",
     jobId: jobReference.id,
     source: "hq-manual",
+    serverVerified: true,
     createdAt: FieldValue.serverTimestamp()
   });
   await batch.commit();
