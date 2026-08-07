@@ -58,12 +58,12 @@ jobs:
             console.error("V6 Calendar freebusy failed", error);
             return [];
           }
-          }'''
+          '''
           new = '''  } catch (error) {
             console.error("V6 Calendar freebusy failed", error);
             throw new HttpsError("unavailable", "Google Calendar availability could not be verified. Please try again shortly.");
           }
-          }'''
+          '''
           if old not in s:
               raise SystemExit('calendarBusy target not found')
           s = s.replace(old, new, 1)
