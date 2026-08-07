@@ -72,12 +72,12 @@ export const createManualBooking = privateCall("createManualBookingV6");
 export const syncJobToCalendar = privateCall("syncJobToCalendarV6");
 export const getCalendarHealth = privateCall("getCalendarHealthV6");
 
-// Existing integrations retained where they already use selectedCalendarIds/primaryCalendarId.
+// Google OAuth remains the proven connection flow; V6 owns calendar selection validation and booking behaviour.
 export const submitInquiry = privateCall("submitInquiry");
 export const startGoogleCalendarConnect = privateCall("startGoogleCalendarConnect");
 export const importGoogleCalendarEvents = privateCall("importGoogleCalendarEvents");
-export const listGoogleCalendars = privateCall("listGoogleCalendars");
-export const saveGoogleCalendarSelection = privateCall("saveGoogleCalendarSelection");
+export const listGoogleCalendars = privateCall("listGoogleCalendarsV6");
+export const saveGoogleCalendarSelection = privateCall("saveGoogleCalendarSelectionV6");
 export const scanGoogleCalendarProspects = privateCall("scanGoogleCalendarProspects");
 export const saveGoogleCalendarProspect = privateCall("saveGoogleCalendarProspect");
 export const dismissGoogleCalendarProspect = privateCall("dismissGoogleCalendarProspect");
