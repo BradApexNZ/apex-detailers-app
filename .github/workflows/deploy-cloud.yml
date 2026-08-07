@@ -7,6 +7,8 @@ on:
       - main
     paths:
       - "functions/**"
+      - firestore.v5.rules
+      - storage.rules
       - firebase.json
       - .firebaserc
       - .github/workflows/deploy-cloud.yml
@@ -20,8 +22,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy-functions:
-    name: Deploy Calendar, Gmail and Booking Functions
+  deploy-cloud:
+    name: Deploy Functions and Firebase Rules
     runs-on: ubuntu-latest
 
     steps:
@@ -76,5 +78,5 @@ jobs:
         working-directory: functions
         run: npm run lint
 
-      - name: Deploy Firebase Functions
-        run: npx firebase-tools@latest deploy --only functions --project apex-detailers --non-interactive
+      - name: Deploy Functions, Firestore rules and Storage rules
+        run: npx firebase-tools@latest deploy --only functions,firestore:rules,storage --project apex-detailers --non-interactive
