@@ -19,6 +19,7 @@ let state = {
 };
 let importRunning = false;
 let lastAutomaticImport = 0;
+let renderQueued = false;
 
 const clean = value => String(value ?? "").trim();
 
@@ -46,16 +47,21 @@ function connectionMessage() {
 }
 
 function render() {
+  renderQueued = false;
   const section = calendarSection();
   if (!section) return;
 
-  section.querySelector("[data-apex-google-control]")?.remove();
+  let control = section.querySelector("[data-apex-google-control]");
+  if (!control) {
+    control = document.createElement("div");
+    control.dataset.apexGoogleControl = "true";
+    control.className = "apexGoogleControl";
+    section.appendChild(control);
+  }
+
   const existingButtons = [...section.querySelectorAll(":scope > button")];
   existingButtons.forEach(button => { button.hidden = true; });
 
-  const control = document.createElement("div");
-  control.dataset.apexGoogleControl = "true";
-  control.className = "apexGoogleControl";
   control.innerHTML = `
     <div class="integration ${state.connected ? "connected" : ""}">
       <b>${state.connected ? "Google Calendar connected" : "Google Calendar not connected"}</b>
@@ -83,7 +89,6 @@ function render() {
       </div>
     ` : ""}
   `;
-  section.appendChild(control);
 
   control.querySelector("[data-google-connect]")?.addEventListener("click", connect);
   control.querySelector("[data-google-refresh]")?.addEventListener("click", () => load(true));
@@ -94,7 +99,7 @@ function render() {
       if (input.checked) ids.add(id); else ids.delete(id);
       state.selectedCalendarIds = [...ids];
       if (!state.selectedCalendarIds.includes(state.primaryCalendarId)) state.primaryCalendarId = state.selectedCalendarIds[0] || "";
-      render();
+      queueRender();
     });
   });
   control.querySelectorAll("[data-primary-id]").forEach(input => {
@@ -106,11 +111,17 @@ function render() {
   control.querySelector("[data-google-sync]")?.addEventListener("click", () => syncBookings(true));
 }
 
+function queueRender() {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(render);
+}
+
 async function load(announce = false) {
   if (!auth.currentUser) return;
   state.loading = true;
   state.error = "";
-  render();
+  queueRender();
   try {
     const [status, calendars] = await Promise.all([
       getGoogleCalendarStatus(),
@@ -133,7 +144,7 @@ async function load(announce = false) {
     state.error = clean(error?.message || "Could not load Google Calendar settings.").replace(/^Firebase:\s*/i, "");
     if (announce) toast(state.error);
   }
-  render();
+  queueRender();
 }
 
 async function connect() {
@@ -154,6 +165,7 @@ async function saveSelection() {
       primaryCalendarId: state.primaryCalendarId || state.selectedCalendarIds[0]
     });
     toast("Google Calendar selection saved.");
+    await load(false);
     await syncBookings(true);
   } catch (error) {
     toast(clean(error?.message || "Could not save calendar selection.").replace(/^Firebase:\s*/i, ""));
@@ -190,11 +202,22 @@ onAuthStateChanged(auth, user => {
 document.addEventListener("click", event => {
   const button = event.target.closest?.("button");
   const label = button?.textContent.trim();
-  if (label === "Settings") setTimeout(() => { render(); load(false); }, 50);
+  if (label === "Settings") setTimeout(() => { queueRender(); load(false); }, 50);
   if (label === "Calendar") setTimeout(automaticSync, 50);
 });
 
-new MutationObserver(() => render()).observe(document.body, { childList: true, subtree: true });
+// React creates the Settings section only when that tab is opened. Watch only for
+// the section appearing; never call render in response to mutations inside our own
+// Google control, which previously caused a self-triggering render loop.
+const observer = new MutationObserver(mutations => {
+  if (!mutations.some(mutation => [...mutation.addedNodes].some(node => {
+    if (!(node instanceof Element)) return false;
+    if (node.matches?.(".settings") || node.querySelector?.(".settings")) return true;
+    return [...(node.querySelectorAll?.("section") || [])].some(section => section.querySelector("h3")?.textContent.trim() === "Google Calendar");
+  }))) return;
+  queueRender();
+});
+observer.observe(document.body, { childList: true, subtree: true });
 
 const style = document.createElement("style");
 style.textContent = `
