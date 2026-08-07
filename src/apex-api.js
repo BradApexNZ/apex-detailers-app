@@ -59,8 +59,6 @@ const privateCall = name => async payload => {
   }
 };
 
-// Launch path uses the already-deployed Apex endpoints. Their implementations are
-// hardened in place so Firebase does not need IAM permission to create new services.
 export const getPublicBookingConfig = configCall;
 export const listBookingAvailability = availabilityCall;
 export const submitBookingRequest = bookingSubmitCall;
@@ -80,7 +78,6 @@ export const getGoogleCalendarStatus = apexCloudEnabled
   ? privateCall("getGoogleCalendarStatus")
   : async () => ({ connected: false, disabled: true, email: "Cloud automation is off" });
 
-// The status endpoint now returns accessible calendars as well as connection state.
 export const listGoogleCalendars = async () => {
   const status = await getGoogleCalendarStatus();
   return {
@@ -92,15 +89,15 @@ export const listGoogleCalendars = async () => {
   };
 };
 
-// Calendar preferences are non-secret. Firestore rules permit an Apex owner to alter
-// only these fields on the existing Google integration document; OAuth credentials stay server-only.
+// Keep OAuth credentials server-only. Calendar preferences live in the ordinary
+// owner-only settings collection, which the existing production rules already support.
 export const saveGoogleCalendarSelection = async payload => {
   await ensureAuthenticatedUser();
   const selectedCalendarIds = [...new Set((payload?.selectedCalendarIds || []).map(String).filter(Boolean))];
   const primaryCalendarId = String(payload?.primaryCalendarId || "");
   if (!selectedCalendarIds.length) throw new Error("Select at least one Google Calendar.");
   if (!selectedCalendarIds.includes(primaryCalendarId)) throw new Error("Choose a selected calendar as the Apex primary calendar.");
-  await setDoc(doc(db, "integrations", "google"), {
+  await setDoc(doc(db, "settings", "googleCalendar"), {
     selectedCalendarIds,
     primaryCalendarId,
     updatedAt: serverTimestamp()
