@@ -1,1 +1,31 @@
-{"name":"apex-detailers-app","version":"1.0.0","private":true,"type":"module","engines":{"node":"22"},"scripts":{"dev":"vite --host 0.0.0.0","build":"vite build","preview":"vite preview","launch:audit":"node scripts/launch-audit.mjs","deploy":"npm run check && npm --prefix functions install && firebase deploy --only functions,firestore:rules,storage && firebase deploy --only hosting","deploy:all":"npm run deploy","check":"npm run build && npm --prefix functions run lint && npm run launch:audit"},"dependencies":{"firebase":"12.16.0","react":"19.2.8","react-dom":"19.2.8"},"devDependencies":{"@vitejs/plugin-react":"6.0.4","vite":"8.1.5"}}
+{
+  "name": "apex-detailers-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "launch:audit": "node scripts/launch-audit.mjs",
+    "check:frontend": "npm run build",
+    "check:functions": "npm --prefix functions run lint",
+    "check": "npm run check:frontend && npm run check:functions && npm run launch:audit",
+    "deploy:hosting": "npm run check && firebase deploy --only hosting",
+    "deploy:cloud": "npm run check:functions && firebase deploy --only functions,firestore:rules",
+    "deploy:storage": "firebase deploy --only storage",
+    "deploy": "npm run deploy:cloud && npm run deploy:hosting"
+  },
+  "dependencies": {
+    "firebase": "12.16.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.0.4",
+    "vite": "8.1.5"
+  }
+}
