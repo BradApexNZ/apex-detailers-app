@@ -8,7 +8,6 @@ on:
     paths:
       - "functions/**"
       - firestore.v5.rules
-      - storage.rules
       - firebase.json
       - .firebaserc
       - .github/workflows/deploy-cloud.yml
@@ -23,7 +22,7 @@ concurrency:
 
 jobs:
   deploy-cloud:
-    name: Deploy Functions and Firebase Rules
+    name: Deploy Functions and Firestore Rules
     runs-on: ubuntu-latest
 
     steps:
@@ -78,5 +77,5 @@ jobs:
         working-directory: functions
         run: npm run lint
 
-      - name: Deploy Functions, Firestore rules and Storage rules
-        run: npx firebase-tools@latest deploy --only functions,firestore:rules,storage --project apex-detailers --non-interactive
+      - name: Deploy Functions and Firestore rules
+        run: npx firebase-tools@latest deploy --only functions,firestore:rules --project apex-detailers --non-interactive
