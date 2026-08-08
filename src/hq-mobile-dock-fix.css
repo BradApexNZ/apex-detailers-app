@@ -1,0 +1,96 @@
+/* Apex HQ mobile dock hotfix — keep navigation compact and non-obstructive. */
+@media (max-width: 900px) {
+  .workspace > main {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* One thin dock row. Never wrap into the page. */
+  .mobile {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 40 !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    padding: 4px 6px calc(4px + env(safe-area-inset-bottom)) !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-top: 1px solid rgba(255,255,255,.10) !important;
+    border-radius: 0 !important;
+    background: rgba(10,11,13,.985) !important;
+    box-shadow: 0 -8px 24px rgba(0,0,0,.22) !important;
+    backdrop-filter: blur(20px) !important;
+  }
+
+  .mobile button {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    padding: 4px 1px !important;
+    gap: 3px !important;
+    border: 0 !important;
+    border-radius: 8px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .mobile button.active {
+    background: rgba(239,196,20,.09) !important;
+    box-shadow: none !important;
+  }
+
+  .mobile button i::before {
+    font-size: 14px !important;
+  }
+
+  .mobile button:nth-child(6) i::before {
+    font-size: 10px !important;
+  }
+
+  .mobile button small {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    font-size: 7px !important;
+    line-height: 1 !important;
+    font-weight: 700 !important;
+    letter-spacing: -.01em !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  /* Status messages should acknowledge state, then get out of the way. */
+  .toast {
+    position: fixed !important;
+    top: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: calc(58px + env(safe-area-inset-bottom)) !important;
+    z-index: 60 !important;
+    width: max-content !important;
+    max-width: calc(100vw - 28px) !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 8px 12px !important;
+    border-radius: 999px !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    pointer-events: none !important;
+    transform: translateX(-50%) !important;
+    animation: apexToastAway .22s ease 2.6s forwards !important;
+  }
+
+  @keyframes apexToastAway {
+    to {
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-50%, 8px);
+    }
+  }
+}
