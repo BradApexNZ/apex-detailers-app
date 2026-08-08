@@ -42,18 +42,19 @@ export const disconnectGoogleCalendar = onCall({ region: REGION, secrets: [TOKEN
   if (snapshot.exists && snapshot.data()?.refreshToken) {
     try {
       const refreshToken = decrypt(snapshot.data().refreshToken);
-      await google.auth.OAuth2.prototype.revokeToken.call(new google.auth.OAuth2(), refreshToken);
+      const client = new google.auth.OAuth2();
+      await client.revokeToken(refreshToken);
     } catch (error) {
-      // Revocation is best-effort. Apex must still be able to forget a stale or
-      // already-revoked connection locally so another account can be connected.
+      // Revocation is best-effort. Apex should still forget a stale or already
+      // revoked token locally so the owner can connect the correct account.
       console.warn("Google token revocation was not completed", error?.message || error);
     }
   }
 
-  await Promise.all([
-    integrationRef.delete(),
-    selectionRef.delete()
-  ]);
+  const batch = db.batch();
+  batch.delete(integrationRef);
+  batch.delete(selectionRef);
+  await batch.commit();
 
   return { disconnected: true };
 });
