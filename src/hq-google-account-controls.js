@@ -1,7 +1,4 @@
-import { httpsCallable } from "firebase/functions";
-import { functions } from "./firebase";
-
-const disconnectGoogle = httpsCallable(functions, "disconnectGoogleCalendar");
+import { disconnectGoogleCalendar } from "./apex-api";
 
 function addDisconnectControl() {
   const settings = document.querySelector(".calendarSettings");
@@ -23,7 +20,7 @@ function addDisconnectControl() {
     button.disabled = true;
     button.textContent = "Disconnecting…";
     try {
-      await disconnectGoogle({});
+      await disconnectGoogleCalendar({});
       window.location.reload();
     } catch (error) {
       button.disabled = false;
