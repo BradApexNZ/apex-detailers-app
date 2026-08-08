@@ -1,0 +1,55 @@
+name: Patch Calendar Preferences
+
+on:
+  push:
+    branches:
+      - launch-hardening-2026-08
+    paths:
+      - ".github/workflows/patch-calendar-preferences.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: launch-hardening-2026-08
+
+      - name: Read Calendar preferences from owner settings
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('functions/index.js')
+          s = p.read_text()
+          old = '''  const configured = Array.isArray(connected.data.selectedCalendarIds)
+    ? connected.data.selectedCalendarIds.filter(id => allowed.has(id))
+    : [];
+  const fallback = rows.filter(row => row.primary).map(row => row.id);
+  const selectedCalendarIds = configured.length ? configured : fallback;
+  const requestedPrimary = text(connected.data.primaryCalendarId, 300);'''
+          new = '''  const preferenceSnapshot = await db.doc("settings/googleCalendar").get();
+  const preferences = preferenceSnapshot.exists ? preferenceSnapshot.data() : {};
+  const configured = Array.isArray(preferences.selectedCalendarIds)
+    ? preferences.selectedCalendarIds.filter(id => allowed.has(id))
+    : [];
+  const fallback = rows.filter(row => row.primary).map(row => row.id);
+  const selectedCalendarIds = configured.length ? configured : fallback;
+  const requestedPrimary = text(preferences.primaryCalendarId, 300);'''
+          if old not in s:
+              raise SystemExit('Calendar preference target missing')
+          p.write_text(s.replace(old, new, 1))
+          PY
+
+      - name: Validate Functions
+        run: npm --prefix functions install && npm --prefix functions run lint
+
+      - name: Commit preference change
+        run: |
+          git config user.name "BradApexNZ"
+          git config user.email "brad@apexdetailers.co.nz"
+          git add functions/index.js
+          git commit -m "Read Calendar preferences from owner settings"
+          git push origin HEAD:launch-hardening-2026-08

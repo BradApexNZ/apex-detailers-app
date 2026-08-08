@@ -10,9 +10,9 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
 
     steps:
       - name: Check out repository
@@ -23,8 +23,11 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install dependencies
+      - name: Install app dependencies
         run: npm install
 
-      - name: Build all Vite entry points
-        run: npm run build
+      - name: Install Functions dependencies
+        run: npm --prefix functions install
+
+      - name: Verify frontend and Functions
+        run: npm run check

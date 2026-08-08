@@ -4,7 +4,11 @@ service firebase.storage {
   match /b/{bucket}/o {
     function isApexOwner() {
       return request.auth != null
-        && request.auth.uid == "FqDrn1aPFHXUB5ogb2rN9D7mRG42";
+        && request.auth.uid in [
+          "fnc4G85CtmQVy0OooOzfOoSC9u22",
+          "FqDrn1aPFHXUB5ogb2rN9D7mRG42",
+          "maefd5cQ9qcIKSeU4b3yZKUL8UW2"
+        ];
     }
 
     function isSafeImageUpload() {

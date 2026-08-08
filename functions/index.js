@@ -27,6 +27,7 @@ const services = [
   { id: "tradie", name: "Tradie Reset", price: 229, durationMinutes: 360, description: "Heavy-duty reset for work utes and vans." },
   { id: "seats", name: "Seats Out Reset", price: 399, durationMinutes: 480, description: "Maximum-access interior reset, subject to suitability confirmation." }
 ];
+const publicServiceIds = new Set(["deep", "full", "tradie", "seats"]);
 
 const defaults = {
   enabled: true,
@@ -119,31 +120,66 @@ function oauthClient() {
 async function connectedGoogle() {
   const snapshot = await db.doc("integrations/google").get();
   if (!snapshot.exists || !snapshot.data().refreshToken) return null;
+  const data = snapshot.data();
   const client = oauthClient();
-  client.setCredentials({ refresh_token: decrypt(snapshot.data().refreshToken) });
-  return { client, email: snapshot.data().email || OWNER_EMAIL.value() };
+  client.setCredentials({ refresh_token: decrypt(data.refreshToken) });
+  return { client, data, email: data.email || OWNER_EMAIL.value() };
+}
+
+async function calendarRows(client) {
+  const api = google.calendar({ version: "v3", auth: client });
+  const rows = [];
+  let pageToken;
+  do {
+    const response = await api.calendarList.list({ pageToken, maxResults: 250, showHidden: false });
+    rows.push(...(response.data.items || []));
+    pageToken = response.data.nextPageToken;
+  } while (pageToken);
+  return rows.filter(row => row.id && ["owner", "writer", "reader"].includes(row.accessRole));
+}
+
+async function calendarConfig(connected) {
+  const rows = await calendarRows(connected.client);
+  const allowed = new Set(rows.map(row => row.id));
+  const writableIds = new Set(rows.filter(row => ["owner", "writer"].includes(row.accessRole)).map(row => row.id));
+  const preferenceSnapshot = await db.doc("settings/googleCalendar").get();
+  const preferences = preferenceSnapshot.exists ? preferenceSnapshot.data() : {};
+  const configured = Array.isArray(preferences.selectedCalendarIds)
+    ? preferences.selectedCalendarIds.filter(id => allowed.has(id))
+    : [];
+  const fallback = rows.filter(row => row.primary).map(row => row.id);
+  const selectedCalendarIds = configured.length ? configured : fallback;
+  const requestedPrimary = text(preferences.primaryCalendarId, 300);
+  const primaryCalendarId = selectedCalendarIds.includes(requestedPrimary) && writableIds.has(requestedPrimary)
+    ? requestedPrimary
+    : selectedCalendarIds.find(id => writableIds.has(id)) || "";
+  return { rows, selectedCalendarIds, primaryCalendarId };
 }
 
 async function calendarBusy(start, end) {
+  const connected = await connectedGoogle();
+  if (!connected) return [];
   try {
-    const connected = await connectedGoogle();
-    if (!connected) return [];
-    const calendar = google.calendar({ version: "v3", auth: connected.client });
-    const response = await calendar.freebusy.query({
+    const config = await calendarConfig(connected);
+    if (!config.selectedCalendarIds.length) return [];
+    const response = await google.calendar({ version: "v3", auth: connected.client }).freebusy.query({
       requestBody: {
         timeMin: start.toUTC().toISO(),
         timeMax: end.toUTC().toISO(),
         timeZone: ZONE.value(),
-        items: [{ id: CALENDAR_ID.value() }]
+        items: config.selectedCalendarIds.map(id => ({ id }))
       }
     });
-    return (response.data.calendars?.[CALENDAR_ID.value()]?.busy || []).map(row => ({
-      start: DateTime.fromISO(row.start),
-      end: DateTime.fromISO(row.end)
-    }));
+    const blocked = [];
+    for (const id of config.selectedCalendarIds) {
+      for (const row of response.data.calendars?.[id]?.busy || []) {
+        blocked.push({ start: DateTime.fromISO(row.start), end: DateTime.fromISO(row.end), calendarId: id });
+      }
+    }
+    return blocked;
   } catch (error) {
     console.error("Calendar freebusy failed", error);
-    return [];
+    throw new HttpsError("unavailable", "Google Calendar availability could not be verified. Please try again shortly.");
   }
 }
 
@@ -169,6 +205,7 @@ async function availableSlots(date, serviceId) {
   const blocked = [];
   lockSnapshot.forEach(document => {
     const data = document.data();
+    if (data.serverVerified !== true) return;
     blocked.push({ start: parseLocal(date, data.startTime), end: parseLocal(date, data.endTime) });
   });
   jobSnapshot.forEach(document => {
@@ -264,9 +301,12 @@ async function notifyConfirmed(data, config) {
   return results;
 }
 
-async function createCalendarEvent(data, eventId) {
+async function createCalendarEvent(data, eventId = "", existingCalendarId = "") {
   const connected = await connectedGoogle();
-  if (!connected) return null;
+  if (!connected) return { eventId: "", calendarId: "" };
+  const config = await calendarConfig(connected);
+  const calendarId = existingCalendarId || data.calendarId || data.sourceCalendarId || config.primaryCalendarId;
+  if (!calendarId) throw new HttpsError("failed-precondition", "No writable primary Google Calendar is selected for Apex.");
   const calendar = google.calendar({ version: "v3", auth: connected.client });
   const start = parseLocal(data.bookingDate, data.bookingTime);
   const end = data.bookingEndTime
@@ -284,25 +324,38 @@ async function createCalendarEvent(data, eventId) {
     ].join("\n"),
     start: { dateTime: start.toISO(), timeZone: ZONE.value() },
     end: { dateTime: end.toISO(), timeZone: ZONE.value() },
-    extendedProperties: { private: { apexJobId: data.jobId || "", apexRequestId: data.requestId || "" } }
+    extendedProperties: { private: { apexJobId: data.jobId || "", apexRequestId: data.requestId || "", apexLaunch: "true" } }
   };
   const response = eventId
-    ? await calendar.events.update({ calendarId: CALENDAR_ID.value(), eventId, requestBody, sendUpdates: "none" })
-    : await calendar.events.insert({ calendarId: CALENDAR_ID.value(), requestBody, sendUpdates: "none" });
-  return response.data.id;
+    ? await calendar.events.update({ calendarId, eventId, requestBody, sendUpdates: "none" })
+    : await calendar.events.insert({ calendarId, requestBody, sendUpdates: "none" });
+  return { eventId: response.data.id || eventId, calendarId };
 }
 
-async function deleteCalendarEvent(eventId) {
+async function deleteCalendarEvent(eventId, calendarId = "") {
   if (!eventId) return;
   try {
     const connected = await connectedGoogle();
     if (!connected) return;
-    await google.calendar({ version: "v3", auth: connected.client }).events.delete({
-      calendarId: CALENDAR_ID.value(), eventId, sendUpdates: "none"
-    });
+    const config = await calendarConfig(connected);
+    const targetCalendar = calendarId || config.primaryCalendarId;
+    if (!targetCalendar) return;
+    await google.calendar({ version: "v3", auth: connected.client }).events.delete({ calendarId: targetCalendar, eventId, sendUpdates: "none" });
   } catch (error) {
-    console.error("Calendar delete failed", error);
+    if (![404, 410].includes(error?.code)) console.error("Calendar delete failed", error);
   }
+}
+
+async function findCustomer(data) {
+  if (data.email) {
+    const match = await db.collection("customers").where("email", "==", data.email).limit(1).get();
+    if (!match.empty) return match.docs[0].ref;
+  }
+  if (data.phone) {
+    const match = await db.collection("customers").where("phone", "==", data.phone).limit(1).get();
+    if (!match.empty) return match.docs[0].ref;
+  }
+  return db.collection("customers").doc();
 }
 
 export const getPublicBookingConfig = onCall({ region: REGION, enforceAppCheck: false }, async () => {
@@ -313,7 +366,7 @@ export const getPublicBookingConfig = onCall({ region: REGION, enforceAppCheck: 
     bookingWindowDays: config.bookingWindowDays,
     serviceAreas: config.serviceAreas,
     note: config.note,
-    services
+    services: services.filter(service => publicServiceIds.has(service.id))
   };
 });
 
@@ -321,6 +374,7 @@ export const listBookingAvailability = onCall({ region: REGION, secrets: GOOGLE_
   await rateLimit(request, "availability", 30, 10);
   const date = text(request.data?.date, 10);
   const serviceId = text(request.data?.serviceId, 30);
+  if (!publicServiceIds.has(serviceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
   return { date, slots: await availableSlots(date, serviceId) };
 });
 
@@ -328,7 +382,9 @@ export const submitBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SEC
   await rateLimit(request, "booking", 6, 30);
   const input = request.data || {};
   if (input.website) throw new HttpsError("invalid-argument", "Unable to submit.");
-  const service = serviceById(text(input.serviceId, 30));
+  const requestedServiceId = text(input.serviceId, 30);
+  if (!publicServiceIds.has(requestedServiceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
+  const service = serviceById(requestedServiceId);
   const data = {
     customerName: text(input.customerName, 160),
     phone: cleanPhone(input.phone),
@@ -346,7 +402,7 @@ export const submitBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SEC
     notes: text(input.notes, 1500),
     bookingDate: text(input.bookingDate, 10),
     bookingTime: text(input.bookingTime, 5),
-    bookingEndTime: text(input.bookingEndTime, 5),
+    bookingEndTime: "",
     serviceId: service.id,
     serviceName: service.name,
     estimatedFromPrice: service.price,
@@ -357,6 +413,8 @@ export const submitBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SEC
   if (!data.customerName || !data.phone || !data.email || !data.address || !data.vehicleMake || !data.vehicleModel || !data.bookingDate || !data.bookingTime) {
     throw new HttpsError("invalid-argument", "Complete the required booking details.");
   }
+  const requestedStart = parseLocal(data.bookingDate, data.bookingTime);
+  data.bookingEndTime = requestedStart.plus({ minutes: service.durationMinutes }).toFormat("HH:mm");
 
   const options = await availableSlots(data.bookingDate, data.serviceId);
   if (!options.some(slot => slot.start === data.bookingTime)) {
@@ -373,20 +431,23 @@ export const submitBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SEC
       endTime: data.bookingEndTime,
       requestId: requestReference.id,
       status: "pending",
+      serverVerified: true,
       createdAt: FieldValue.serverTimestamp()
     });
     transaction.create(requestReference, {
       ...data,
       lockId: lockReference.id,
+      serverVerified: true,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp()
     });
   });
 
-  let eventId = null;
+  let eventId = "";
   try {
-    eventId = await createCalendarEvent({ ...data, requestId: requestReference.id, serviceName: `PENDING — ${service.name}` });
-    if (eventId) await requestReference.set({ calendarEventId: eventId }, { merge: true });
+    const calendarResult = await createCalendarEvent({ ...data, requestId: requestReference.id, serviceName: `PENDING — ${service.name}` });
+    eventId = calendarResult.eventId;
+    if (eventId) await requestReference.set({ calendarEventId: eventId, calendarId: calendarResult.calendarId, calendarSyncStatus: "pending-hold-synced", calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });
   } catch (error) {
     console.error("Pending calendar hold failed", error);
   }
@@ -514,8 +575,9 @@ export const approveBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SE
   batch.set(db.doc(`bookingLocks/${item.lockId}`), { status: "confirmed", jobId: jobReference.id, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   await batch.commit();
 
-  const eventId = await createCalendarEvent({ ...job, jobId: jobReference.id }, item.calendarEventId);
-  if (eventId) await jobReference.set({ calendarEventId: eventId }, { merge: true });
+  const calendarResult = await createCalendarEvent({ ...job, jobId: jobReference.id }, item.calendarEventId || "", item.calendarId || "");
+  const eventId = calendarResult.eventId;
+  if (eventId) await jobReference.set({ calendarEventId: eventId, calendarId: calendarResult.calendarId, calendarSyncStatus: "synced", calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });
   const config = await getSettings();
   const emails = await notifyConfirmed(job, config);
   await reference.set({ confirmationEmailStatus: emails }, { merge: true });
@@ -528,7 +590,7 @@ export const declineBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SE
   const snapshot = await reference.get();
   if (!snapshot.exists) throw new HttpsError("not-found", "Booking request not found.");
   const item = snapshot.data();
-  await deleteCalendarEvent(item.calendarEventId);
+  await deleteCalendarEvent(item.calendarEventId, item.calendarId);
   const batch = db.batch();
   batch.set(reference, { status: "declined", reviewedAt: FieldValue.serverTimestamp() }, { merge: true });
   if (item.lockId) batch.delete(db.doc(`bookingLocks/${item.lockId}`));
@@ -570,7 +632,7 @@ export const createManualBooking = onCall({ region: REGION, secrets: GOOGLE_SECR
     mode: "booking",
     source: "hq-manual"
   };
-  if (!data.customerName || !data.email || !data.phone || !data.bookingDate || !data.bookingTime) {
+  if (!data.customerName || !data.phone || !data.bookingDate || !data.bookingTime) {
     throw new HttpsError("invalid-argument", "Complete the booking details.");
   }
   const start = parseLocal(data.bookingDate, data.bookingTime);
@@ -582,27 +644,30 @@ export const createManualBooking = onCall({ region: REGION, secrets: GOOGLE_SECR
     }
   }
 
-  const customerReference = db.collection("customers").doc();
+  const customerReference = await findCustomer(data);
+  const existingCustomer = await customerReference.get();
   const jobReference = db.collection("jobs").doc();
   const vehicle = [data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" ");
   const lockReference = db.doc(`bookingLocks/${bookingLockId(data.bookingDate, data.bookingTime)}`);
   const parts = data.customerName.split(/\s+/);
   const batch = db.batch();
   batch.set(customerReference, {
-    firstName: parts.shift() || data.customerName,
-    lastName: parts.join(" "),
-    customerName: data.customerName,
+    ...(existingCustomer.exists ? {} : {
+      firstName: parts.shift() || data.customerName,
+      lastName: parts.join(" "),
+      customerName: data.customerName,
+      customerType: "standard",
+      preferredContact: "email",
+      createdAt: FieldValue.serverTimestamp()
+    }),
     phone: data.phone,
     email: data.email,
     address: data.address,
     area: data.area,
     lastVehicle: vehicle,
     lastJobStatus: "Booked",
-    customerType: "standard",
-    preferredContact: "email",
-    createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp()
-  });
+  }, { merge: true });
   batch.set(jobReference, { ...data, customerId: customerReference.id, vehicle, createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
   batch.set(lockReference, {
     date: data.bookingDate,
@@ -611,24 +676,36 @@ export const createManualBooking = onCall({ region: REGION, secrets: GOOGLE_SECR
     status: "confirmed",
     jobId: jobReference.id,
     source: "hq-manual",
+    serverVerified: true,
     createdAt: FieldValue.serverTimestamp()
   });
   await batch.commit();
 
-  const eventId = await createCalendarEvent({ ...data, vehicle, jobId: jobReference.id });
-  if (eventId) await jobReference.set({ calendarEventId: eventId }, { merge: true });
+  const calendarResult = await createCalendarEvent({ ...data, vehicle, jobId: jobReference.id });
+  const eventId = calendarResult.eventId;
+  if (eventId) await jobReference.set({ calendarEventId: eventId, calendarId: calendarResult.calendarId, calendarSyncStatus: "synced", calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });
   const emails = await notifyConfirmed({ ...data, vehicle }, await getSettings());
   return { jobId: jobReference.id, eventId, emails };
 });
 
 export const getGoogleCalendarStatus = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
   requireOwner(request);
-  const snapshot = await db.doc("integrations/google").get();
-  return {
-    connected: snapshot.exists && Boolean(snapshot.data().refreshToken),
-    email: snapshot.data()?.email || "",
-    connectedAt: snapshot.data()?.connectedAt?.toDate?.()?.toISOString?.() || null
-  };
+  const connected = await connectedGoogle();
+  if (!connected) return { connected: false, email: "", calendars: [], selectedCalendarIds: [], primaryCalendarId: "", healthy: false };
+  try {
+    const config = await calendarConfig(connected);
+    return {
+      connected: true,
+      email: connected.email,
+      connectedAt: connected.data.connectedAt?.toDate?.()?.toISOString?.() || null,
+      calendars: config.rows.map(row => ({ id: row.id, name: row.summaryOverride || row.summary || row.id, primary: Boolean(row.primary), accessRole: row.accessRole || "reader", writable: ["owner", "writer"].includes(row.accessRole) })),
+      selectedCalendarIds: config.selectedCalendarIds,
+      primaryCalendarId: config.primaryCalendarId,
+      healthy: Boolean(config.selectedCalendarIds.length && config.primaryCalendarId)
+    };
+  } catch (error) {
+    return { connected: true, email: connected.email, calendars: [], selectedCalendarIds: [], primaryCalendarId: "", healthy: false, reason: "google-api-error", error: text(error?.message, 500) };
+  }
 });
 
 export const startGoogleCalendarConnect = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
@@ -682,7 +759,17 @@ export const syncJobToCalendar = onCall({ region: REGION, secrets: GOOGLE_SECRET
   const snapshot = await reference.get();
   if (!snapshot.exists) throw new HttpsError("not-found", "Job not found.");
   const job = { jobId: snapshot.id, ...snapshot.data() };
-  const eventId = await createCalendarEvent(job, job.calendarEventId);
-  if (eventId) await reference.set({ calendarEventId: eventId, calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });
-  return { eventId };
+  if (["Cancelled", "Archived"].includes(job.status)) {
+    await deleteCalendarEvent(job.calendarEventId, job.calendarId || job.sourceCalendarId || "");
+    await reference.set({ calendarSyncStatus: "cancelled", calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });
+    return { eventId: "", calendarId: job.calendarId || job.sourceCalendarId || "", cancelled: true };
+  }
+  try {
+    const calendarResult = await createCalendarEvent(job, job.calendarEventId || "", job.calendarId || job.sourceCalendarId || "");
+    await reference.set({ calendarEventId: calendarResult.eventId, calendarId: calendarResult.calendarId, calendarSyncStatus: "synced", calendarSyncedAt: FieldValue.serverTimestamp(), calendarSyncError: FieldValue.delete() }, { merge: true });
+    return calendarResult;
+  } catch (error) {
+    await reference.set({ calendarSyncStatus: "failed", calendarSyncError: text(error?.message, 500), calendarSyncAttemptedAt: FieldValue.serverTimestamp() }, { merge: true });
+    throw new HttpsError("internal", `Calendar sync failed: ${text(error?.message, 300)}`);
+  }
 });

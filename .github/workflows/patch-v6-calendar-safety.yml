@@ -1,0 +1,91 @@
+name: Patch V6 Calendar Safety
+
+on:
+  push:
+    branches:
+      - launch-hardening-2026-08
+    paths:
+      - ".github/workflows/patch-v6-calendar-safety.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: launch-hardening-2026-08
+
+      - name: Harden V6 Calendar and public booking
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('functions/launch-v6.js')
+          s = p.read_text()
+
+          def sub_once(pattern, replacement, label, flags=0):
+              global s
+              updated, count = re.subn(pattern, replacement, s, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f'{label} target count={count}')
+              s = updated
+
+          sub_once(
+              r'const allowed = new Set\(rows\.map\(row => row\.id\)\);\n(\s*)const configured =',
+              'const allowed = new Set(rows.map(row => row.id));\n  const writableIds = new Set(rows.filter(row => ["owner", "writer"].includes(row.accessRole)).map(row => row.id));\n  const configured =',
+              'writable calendar set'
+          )
+
+          sub_once(
+              r'const primaryCalendarId = selectedCalendarIds\.includes\(requestedPrimary\)\s*\? requestedPrimary\s*:\s*selectedCalendarIds\[0\] \|\| rows\[0\]\?\.id \|\| "primary";',
+              'const primaryCalendarId = selectedCalendarIds.includes(requestedPrimary) && writableIds.has(requestedPrimary)\n    ? requestedPrimary\n    : selectedCalendarIds.find(id => writableIds.has(id)) || "";',
+              'writable primary selection'
+          )
+
+          sub_once(
+              r'(console\.error\("V6 Calendar freebusy failed", error\);\s*)return \[\];',
+              r'\1throw new HttpsError("unavailable", "Google Calendar availability could not be verified. Please try again shortly.");',
+              'fail closed FreeBusy'
+          )
+
+          sub_once(
+              r'(const calendarId = existingCalendarId \|\| config\.primaryCalendarId;\n)',
+              r'\1  if (!calendarId) throw new HttpsError("failed-precondition", "No writable primary Google Calendar is selected for Apex.");\n',
+              'require writable primary'
+          )
+
+          sub_once(
+              r'\];\n\nconst defaults = \{',
+              '];\nconst publicServiceIds = new Set(["deep", "full", "tradie", "seats"]);\n\nconst defaults = {',
+              'public service set'
+          )
+
+          sub_once(
+              r'(export const listBookingAvailabilityV6[\s\S]*?const serviceId = text\(request\.data\?\.serviceId, 30\);\n)',
+              r'\1  if (!publicServiceIds.has(serviceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");\n',
+              'public availability service guard'
+          )
+
+          sub_once(
+              r'(export const submitBookingRequestV6[\s\S]*?if \(input\.website\) throw new HttpsError\("invalid-argument", "Unable to submit\."\);\n)\s*const service = serviceById\(text\(input\.serviceId, 30\)\);',
+              r'\1  const requestedServiceId = text(input.serviceId, 30);\n  if (!publicServiceIds.has(requestedServiceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");\n  const service = serviceById(requestedServiceId);',
+              'public submit service guard'
+          )
+
+          p.write_text(s)
+          PY
+
+      - name: Validate patched Functions
+        run: npm --prefix functions install && npm --prefix functions run lint
+
+      - name: Commit patch
+        run: |
+          git config user.name "BradApexNZ"
+          git config user.email "brad@apexdetailers.co.nz"
+          git add functions/launch-v6.js
+          git commit -m "Harden V6 Google Calendar availability and writes"
+          git push origin HEAD:launch-hardening-2026-08

@@ -1,22 +1,23 @@
-import { copyFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-function publishApexPwaAssets() {
+function apexHqV6ParserCompat() {
   return {
-    name: "publish-apex-pwa-assets",
-    closeBundle() {
-      copyFileSync(
-        resolve(process.cwd(), "assets/apex-logo-official.svg"),
-        resolve(process.cwd(), "dist/apex-logo-official.svg")
+    name: "apex-hq-v6-parser-compat",
+    enforce: "pre",
+    transform(code, id) {
+      if (!id.endsWith("/src/hq-v6.jsx")) return null;
+      return code.replace(
+        'String(j.status||"").replace(/\\W+/g,"-").toLowerCase()',
+        'String(j.status||"").trim().toLowerCase().split(" ").filter(Boolean).join("-")'
       );
     }
   };
 }
 
 export default defineConfig({
-  plugins: [react(), publishApexPwaAssets()],
+  plugins: [apexHqV6ParserCompat(), react()],
   server: {
     host: "0.0.0.0"
   },
