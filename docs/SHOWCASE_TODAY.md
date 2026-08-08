@@ -4,12 +4,22 @@ Use this path to demonstrate the strongest, most launch-ready Apex HQ story with
 
 ## Before the showcase
 
-- Use PR #13 / `launch-hardening-2026-08` or its approved preview/production deployment.
-- Confirm the latest build/verification has passed. If GitHub Actions shows `action_required`, approve the run before relying on it as CI evidence.
+- Use the reviewed Firebase preview produced from the current launch candidate, or the approved production deployment after merge.
+- Confirm **Build check**, **Verify Apex HQ** and **Preview Apex Launch** are green for the exact commit being tested.
 - Take a backup from `/tools`.
 - Use a clearly labelled demo/test customer where possible.
 - Turn **Privacy Mode on** before any screen recording or presentation that may reveal real customer, vehicle or revenue information.
 - Keep automated public booking disabled unless the Google/booking Gate B acceptance test has passed.
+
+## First visual sanity check
+
+Before doing anything else on mobile:
+
+1. Open **Overview / Command** and confirm the booking Calendar is **not** rendered underneath the Overview content.
+2. Tap **Calendar** and confirm the Calendar appears there.
+3. Move through two or three other tabs and confirm each tab shows only its own content.
+
+If that fails, stop the showcase and fix the candidate rather than working around it.
 
 ## Recommended 8-minute demo flow
 
@@ -87,7 +97,7 @@ Open `/tools` and show the backup/export and customer-import tools. Explain that
 
 Open `/book` and show the service/pricing experience.
 
-If Gate B is not signed off, do **not** submit a live booking. Explain that Google Calendar/email automation is an optional integration gate and public booking remains disabled until server-side availability and email delivery are verified.
+If Gate B is not signed off, do **not** submit a live booking. Explain that Google Calendar/email automation is an additional integration gate and public booking remains disabled until server-side availability and email delivery are verified.
 
 If Gate B has passed, demonstrate one test request, approval, calendar event and confirmation email.
 
