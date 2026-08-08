@@ -10,12 +10,18 @@ const api = read("src/apex-api.js");
 const backend = read("functions/index.js");
 const rules = read("firestore.v5.rules");
 const storage = read("storage.rules");
-const deployLaunch = read(".github/workflows/deploy-launch-existing.yml");
+const cloudWorkflow = read(".github/workflows/deploy-cloud.yml");
+const hostingWorkflow = read(".github/workflows/deploy-hosting.yml");
 const packageJson = JSON.parse(read("package.json"));
 
 assert("HQ uses consolidated launch UI", hq.includes('/src/hq-v6.jsx'), "hq.html must load hq-v6.jsx");
 assert("Old Google DOM controller is not loaded", !hq.includes("hq-google-calendar.js"), "Calendar must live inside React HQ");
-assert("Old runtime patch stack is not loaded", !hq.includes("hq-production.js") && !hq.includes("hq-final-polish.js") && !hq.includes("hq-booking-controls.js"), "Do not reintroduce competing runtime controllers");
+assert(
+  "Old runtime patch stack is not loaded",
+  !hq.includes("hq-production.js") && !hq.includes("hq-final-polish.js") && !hq.includes("hq-booking-controls.js"),
+  "Do not reintroduce competing runtime controllers"
+);
+assert("Legacy V5 app entry is gone", !fs.existsSync("src/main.jsx") && !fs.existsSync("src/hq-v5.jsx"), "Only the current V6 application entry should remain");
 assert("Launch API uses proven existing endpoints", api.includes('cloudCall("listBookingAvailability")') && api.includes('privateCall("syncJobToCalendar")') && !api.includes('listBookingAvailabilityV6'), "Launch must not depend on blocked new Cloud Run services");
 assert("Public booking fails closed", !api.includes("fallbackAvailability") && !api.includes("fallbackSubmit"), "Do not accept bookings through a direct Firestore fallback");
 assert("Calendar preferences stay outside OAuth credentials", api.includes('doc(db, "settings", "googleCalendar")') && backend.includes('db.doc("settings/googleCalendar")'), "Selected calendars must not require client access to OAuth secrets");
@@ -28,7 +34,8 @@ assert("Public booking duration is server-owned", backend.includes('data.booking
 assert("Booking locks are server verified", backend.includes('serverVerified: true') && backend.includes('if (data.serverVerified !== true) return;'), "Direct Firestore locks must not block real availability");
 assert("Storage rule source is owner-only", !storage.includes("request.auth == null"), "Job photos must remain private");
 assert("Firestore rule source closes public direct booking writes", !rules.includes("validPublicBooking") && !rules.includes("allow read: if true"), "Branch rules must be ready to close legacy anonymous Firestore access");
-assert("Existing endpoint deploy route is authoritative", deployLaunch.includes('functions:getPublicBookingConfig') && deployLaunch.includes('functions:getGoogleCalendarStatus') && !deployLaunch.includes('V6'), "Deployment must update proven services instead of creating new ones");
+assert("Production cloud deploy excludes Storage", cloudWorkflow.includes("functions,firestore:rules") && !cloudWorkflow.includes("functions,firestore:rules,storage"), "Storage IAM must not block Functions or Firestore deployment");
+assert("Hosting deploy is independently gated", hostingWorkflow.includes("Deploy Apex Hosting") && hostingWorkflow.includes("npm run build"), "Frontend deployment must remain independently deployable");
 assert("Photos remain available", hqApp.includes('uploadPhotos') && hqApp.includes('photoCategories'), "Launch retains owner job photo storage");
 assert("Hnry/payment workflow is present", hqApp.includes('Prepare Hnry Invoice') && hqApp.includes('Invoice Sent') && hqApp.includes('paidAmount'), "Jobs need the invoicing/payment workflow");
 assert("Mobile has full navigation path", hqApp.includes('mobileMenu') && hqApp.includes('More'), "Photos, vouchers and settings must be reachable on iPhone");
@@ -37,6 +44,7 @@ assert("Follow-up dates are operational", hqApp.includes('followUpDueDate') && h
 assert("Official PWA logo is published", fs.existsSync("public/apex-logo-official.svg"), "The exact official Apex logo must exist in public output");
 assert("Production cloud automation is enabled", read(".env.production").includes("VITE_APEX_CLOUD_ENABLED=true"), "Production must not silently disable cloud booking");
 assert("Root check script exists", typeof packageJson.scripts?.check === "string", "CI must have a root verification command");
+assert("Storage deploy is explicit", packageJson.scripts?.["deploy:storage"] === "firebase deploy --only storage", "Storage must be an intentional separate deployment");
 
 for (const check of checks) {
   console.log(`${check.ok ? "PASS" : "FAIL"}  ${check.name}${check.ok ? "" : ` — ${check.detail}`}`);
