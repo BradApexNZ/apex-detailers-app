@@ -73,16 +73,37 @@ export const importGoogleCalendarEvents = privateCall("importGoogleCalendarEvent
 export const scanGoogleCalendarProspects = privateCall("scanGoogleCalendarProspects");
 export const saveGoogleCalendarProspect = privateCall("saveGoogleCalendarProspect");
 export const dismissGoogleCalendarProspect = privateCall("dismissGoogleCalendarProspect");
+export const disconnectGoogleCalendar = privateCall("disconnectGoogleCalendar");
 
-export const getGoogleCalendarStatus = apexCloudEnabled
+const readGoogleCalendarStatus = apexCloudEnabled
   ? privateCall("getGoogleCalendarStatus")
   : async () => ({ connected: false, disabled: true, email: "Cloud automation is off" });
+
+let statusPromise = null;
+let statusPromiseStartedAt = 0;
+const STATUS_DEDUPE_MS = 1200;
+
+export const getGoogleCalendarStatus = async ({ force = false } = {}) => {
+  const now = Date.now();
+  if (!force && statusPromise && now - statusPromiseStartedAt < STATUS_DEDUPE_MS) return statusPromise;
+
+  statusPromiseStartedAt = now;
+  statusPromise = readGoogleCalendarStatus().finally(() => {
+    setTimeout(() => {
+      if (Date.now() - statusPromiseStartedAt >= STATUS_DEDUPE_MS) statusPromise = null;
+    }, STATUS_DEDUPE_MS);
+  });
+  return statusPromise;
+};
 
 export const listGoogleCalendars = async () => {
   const status = await getGoogleCalendarStatus();
   return {
     connected: Boolean(status.connected),
+    healthy: Boolean(status.healthy),
     email: status.email || "",
+    error: status.error || "",
+    reason: status.reason || "",
     calendars: Array.isArray(status.calendars) ? status.calendars : [],
     selectedCalendarIds: Array.isArray(status.selectedCalendarIds) ? status.selectedCalendarIds : [],
     primaryCalendarId: status.primaryCalendarId || ""
@@ -102,6 +123,7 @@ export const saveGoogleCalendarSelection = async payload => {
     primaryCalendarId,
     updatedAt: serverTimestamp()
   }, { merge: true });
+  statusPromise = null;
   return { selectedCalendarIds, primaryCalendarId };
 };
 
@@ -109,7 +131,7 @@ export const getCalendarHealth = async () => {
   const status = await getGoogleCalendarStatus();
   return {
     ...status,
-    healthy: Boolean(status.connected && status.primaryCalendarId && status.selectedCalendarIds?.length),
-    reason: status.connected ? (status.primaryCalendarId ? "ok" : "primary-calendar-required") : "not-connected"
+    healthy: Boolean(status.healthy ?? (status.connected && status.primaryCalendarId && status.selectedCalendarIds?.length)),
+    reason: status.reason || (status.connected ? (status.primaryCalendarId ? "ok" : "primary-calendar-required") : "not-connected")
   };
 };
