@@ -1,412 +1,386 @@
-/* Apex HQ — final mobile product polish. Visual-only overrides. */
+/* Apex HQ — mobile product polish. Visual-only overrides; business logic stays in V6. */
 @media (max-width: 900px) {
   :root {
-    --apex-mobile-bg: #0a0b0c;
-    --apex-mobile-surface: #111315;
-    --apex-mobile-surface-2: #15181b;
-    --apex-mobile-line: rgba(255,255,255,.09);
-    --apex-mobile-muted: #9da2a7;
-    --apex-mobile-yellow: #f0c514;
+    --m-bg: #090a0b;
+    --m-surface: #111315;
+    --m-raised: #171a1d;
+    --m-line: rgba(255,255,255,.085);
+    --m-line-strong: rgba(255,255,255,.13);
+    --m-text: #f5f5f1;
+    --m-muted: #93999f;
+    --m-yellow: #efc414;
+    --m-yellow-soft: rgba(239,196,20,.11);
+    --m-danger: #df6a74;
+    --m-success: #65b884;
   }
 
   html, body, #root, .shell, .workspace {
-    background: var(--apex-mobile-bg) !important;
+    width: 100%;
+    min-height: 100%;
+    background: var(--m-bg) !important;
   }
 
-  body {
-    overflow-x: hidden !important;
-  }
+  body { overflow-x: hidden !important; }
+  .workspace { margin-left: 0 !important; }
+  .shell > aside { display: none; }
 
+  /* Compact app header */
   .top {
     position: sticky !important;
     top: 0 !important;
-    min-height: auto !important;
-    padding: 16px 18px 14px !important;
+    z-index: 24 !important;
     display: grid !important;
-    grid-template-columns: minmax(0,1fr) auto !important;
-    gap: 12px 14px !important;
-    align-items: start !important;
-    background: rgba(10,11,12,.94) !important;
-    border-bottom: 1px solid var(--apex-mobile-line) !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    min-height: 0 !important;
+    padding: 14px 16px 13px !important;
+    border-bottom: 1px solid var(--m-line) !important;
+    background: rgba(9,10,11,.96) !important;
+    box-shadow: none !important;
     backdrop-filter: blur(18px) !important;
   }
 
-  .top > div:first-child {
-    min-width: 0 !important;
+  .top > div:first-child { min-width: 0 !important; }
+  .top .eyebrow {
+    display: block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    color: #bca32a !important;
+    font-size: 8px !important;
+    line-height: 1.2 !important;
+    font-weight: 800 !important;
+    letter-spacing: .14em !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   .top h1 {
-    margin: 7px 0 0 !important;
-    font-size: 30px !important;
+    margin: 5px 0 0 !important;
+    color: var(--m-text) !important;
+    font-size: 26px !important;
     line-height: 1 !important;
-    letter-spacing: -.045em !important;
-    font-weight: 780 !important;
-  }
-
-  .top .eyebrow {
-    display: block !important;
-    color: var(--apex-mobile-yellow) !important;
-    font-size: 9px !important;
-    letter-spacing: .18em !important;
+    font-weight: 760 !important;
+    letter-spacing: -.04em !important;
   }
 
   .topActions,
   .top > div:last-child {
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
-    gap: 8px !important;
-    width: min(330px, 52vw) !important;
+    grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+    gap: 7px !important;
+    width: 100% !important;
   }
 
   .topActions button,
   .top > div:last-child button {
-    min-height: 44px !important;
-    padding: 9px 12px !important;
-    border-radius: 11px !important;
-    font-size: 11px !important;
-    font-weight: 850 !important;
+    min-height: 38px !important;
+    padding: 7px 8px !important;
+    border: 1px solid var(--m-line) !important;
+    border-radius: 10px !important;
+    background: var(--m-raised) !important;
+    color: #dfe1de !important;
     box-shadow: none !important;
+    font-size: 10px !important;
+    font-weight: 780 !important;
+    line-height: 1 !important;
   }
 
   .topActions button:last-child,
   .top > div:last-child button:last-child {
-    grid-column: 1 / -1 !important;
+    grid-column: auto !important;
+    border-color: rgba(239,196,20,.28) !important;
+    background: var(--m-yellow) !important;
+    color: #15140d !important;
   }
 
   .workspace > main {
     width: 100% !important;
-    padding: 20px 16px 118px !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 18px 14px calc(96px + env(safe-area-inset-bottom)) !important;
   }
 
-  .intro {
-    margin: 0 0 18px !important;
-  }
-
+  /* Page headings */
+  .intro, .sectionLead { margin: 0 0 15px !important; }
+  .sectionLead { display: grid !important; gap: 10px !important; }
+  .intro .eyebrow { font-size: 8px !important; letter-spacing: .15em !important; }
   .intro h2 {
-    margin: 7px 0 8px !important;
-    font-size: 38px !important;
+    margin: 6px 0 7px !important;
+    color: var(--m-text) !important;
+    font-size: 31px !important;
     line-height: 1 !important;
-    letter-spacing: -.055em !important;
+    font-weight: 750 !important;
+    letter-spacing: -.045em !important;
   }
-
   .intro p {
     margin: 0 !important;
-    max-width: 620px !important;
-    color: var(--apex-mobile-muted) !important;
-    font-size: 15px !important;
-    line-height: 1.55 !important;
+    color: var(--m-muted) !important;
+    font-size: 13px !important;
+    line-height: 1.48 !important;
   }
 
+  /* Dashboard */
   .command {
     display: grid !important;
     grid-template-columns: 1fr !important;
-    gap: 12px !important;
-  }
-
-  .command > div,
-  .command > article {
-    min-height: 0 !important;
-    padding: 22px !important;
-    border-radius: 18px !important;
-    border: 1px solid var(--apex-mobile-line) !important;
-    background: var(--apex-mobile-surface) !important;
-  }
-
-  .command > div {
-    padding-top: 24px !important;
-    border-color: rgba(240,197,20,.24) !important;
-  }
-
-  .command > div::before {
-    width: 36px !important;
-    height: 3px !important;
-    margin-bottom: 18px !important;
-  }
-
-  .command h2 {
-    margin: 6px 0 12px !important;
-    font-size: 45px !important;
-    line-height: .98 !important;
-    letter-spacing: -.06em !important;
-  }
-
-  .command p {
-    margin: 0 0 18px !important;
-    font-size: 14px !important;
-  }
-
-  .command button {
-    width: auto !important;
-    min-height: 44px !important;
-    border-radius: 11px !important;
-  }
-
-  .stats {
-    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
     gap: 10px !important;
-    margin: 12px 0 !important;
   }
-
-  .stats > article {
-    min-height: 92px !important;
-    padding: 15px !important;
-    border-radius: 14px !important;
-    background: var(--apex-mobile-surface) !important;
-  }
-
-  .stats b {
-    margin-top: 10px !important;
-    font-size: 25px !important;
-  }
-
-  .panel,
-  .empty,
-  .request,
-  .customerGrid > article,
-  .settings > section,
-  .calendarSettings {
-    border-radius: 18px !important;
-    border-color: var(--apex-mobile-line) !important;
-    background: var(--apex-mobile-surface) !important;
+  .command > div, .command > article {
+    min-height: 0 !important;
+    padding: 18px !important;
+    border: 1px solid var(--m-line) !important;
+    border-radius: 15px !important;
+    background: var(--m-surface) !important;
     box-shadow: none !important;
   }
-
-  .empty {
-    min-height: 150px !important;
-    padding: 30px 20px !important;
-    display: grid !important;
-    place-items: center !important;
-    align-content: center !important;
-    gap: 10px !important;
-    font-size: 15px !important;
+  .command > div { border-color: rgba(239,196,20,.22) !important; }
+  .command > div::before {
+    width: 30px !important;
+    height: 2px !important;
+    margin-bottom: 13px !important;
+    background: var(--m-yellow) !important;
   }
-
-  .empty > b {
-    font-size: 22px !important;
+  .command h2 {
+    margin: 5px 0 10px !important;
+    font-size: 36px !important;
+    line-height: .98 !important;
+    letter-spacing: -.055em !important;
   }
+  .command > article h3 { margin: 7px 0 !important; font-size: 21px !important; }
+  .command p { margin: 0 0 14px !important; color: var(--m-muted) !important; font-size: 13px !important; }
+  .heroActions { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 7px !important; }
+  .command button, .heroActions button { width: 100% !important; min-height: 39px !important; border-radius: 9px !important; font-size: 10px !important; }
 
-  .calendarSettings {
-    margin-top: 14px !important;
-    padding: 16px !important;
-    gap: 12px !important;
-  }
-
-  .integration {
-    margin: 0 !important;
-    padding: 14px !important;
-    border-radius: 12px !important;
-  }
-
-  .integration b {
-    font-size: 15px !important;
-  }
-
-  .integration span {
-    margin-top: 4px !important;
-    font-size: 12px !important;
-  }
-
-  .detailActions {
+  .stats {
     display: grid !important;
     grid-template-columns: repeat(2,minmax(0,1fr)) !important;
     gap: 8px !important;
+    margin: 10px 0 !important;
   }
-
-  .detailActions button,
-  .calendarSettings button,
-  .importButton {
-    min-height: 44px !important;
-    padding: 10px 12px !important;
-    border-radius: 10px !important;
-    border: 1px solid var(--apex-mobile-line) !important;
-    background: var(--apex-mobile-surface-2) !important;
-    color: #f2f2ef !important;
-    font-size: 11px !important;
-    font-weight: 780 !important;
+  .stats > article {
+    min-height: 82px !important;
+    padding: 13px 14px !important;
+    border: 1px solid var(--m-line) !important;
+    border-radius: 12px !important;
+    background: #0f1113 !important;
+    box-shadow: none !important;
   }
+  .stats span { font-size: 9px !important; }
+  .stats b { margin-top: 8px !important; font-size: 23px !important; }
 
-  .calendarSettings .detailActions button:first-child:not(.googleDisconnectButton) {
-    background: var(--apex-mobile-yellow) !important;
-    color: #17150d !important;
-    border-color: transparent !important;
+  /* Reusable surfaces */
+  .panel, .empty, .request, .customerGrid > article, .settings > section,
+  .calendarSettings, .job, .voucherGrid > article {
+    border: 1px solid var(--m-line) !important;
+    border-radius: 14px !important;
+    background: var(--m-surface) !important;
+    box-shadow: none !important;
   }
-
-  .googleDisconnectButton {
-    grid-column: 1 / -1 !important;
-    color: #ffbfc4 !important;
-    border-color: rgba(216,91,102,.34) !important;
-    background: rgba(216,91,102,.10) !important;
+  .panel, .request, .customerGrid > article, .settings > section { padding: 15px !important; }
+  .empty {
+    min-height: 108px !important;
+    padding: 18px !important;
+    display: grid !important;
+    place-items: center !important;
+    align-content: center !important;
+    gap: 6px !important;
+    color: var(--m-muted) !important;
+    font-size: 13px !important;
   }
+  .empty > b { font-size: 19px !important; }
 
-  .calendarChoice {
+  .cards, .customerGrid, .settings, .voucherGrid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
     gap: 9px !important;
   }
 
-  .calendarChoice > label {
-    grid-template-columns: 24px minmax(0,1fr) 26px !important;
-    gap: 11px !important;
-    padding: 13px !important;
-    border-radius: 12px !important;
-    border-color: var(--apex-mobile-line) !important;
-    background: #0d0f11 !important;
+  .customerActions {
+    display: grid !important;
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 7px !important;
+    width: 100% !important;
+  }
+  .customerActions > button, .customerActions .importButton {
+    width: 100% !important;
+    min-height: 40px !important;
+    margin: 0 !important;
   }
 
-  .calendarChoice > label span b {
-    font-size: 14px !important;
-  }
-
-  .calendarChoice small {
-    font-size: 11px !important;
-  }
-
-  .customerGrid,
-  .cards,
-  .settings {
-    grid-template-columns: 1fr !important;
-    gap: 10px !important;
-  }
-
-  .customerGrid > article,
-  .request,
-  .settings > section,
-  .panel {
-    padding: 17px !important;
-  }
+  .customerGrid header i { width: 36px !important; height: 36px !important; border-radius: 9px !important; }
+  .customerGrid h3 { font-size: 16px !important; }
+  .customerGrid p { margin: 10px 0 !important; font-size: 12px !important; }
+  .customerGrid footer { padding-top: 10px !important; font-size: 11px !important; }
 
   .job {
-    grid-template-columns: 34px minmax(0,1fr) !important;
-    gap: 10px !important;
-    padding: 13px !important;
-    border-radius: 13px !important;
+    grid-template-columns: 32px minmax(0,1fr) !important;
+    gap: 9px !important;
+    padding: 12px !important;
+  }
+  .job > i { width: 32px !important; height: 32px !important; border-radius: 8px !important; }
+  .job > div:nth-of-type(2), .job > strong, .job > .statusPill { grid-column: 2 !important; }
+  .statusPill { justify-self: start !important; padding: 6px 8px !important; font-size: 9px !important; }
+
+  /* Calendar */
+  .calendar { gap: 7px !important; }
+  .calendarSettings {
+    display: grid !important;
+    gap: 11px !important;
+    margin-top: 12px !important;
+    padding: 14px !important;
+  }
+  .integration {
+    margin: 0 !important;
+    padding: 12px 13px !important;
+    border-radius: 10px !important;
+    border-width: 1px !important;
+  }
+  .integration b { font-size: 14px !important; }
+  .integration span { margin-top: 3px !important; font-size: 11px !important; }
+  .integration.connected {
+    border-color: rgba(101,184,132,.30) !important;
+    background: rgba(101,184,132,.08) !important;
+  }
+  .detailActions {
+    display: grid !important;
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 7px !important;
+  }
+  .detailActions button, .calendarSettings button, .importButton,
+  .customerActions > button, .sectionLead > button {
+    min-height: 40px !important;
+    padding: 8px 10px !important;
+    border: 1px solid var(--m-line-strong) !important;
+    border-radius: 9px !important;
+    background: var(--m-raised) !important;
+    color: #e8e9e6 !important;
+    box-shadow: none !important;
+    font-size: 10px !important;
+    font-weight: 780 !important;
+    text-align: center !important;
+  }
+  .calendarSettings .detailActions button:first-child:not(.googleDisconnectButton),
+  .customerActions > button, .sectionLead > button {
+    border-color: rgba(239,196,20,.28) !important;
+    background: var(--m-yellow) !important;
+    color: #16140c !important;
+  }
+  .googleDisconnectButton {
+    grid-column: 1 / -1 !important;
+    color: #ffc0c5 !important;
+    border-color: rgba(223,106,116,.30) !important;
+    background: rgba(223,106,116,.08) !important;
+  }
+  .calendarSettings .muted { margin: 0 !important; font-size: 11px !important; line-height: 1.45 !important; }
+  .calendarChoice { gap: 7px !important; }
+  .calendarChoice > label {
+    grid-template-columns: 22px minmax(0,1fr) 24px !important;
+    gap: 9px !important;
+    padding: 11px !important;
+    border: 1px solid var(--m-line) !important;
+    border-radius: 10px !important;
+    background: #0d0f11 !important;
+  }
+  .calendarChoice > label span b { font-size: 13px !important; }
+  .calendarChoice small { font-size: 10px !important; }
+  .calendarChoice input[type="checkbox"], .calendarChoice input[type="radio"] { width: 18px !important; height: 18px !important; }
+
+  /* Forms and modals */
+  .modalBack { padding: 7px !important; align-items: end !important; }
+  .modal, .modalWide {
+    width: 100% !important;
+    max-height: 92dvh !important;
+    padding: 16px !important;
+    border: 1px solid var(--m-line-strong) !important;
+    border-radius: 18px 18px 10px 10px !important;
+    background: #101214 !important;
+  }
+  .modal > header h2 { font-size: 19px !important; }
+  .formGrid { grid-template-columns: 1fr !important; gap: 3px !important; }
+  .wide { grid-column: auto !important; }
+  input, select, textarea,
+  .settings input, .settings select,
+  .modalForm input, .modalForm select, .modalForm textarea {
+    min-height: 44px !important;
+    border: 1px solid var(--m-line-strong) !important;
+    border-radius: 9px !important;
+    background: #0b0d0f !important;
+    font-size: 16px !important;
   }
 
+  /* Bottom app dock */
   .mobile {
+    position: fixed !important;
     left: 10px !important;
     right: 10px !important;
-    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    bottom: max(9px, env(safe-area-inset-bottom)) !important;
     z-index: 40 !important;
     display: grid !important;
     grid-template-columns: repeat(6,minmax(0,1fr)) !important;
-    gap: 3px !important;
-    padding: 6px !important;
+    gap: 2px !important;
+    padding: 5px !important;
     overflow: visible !important;
-    border: 1px solid var(--apex-mobile-line) !important;
-    border-radius: 18px !important;
-    background: rgba(12,14,16,.96) !important;
-    box-shadow: 0 18px 45px rgba(0,0,0,.34) !important;
-    backdrop-filter: blur(20px) !important;
+    border: 1px solid var(--m-line-strong) !important;
+    border-radius: 16px !important;
+    background: rgba(12,14,16,.97) !important;
+    box-shadow: 0 16px 36px rgba(0,0,0,.34) !important;
+    backdrop-filter: blur(18px) !important;
   }
-
   .mobile button {
     min-width: 0 !important;
-    min-height: 54px !important;
-    padding: 7px 4px !important;
+    min-height: 52px !important;
+    padding: 5px 2px !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 3px !important;
-    border-radius: 12px !important;
-    color: #92979d !important;
-    background: transparent !important;
-  }
-
-  .mobile button.active {
-    color: #fff !important;
-    background: rgba(240,197,20,.12) !important;
-    box-shadow: inset 0 0 0 1px rgba(240,197,20,.12) !important;
-  }
-
-  .mobile button i {
-    display: none !important;
-  }
-
-  .mobile button small {
-    font-size: 10px !important;
-    line-height: 1 !important;
-    font-weight: 760 !important;
-    color: inherit !important;
-  }
-
-  .mobile button:last-child::before {
-    content: "•••";
-    display: block;
-    margin-bottom: 1px;
-    font-size: 14px;
-    line-height: .6;
-    letter-spacing: 2px;
-  }
-
-  .modalBack {
-    padding: 8px !important;
-    align-items: end !important;
-  }
-
-  .modal,
-  .modalWide {
-    width: 100% !important;
-    max-height: 92dvh !important;
-    padding: 18px !important;
-    border-radius: 20px 20px 12px 12px !important;
-  }
-
-  .formGrid {
-    grid-template-columns: 1fr !important;
-    gap: 5px !important;
-  }
-
-  .wide {
-    grid-column: auto !important;
-  }
-
-  input, select, textarea,
-  .settings input, .settings select,
-  .modalForm input, .modalForm select, .modalForm textarea {
-    min-height: 46px !important;
+    gap: 4px !important;
+    border: 0 !important;
     border-radius: 10px !important;
-    font-size: 16px !important;
+    background: transparent !important;
+    color: #858b91 !important;
+  }
+  .mobile button.active {
+    background: var(--m-yellow-soft) !important;
+    color: var(--m-yellow) !important;
+    box-shadow: inset 0 0 0 1px rgba(239,196,20,.12) !important;
+  }
+  .mobile button i {
+    display: block !important;
+    width: auto !important;
+    color: inherit !important;
+    font-size: 0 !important;
+    line-height: 1 !important;
+    font-style: normal !important;
+  }
+  .mobile button i::before { font-size: 16px !important; font-weight: 700 !important; }
+  .mobile button:nth-child(1) i::before { content: "◆"; }
+  .mobile button:nth-child(2) i::before { content: "▱"; }
+  .mobile button:nth-child(3) i::before { content: "□"; }
+  .mobile button:nth-child(4) i::before { content: "▣"; }
+  .mobile button:nth-child(5) i::before { content: "●"; }
+  .mobile button:nth-child(6) i::before { content: "•••"; font-size: 12px !important; letter-spacing: 1px; }
+  .mobile button small {
+    color: inherit !important;
+    font-size: 8px !important;
+    line-height: 1 !important;
+    font-weight: 720 !important;
   }
 
   .toast {
     left: 12px !important;
     right: 12px !important;
-    bottom: 90px !important;
+    bottom: calc(82px + env(safe-area-inset-bottom)) !important;
+    padding: 11px 13px !important;
     text-align: center !important;
+    font-size: 12px !important;
   }
 }
 
-@media (max-width: 560px) {
-  .top {
-    grid-template-columns: 1fr !important;
-  }
-
-  .topActions,
-  .top > div:last-child {
-    width: 100% !important;
-    grid-template-columns: repeat(3,minmax(0,1fr)) !important;
-  }
-
-  .topActions button:last-child,
-  .top > div:last-child button:last-child {
-    grid-column: auto !important;
-  }
-
-  .topActions button,
-  .top > div:last-child button {
-    min-height: 40px !important;
-    padding: 8px 7px !important;
-    font-size: 10px !important;
-  }
-
-  .workspace > main {
-    padding-top: 17px !important;
-  }
-
-  .intro h2 {
-    font-size: 34px !important;
-  }
-
-  .command h2 {
-    font-size: 40px !important;
-  }
+@media (max-width: 390px) {
+  .top { padding-left: 12px !important; padding-right: 12px !important; }
+  .workspace > main { padding-left: 11px !important; padding-right: 11px !important; }
+  .topActions button, .top > div:last-child button { font-size: 9px !important; }
+  .intro h2 { font-size: 29px !important; }
+  .command h2 { font-size: 33px !important; }
 }
