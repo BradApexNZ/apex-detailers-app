@@ -2,8 +2,11 @@ name: Launch Reliability Hardening
 
 on:
   push:
-    branches: [prelaunch-professional-cleanup]
-    paths: [.github/workflows/phase1-hardening.yml]
+    branches:
+      - prelaunch-professional-cleanup
+    paths:
+      - ".github/workflows/phase1-hardening.yml"
+      - "scripts/apply-launch-hardening.mjs"
 
 permissions:
   contents: write
@@ -12,245 +15,27 @@ jobs:
   harden:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout launch candidate
+        uses: actions/checkout@v4
         with:
           ref: prelaunch-professional-cleanup
-      - uses: actions/setup-node@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Apply Phase 1 and Phase 2 reliability fixes
-        run: |
-          node <<'NODE'
-          const fs=require('fs');
-          const hqPath='src/hq-v6.jsx';
-          const fnPath='functions/index.js';
-          let s=fs.readFileSync(hqPath,'utf8');
-          let f=fs.readFileSync(fnPath,'utf8');
-          const replace=(src,a,b,label)=>{if(!src.includes(a))throw new Error(`Missing target: ${label}`);return src.replace(a,b)};
 
-          // Phase 1: visible realtime-data failures.
-          s=replace(s,
-          'import{addDoc,collection,doc,getDocs,onSnapshot,serverTimestamp,setDoc}from"firebase/firestore";',
-          'import{addDoc,arrayUnion,collection,doc,getDocs,onSnapshot,serverTimestamp,setDoc}from"firebase/firestore";',
-          'firestore imports');
+      - name: Apply reliability fixes
+        run: node scripts/apply-launch-hardening.mjs
 
-          s=replace(s,
-          'const[user,setUser]=useState(null),[ready,setReady]=useState(false),[authBusy,setAuthBusy]=useState(false),[authError,setAuthError]=useState(""),[unlocked,setUnlocked]=useState(!isDeviceLockEnabled()||isSessionUnlocked()),[tab,setTab]=useState("dashboard"),[customers,setCustomers]=useState([]),[jobs,setJobs]=useState([]),[requests,setRequests]=useState([]),[inquiries,setInquiries]=useState([]),[vouchers,setVouchers]=useState([]),[settings,setSettings]=useState(defaultBookingSettings),[manual,setManual]=useState(false),[manualPreset,setManualPreset]=useState(null),[customerModal,setCustomerModal]=useState(false),[selectedCustomer,setSelectedCustomer]=useState(null),[mobileMenu,setMobileMenu]=useState(false),[quoteModal,setQuoteModal]=useState(false),[voucherModal,setVoucherModal]=useState(false),[selectedJob,setSelectedJob]=useState(null),[busy,setBusy]=useState(false),[toast,setToast]=useState("");',
-          'const[user,setUser]=useState(null),[ready,setReady]=useState(false),[authBusy,setAuthBusy]=useState(false),[authError,setAuthError]=useState(""),[unlocked,setUnlocked]=useState(!isDeviceLockEnabled()||isSessionUnlocked()),[tab,setTab]=useState("dashboard"),[customers,setCustomers]=useState([]),[jobs,setJobs]=useState([]),[requests,setRequests]=useState([]),[inquiries,setInquiries]=useState([]),[vouchers,setVouchers]=useState([]),[settings,setSettings]=useState(defaultBookingSettings),[manual,setManual]=useState(false),[manualPreset,setManualPreset]=useState(null),[customerModal,setCustomerModal]=useState(false),[selectedCustomer,setSelectedCustomer]=useState(null),[mobileMenu,setMobileMenu]=useState(false),[quoteModal,setQuoteModal]=useState(false),[voucherModal,setVoucherModal]=useState(false),[selectedJob,setSelectedJob]=useState(null),[busy,setBusy]=useState(false),[toast,setToast]=useState(""),[dataError,setDataError]=useState("");',
-          'app state');
-
-          s=replace(s,
-          'useEffect(()=>{if(!owner)return;const stops=[onSnapshot(collection(db,"customers"),s=>setCustomers(s.docs.map(d=>({id:d.id,...d.data()})))),onSnapshot(collection(db,"jobs"),s=>setJobs(s.docs.map(d=>({id:d.id,...d.data()})))),onSnapshot(collection(db,"bookingRequests"),s=>setRequests(s.docs.map(d=>({id:d.id,...d.data()})))),onSnapshot(collection(db,"inquiries"),s=>setInquiries(s.docs.map(d=>({id:d.id,...d.data()})))),onSnapshot(collection(db,"vouchers"),s=>setVouchers(s.docs.map(d=>({id:d.id,...d.data()})))),onSnapshot(doc(db,"settings","booking"),s=>s.exists()&&setSettings({...defaultBookingSettings,...s.data()}))];return()=>stops.forEach(stop=>stop())},[owner]);',
-          'useEffect(()=>{if(!owner)return;setDataError("");const fail=label=>err=>{console.error(`Apex HQ ${label} listener failed`,err);setDataError(`Live ${label} data could not be loaded. Check your connection and refresh Apex HQ.`)};const stops=[onSnapshot(collection(db,"customers"),s=>setCustomers(s.docs.map(d=>({id:d.id,...d.data()}))),fail("customer")),onSnapshot(collection(db,"jobs"),s=>setJobs(s.docs.map(d=>({id:d.id,...d.data()}))),fail("job")),onSnapshot(collection(db,"bookingRequests"),s=>setRequests(s.docs.map(d=>({id:d.id,...d.data()}))),fail("booking request")),onSnapshot(collection(db,"inquiries"),s=>setInquiries(s.docs.map(d=>({id:d.id,...d.data()}))),fail("inbox")),onSnapshot(collection(db,"vouchers"),s=>setVouchers(s.docs.map(d=>({id:d.id,...d.data()}))),fail("voucher")),onSnapshot(doc(db,"settings","booking"),s=>s.exists()&&setSettings({...defaultBookingSettings,...s.data()}),fail("booking settings"))];return()=>stops.forEach(stop=>stop())},[owner]);',
-          'listeners');
-
-          // Phase 2: manual booking response distinguishes a committed booking from Calendar failure.
-          s=replace(s,
-          'async function saveManual(form){setBusy(true);try{await createManualBooking(form);setManual(false);setManualPreset(null);setTab("calendar");notify("Booking created and Calendar sync attempted.")}catch(err){notify(err.message||"Could not create booking.")}setBusy(false)}',
-          'async function saveManual(form){if(busy)return;setBusy(true);try{const result=await createManualBooking(form);setManual(false);setManualPreset(null);setTab("calendar");notify(result?.calendarError?"Booking saved. Calendar sync needs a retry.":form.sourceQuoteId?"Quote converted to booking and Calendar synced.":"Booking created and Calendar synced.")}catch(err){notify(err.message||"Could not create booking.")}finally{setBusy(false)}}',
-          'manual booking save');
-
-          // Phase 2: job save guardrails, status history, and visible Calendar failures.
-          s=replace(s,
-          'async function saveJob(form){setBusy(true);try{await setDoc(doc(db,"jobs",form.id),{status:form.status,total:Number(form.total||0),paidAmount:Number(form.paidAmount||0),invoiceNumber:clean(form.invoiceNumber),bookingDate:form.bookingDate||"",bookingTime:form.bookingTime||"",bookingEndTime:"",followUpDueDate:form.followUpDueDate||"",maintenanceDueDate:form.maintenanceDueDate||"",notes:form.notes||"",updatedAt:serverTimestamp()},{merge:true});if(form.bookingDate&&form.bookingTime&&!["Lead","Quote Requested","Quote Sent","Approved"].includes(form.status)){await syncJobToCalendar({jobId:form.id}).catch(()=>{})}notify("Job updated.")}catch(err){notify(err.message||"Could not update job.")}setBusy(false)}',
-          'async function saveJob(form){if(busy)return;const total=Number(form.total||0),paidAmount=Number(form.paidAmount||0);if(!Number.isFinite(total)||total<0)return notify("Job total must be zero or more.");if(!Number.isFinite(paidAmount)||paidAmount<0)return notify("Paid amount must be zero or more.");if(form.status==="Paid"&&paidAmount<=0)return notify("Enter the paid amount before marking this job Paid.");setBusy(true);try{const original=jobs.find(j=>j.id===form.id),payload={status:form.status,total,paidAmount,invoiceNumber:clean(form.invoiceNumber),bookingDate:form.bookingDate||"",bookingTime:form.bookingTime||"",bookingEndTime:form.bookingEndTime||"",followUpDueDate:form.followUpDueDate||"",maintenanceDueDate:form.maintenanceDueDate||"",notes:form.notes||"",updatedAt:serverTimestamp()};if(original?.status!==form.status)payload.statusHistory=arrayUnion({status:form.status,at:new Date().toISOString()});await setDoc(doc(db,"jobs",form.id),payload,{merge:true});if(form.bookingDate&&form.bookingTime&&!["Lead","Quote Requested","Quote Sent","Approved"].includes(form.status)){try{await syncJobToCalendar({jobId:form.id});notify("Job updated and Calendar synced.")}catch(err){console.error("Calendar sync after job save failed",err);notify("Job saved, but Calendar sync failed. Open Calendar and retry sync.")}}else notify("Job updated.")}catch(err){notify(err.message||"Could not update job.")}finally{setBusy(false)}}',
-          'job save hardening');
-
-          // Phase 1: direct owner writes must not fail silently.
-          s=replace(s,
-          '<button onClick={()=>setDoc(doc(db,"inquiries",i.id),{status:"resolved",updatedAt:serverTimestamp()},{merge:true})}>Mark resolved</button>',
-          '<button disabled={busy} onClick={async()=>{if(busy)return;setBusy(true);try{await setDoc(doc(db,"inquiries",i.id),{status:"resolved",updatedAt:serverTimestamp()},{merge:true});notify("Inquiry marked resolved.")}catch(err){notify(err.message||"Could not resolve inquiry.")}finally{setBusy(false)}}}>Mark resolved</button>',
-          'resolve inquiry');
-
-          s=replace(s,
-          '<input type="checkbox" checked={Boolean(v.used)} onChange={e=>setDoc(doc(db,"vouchers",v.id),{used:e.target.checked,usedDate:e.target.checked?today:"",updatedAt:serverTimestamp()},{merge:true})}/>',
-          '<input type="checkbox" disabled={busy} checked={Boolean(v.used)} onChange={async e=>{if(busy)return;const used=e.target.checked;setBusy(true);try{await setDoc(doc(db,"vouchers",v.id),{used,usedDate:used?today:"",updatedAt:serverTimestamp()},{merge:true});notify(used?"Voucher marked used.":"Voucher marked unused.")}catch(err){notify(err.message||"Could not update voucher.")}finally{setBusy(false)}}}/>',
-          'voucher toggle');
-
-          s=replace(s,
-          '<main>\n {tab==="dashboard"',
-          '<main>{dataError&&<div className="alert" role="alert">{dataError}</div>}\n {tab==="dashboard"',
-          'data error banner');
-
-          // Phase 2: preserve quote identity and commercial data when converting.
-          s=replace(s,
-          'setManualPreset({...q,serviceId:q.packageId,customerName:q.customerName,vehicleMake:q.vehicleMake,vehicleModel:q.vehicleModel,bookingDate:q.bookingDate||"",bookingTime:q.bookingTime||"08:30"});setManual(true)',
-          'setManualPreset({...q,sourceQuoteId:q.id,sourceCustomerId:q.customerId||"",serviceId:q.packageId,quotedTotal:Number(q.total||0),customerName:q.customerName,vehicleMake:q.vehicleMake,vehicleModel:q.vehicleModel,bookingDate:q.bookingDate||"",bookingTime:q.bookingTime||"08:30"});setManual(true)',
-          'quote conversion preset');
-
-          // Phase 1: settings safety.
-          s=replace(s,
-          'function Settings({user,settings,setSettings,notify}){const[pin,setPinValue]=useState("");async function save(){await setDoc(doc(db,"settings","booking"),settings,{merge:true});notify("Booking settings saved.")}',
-          'function Settings({user,settings,setSettings,notify}){const[pin,setPinValue]=useState(""),[saving,setSaving]=useState(false);async function save(){const notice=Number(settings.minimumNoticeHours),windowDays=Number(settings.bookingWindowDays);if(!Number.isFinite(notice)||notice<0||notice>720)return notify("Minimum notice must be between 0 and 720 hours.");if(!Number.isFinite(windowDays)||windowDays<1||windowDays>730)return notify("Booking window must be between 1 and 730 days.");setSaving(true);try{await setDoc(doc(db,"settings","booking"),{...settings,minimumNoticeHours:notice,bookingWindowDays:windowDays},{merge:true});notify("Booking settings saved.")}catch(err){notify(err.message||"Could not save booking settings.")}finally{setSaving(false)}}',
-          'settings save');
-
-          s=replace(s,
-          '<button className="danger" onClick={()=>{disableDeviceLock();notify("Device lock removed.")}}>Remove device lock</button>',
-          '<button className="danger" onClick={()=>{if(!confirm("Remove the device lock from this device? Apex HQ will open without Face ID or PIN until you enable it again."))return;disableDeviceLock();notify("Device lock removed.")}}>Remove device lock</button>',
-          'device lock confirmation');
-
-          s=replace(s,
-          '<button onClick={save}>Save booking settings</button>',
-          '<button onClick={save} disabled={saving}>{saving?"Saving...":"Save booking settings"}</button>',
-          'settings busy');
-
-          // Phase 2 backend: quote conversions reuse the source quote record and server-trust its pricing.
-          const start='export const createManualBooking = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {';
-          const end='\n\nexport const getGoogleCalendarStatus = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {';
-          const a=f.indexOf(start),b=f.indexOf(end,a);
-          if(a<0||b<0)throw new Error('Missing createManualBooking function boundaries');
-          const newCreate=`export const createManualBooking = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
-  requireOwner(request);
-  const input = request.data || {};
-  const sourceQuoteId = text(input.sourceQuoteId, 80);
-  let sourceQuote = null;
-  let sourceQuoteReference = null;
-  if (sourceQuoteId) {
-    sourceQuoteReference = db.doc(\`jobs/\${sourceQuoteId}\`);
-    const quoteSnapshot = await sourceQuoteReference.get();
-    if (!quoteSnapshot.exists) throw new HttpsError("not-found", "The source quote could not be found.");
-    sourceQuote = quoteSnapshot.data();
-    if (!["Lead", "Quote Requested", "Quote Sent", "Approved"].includes(sourceQuote.status)) {
-      throw new HttpsError("failed-precondition", "That quote has already been converted or is no longer active.");
-    }
-  }
-
-  const service = serviceById(text(sourceQuote?.packageId || input.serviceId, 30));
-  const quotedTotal = sourceQuote ? Number(sourceQuote.total) : Number(service.price);
-  if (!Number.isFinite(quotedTotal) || quotedTotal < 0) throw new HttpsError("failed-precondition", "The booking price is invalid.");
-
-  const data = {
-    customerName: text(input.customerName || sourceQuote?.customerName, 160),
-    phone: cleanPhone(input.phone || sourceQuote?.phone),
-    email: cleanEmail(input.email || sourceQuote?.email),
-    address: text(input.address || sourceQuote?.address, 220),
-    area: text(input.area || sourceQuote?.area, 100),
-    vehicleYear: text(input.vehicleYear || sourceQuote?.vehicleYear, 12),
-    vehicleMake: text(input.vehicleMake || sourceQuote?.vehicleMake, 80),
-    vehicleModel: text(input.vehicleModel || sourceQuote?.vehicleModel, 100),
-    rego: text(input.rego || sourceQuote?.rego, 20).toUpperCase(),
-    vehicleType: text(input.vehicleType || sourceQuote?.vehicleType, 30),
-    condition: text(sourceQuote?.condition || input.condition, 30),
-    bookingDate: text(input.bookingDate, 10),
-    bookingTime: text(input.bookingTime, 5),
-    notes: text(input.notes || sourceQuote?.notes, 1500),
-    packageId: service.id,
-    packageName: text(sourceQuote?.packageName || service.name, 120),
-    total: quotedTotal,
-    durationMinutes: Number(sourceQuote?.durationMinutes || service.durationMinutes),
-    selectedAddons: Array.isArray(sourceQuote?.selectedAddons) ? sourceQuote.selectedAddons.slice(0, 30).map(value => text(value, 80)) : [],
-    addonNames: Array.isArray(sourceQuote?.addonNames) ? sourceQuote.addonNames.slice(0, 30).map(value => text(value, 120)) : [],
-    manualAdjustment: Number(sourceQuote?.manualAdjustment || 0),
-    travel: Number(sourceQuote?.travel || 0),
-    manualTotal: sourceQuote?.manualTotal ?? "",
-    status: "Booked",
-    mode: "booking",
-    source: sourceQuote ? "hq-quote-conversion" : "hq-manual",
-    sourceQuoteId: sourceQuoteId || ""
-  };
-  if (!data.customerName || !data.phone || !data.address || !data.vehicleMake || !data.vehicleModel || !data.bookingDate || !data.bookingTime) {
-    throw new HttpsError("invalid-argument", "Complete the customer, address, vehicle, date and time before booking.");
-  }
-
-  const startTime = parseLocal(data.bookingDate, data.bookingTime);
-  data.bookingEndTime = startTime.plus({ minutes: data.durationMinutes }).toFormat("HH:mm");
-  if (!input.overrideConflict) {
-    const slots = await availableSlots(data.bookingDate, data.packageId);
-    if (!slots.some(slot => slot.start === data.bookingTime)) {
-      throw new HttpsError("already-exists", "That time conflicts with Apex HQ or Google Calendar.");
-    }
-  }
-
-  let customerReference;
-  const linkedCustomerId = text(sourceQuote?.customerId || input.sourceCustomerId, 80);
-  if (linkedCustomerId) {
-    const linked = db.doc(\`customers/\${linkedCustomerId}\`);
-    customerReference = (await linked.get()).exists ? linked : await findCustomer(data);
-  } else {
-    customerReference = await findCustomer(data);
-  }
-  const existingCustomer = await customerReference.get();
-  const jobReference = sourceQuoteReference || db.collection("jobs").doc();
-  const vehicle = [data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" ");
-  const lockReference = db.doc(\`bookingLocks/\${bookingLockId(data.bookingDate, data.bookingTime)}\`);
-  const parts = data.customerName.split(/\\s+/);
-  const batch = db.batch();
-  batch.set(customerReference, {
-    ...(existingCustomer.exists ? {} : {
-      firstName: parts.shift() || data.customerName,
-      lastName: parts.join(" "),
-      customerName: data.customerName,
-      customerType: "standard",
-      preferredContact: "email",
-      createdAt: FieldValue.serverTimestamp()
-    }),
-    phone: data.phone,
-    email: data.email,
-    address: data.address,
-    area: data.area,
-    lastVehicle: vehicle,
-    lastJobStatus: "Booked",
-    updatedAt: FieldValue.serverTimestamp()
-  }, { merge: true });
-  batch.set(jobReference, {
-    ...data,
-    customerId: customerReference.id,
-    vehicle,
-    convertedFromQuoteAt: sourceQuote ? FieldValue.serverTimestamp() : FieldValue.delete(),
-    statusHistory: FieldValue.arrayUnion({ status: "Booked", at: new Date().toISOString() }),
-    ...(sourceQuote ? {} : { createdAt: FieldValue.serverTimestamp() }),
-    updatedAt: FieldValue.serverTimestamp()
-  }, { merge: true });
-  batch.set(lockReference, {
-    date: data.bookingDate,
-    startTime: data.bookingTime,
-    endTime: data.bookingEndTime,
-    status: "confirmed",
-    jobId: jobReference.id,
-    source: data.source,
-    serverVerified: true,
-    createdAt: FieldValue.serverTimestamp()
-  }, { merge: true });
-  await batch.commit();
-
-  let eventId = "";
-  let calendarId = "";
-  let calendarError = "";
-  try {
-    const calendarResult = await createCalendarEvent({ ...data, vehicle, jobId: jobReference.id }, sourceQuote?.calendarEventId || "", sourceQuote?.calendarId || "");
-    eventId = calendarResult.eventId;
-    calendarId = calendarResult.calendarId;
-    await jobReference.set({
-      calendarEventId: eventId,
-      calendarId,
-      calendarSyncStatus: eventId ? "synced" : "not-connected",
-      calendarSyncedAt: FieldValue.serverTimestamp(),
-      calendarSyncError: FieldValue.delete()
-    }, { merge: true });
-  } catch (error) {
-    console.error("Manual booking Calendar sync failed after commit", error);
-    calendarError = text(error?.message, 500) || "Calendar sync failed.";
-    await jobReference.set({
-      calendarSyncStatus: "failed",
-      calendarSyncError: calendarError,
-      calendarSyncAttemptedAt: FieldValue.serverTimestamp()
-    }, { merge: true });
-  }
-
-  const emails = await notifyConfirmed({ ...data, vehicle }, await getSettings());
-  return { jobId: jobReference.id, eventId, calendarId, calendarError, emails, convertedQuote: Boolean(sourceQuote) };
-});`;
-          f=f.slice(0,a)+newCreate+f.slice(b);
-
-          fs.writeFileSync(hqPath,s);
-          fs.writeFileSync(fnPath,f);
-          NODE
-      - name: Validate build
+      - name: Validate app build
         run: npm ci && npm run build
+
       - name: Validate Functions
         working-directory: functions
         run: npm ci && npm run lint
-      - name: Commit launch hardening fixes
+
+      - name: Commit hardened launch candidate
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
