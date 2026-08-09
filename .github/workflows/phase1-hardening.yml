@@ -25,8 +25,13 @@ jobs:
         with:
           node-version: 22
 
-      - name: Apply reliability fixes
-        run: node scripts/apply-launch-hardening.mjs
+      - name: Apply reliability fixes once
+        run: |
+          if grep -q 'dataError,setDataError' src/hq-v6.jsx; then
+            echo "Launch hardening already applied."
+          else
+            node scripts/apply-launch-hardening.mjs
+          fi
 
       - name: Validate app build
         run: npm install && npm run build
