@@ -1,8 +1,7 @@
 import { waitForPendingWrites } from "firebase/firestore";
-import { db, offlinePersistenceEnabled } from "./firebase";
+import { db } from "./firebase";
 
 let deferredInstallPrompt = null;
-let statusTimer = null;
 
 function isStandalone() {
   return window.matchMedia("(display-mode: standalone)").matches
@@ -19,14 +18,8 @@ function injectStyles() {
   const style = document.createElement("style");
   style.id = "apex-pwa-styles";
   style.textContent = `
-    .apexConnectionStatus{display:inline-flex;align-items:center;gap:8px;width:auto;max-width:max-content;min-height:34px;padding:0 12px;border:1px solid rgba(255,255,255,.11);border-radius:999px;background:rgba(18,21,25,.92);color:#d4d8dc;font-size:10px;font-weight:900;letter-spacing:.045em;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.28);backdrop-filter:blur(16px)}
-    .apexConnectionStatus::before{content:"";flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:#62c985;box-shadow:0 0 0 4px rgba(98,201,133,.12)}
-    .apexConnectionStatus[data-state="offline"]{color:#ffe993;border-color:rgba(244,201,0,.28);background:rgba(40,34,9,.94)}
-    .apexConnectionStatus[data-state="offline"]::before{background:#f4c900;box-shadow:0 0 0 4px rgba(244,201,0,.12)}
-    .apexConnectionStatus[data-state="syncing"]::before{background:#70a7ff;box-shadow:0 0 0 4px rgba(112,167,255,.12)}
     .apexInstallButton{min-height:36px!important;padding:0 12px!important;font-size:10px!important}
     @media(max-width:720px){
-      .apexConnectionStatus{position:fixed;z-index:44;top:calc(10px + env(safe-area-inset-top));left:14px;right:auto;transform:none;min-height:32px;padding:0 12px;font-size:10px}
       .apexInstallButton{display:none!important}
       .apexNotifyBell{top:calc(8px + env(safe-area-inset-top))!important;right:14px!important}
     }
@@ -41,38 +34,22 @@ function showMessage(message) {
   toast.dataset.apexPwaToast = "true";
   toast.textContent = message;
   document.body.appendChild(toast);
-  window.setTimeout(() => toast.remove(), 6500);
+  window.setTimeout(() => toast.remove(), 4500);
 }
 
-function setConnectionStatus(state, text) {
-  const status = document.querySelector("[data-apex-connection]");
-  if (!status) return;
-  status.dataset.state = state;
-  status.textContent = text;
-}
-
-async function refreshConnectionStatus() {
-  window.clearTimeout(statusTimer);
-
+async function checkConnection() {
   if (!navigator.onLine) {
-    setConnectionStatus("offline", "Apex HQ Offline");
+    showMessage("You're offline. Apex HQ will sync when your connection returns.");
     return;
   }
-
-  setConnectionStatus("syncing", "Apex HQ Syncing");
   try {
     await Promise.race([
       waitForPendingWrites(db),
-      new Promise(resolve => window.setTimeout(resolve, 6000))
+      new Promise(resolve => window.setTimeout(resolve, 4000))
     ]);
-    setConnectionStatus("online", offlinePersistenceEnabled ? "Apex HQ Synced" : "Apex HQ Online");
   } catch {
-    setConnectionStatus("online", "Apex HQ Online");
+    // Firestore already exposes operation errors where they matter. No persistent status UI needed.
   }
-
-  statusTimer = window.setTimeout(() => {
-    if (navigator.onLine) setConnectionStatus("online", "Apex HQ Online");
-  }, 3000);
 }
 
 async function installApp() {
@@ -95,19 +72,13 @@ async function installApp() {
 function ensureControls() {
   injectStyles();
 
+  // Older builds injected a permanent connection badge into the header. Remove it if
+  // a cached service worker or stale DOM leaves one behind; connectivity should stay invisible
+  // while healthy and only surface when the user actually needs to know about a problem.
+  document.querySelectorAll("[data-apex-connection], .apexConnectionStatus").forEach(node => node.remove());
+
   const actions = document.querySelector(".top > div:last-child");
   if (!actions) return;
-
-  let status = document.querySelector("[data-apex-connection]");
-  if (!status) {
-    status = document.createElement("span");
-    status.className = "apexConnectionStatus";
-    status.dataset.apexConnection = "true";
-    status.setAttribute("role", "status");
-    status.setAttribute("aria-live", "polite");
-    actions.prepend(status);
-    refreshConnectionStatus();
-  }
 
   const shouldOfferInstall = !isStandalone() && (Boolean(deferredInstallPrompt) || isIos());
   let install = document.querySelector("[data-apex-install]");
@@ -137,10 +108,13 @@ window.addEventListener("appinstalled", () => {
   showMessage("Apex HQ installed.");
 });
 
-window.addEventListener("online", refreshConnectionStatus);
-window.addEventListener("offline", refreshConnectionStatus);
+window.addEventListener("online", () => {
+  showMessage("Back online. Apex HQ is syncing.");
+  checkConnection();
+});
+window.addEventListener("offline", checkConnection);
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) refreshConnectionStatus();
+  if (!document.hidden) checkConnection();
 });
 
 if ("serviceWorker" in navigator && window.isSecureContext) {
