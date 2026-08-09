@@ -1,0 +1,88 @@
+name: Phase 1 Reliability Hardening
+
+on:
+  push:
+    branches: [prelaunch-professional-cleanup]
+    paths: [.github/workflows/phase1-hardening.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: prelaunch-professional-cleanup
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply reliability fixes
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const p='src/hq-v6.jsx';
+          let s=fs.readFileSync(p,'utf8');
+          const replace=(a,b,label)=>{if(!s.includes(a))throw new Error(`Missing target: ${label}`);s=s.replace(a,b)};
+
+          replace(
+          'const[user,setUser]=useState(null),[ready,setReady]=useState(false),[authBusy,setAuthBusy]=useState(false),[authError,setAuthError]=useState(""),[unlocked,setUnlocked]=useState(!isDeviceLockEnabled()||isSessionUnlocked()),[tab,setTab]=useState("dashboard"),[customers,setCustomers]=useState([]),[jobs,setJobs]=useState([]),[requests,setRequests]=useState([]),[inquiries,setInquiries]=useState([]),[vouchers,setVouchers]=useState([]),[settings,setSettings]=useState(defaultBookingSettings),[manual,setManual]=useState(false),[manualPreset,setManualPreset]=useState(null),[customerModal,setCustomerModal]=useState(false),[selectedCustomer,setSelectedCustomer]=useState(null),[mobileMenu,setMobileMenu]=useState(false),[quoteModal,setQuoteModal]=useState(false),[voucherModal,setVoucherModal]=useState(false),[selectedJob,setSelectedJob]=useState(null),[busy,setBusy]=useState(false),[toast,setToast]=useState("");',
+          'const[user,setUser]=useState(null),[ready,setReady]=useState(false),[authBusy,setAuthBusy]=useState(false),[authError,setAuthError]=useState(""),[unlocked,setUnlocked]=useState(!isDeviceLockEnabled()||isSessionUnlocked()),[tab,setTab]=useState("dashboard"),[customers,setCustomers]=useState([]),[jobs,setJobs]=useState([]),[requests,setRequests]=useState([]),[inquiries,setInquiries]=useState([]),[vouchers,setVouchers]=useState([]),[settings,setSettings]=useState(defaultBookingSettings),[manual,setManual]=useState(false),[manualPreset,setManualPreset]=useState(null),[customerModal,setCustomerModal]=useState(false),[selectedCustomer,setSelectedCustomer]=useState(null),[mobileMenu,setMobileMenu]=useState(false),[quoteModal,setQuoteModal]=useState(false),[voucherModal,setVoucherModal]=useState(false),[selectedJob,setSelectedJob]=useState(null),[busy,setBusy]=useState(false),[toast,setToast]=useState(""),[dataError,setDataError]=useState("");',
+          'app state');
+
+          replace(
+          'useEffect(()=>{if(!owner)return;const stops=[onSnapshot(collection(db,"customers"),s=>setCustomers(s.docs.map(d=>({id:d.id,...d.data()})))),onSnapshot(collection(db,"jobs"),s=>setJobs(s.docs.map(d=>({id:d.id,...d.data()})))),onSnapshot(collection(db,"bookingRequests"),s=>setRequests(s.docs.map(d=>({id:d.id,...d.data()})))),onSnapshot(collection(db,"inquiries"),s=>setInquiries(s.docs.map(d=>({id:d.id,...d.data()})))),onSnapshot(collection(db,"vouchers"),s=>setVouchers(s.docs.map(d=>({id:d.id,...d.data()})))),onSnapshot(doc(db,"settings","booking"),s=>s.exists()&&setSettings({...defaultBookingSettings,...s.data()}))];return()=>stops.forEach(stop=>stop())},[owner]);',
+          'useEffect(()=>{if(!owner)return;setDataError("");const fail=label=>err=>{console.error(`Apex HQ ${label} listener failed`,err);setDataError(`Live ${label} data could not be loaded. Check your connection and refresh Apex HQ.`)};const stops=[onSnapshot(collection(db,"customers"),s=>setCustomers(s.docs.map(d=>({id:d.id,...d.data()}))),fail("customer")),onSnapshot(collection(db,"jobs"),s=>setJobs(s.docs.map(d=>({id:d.id,...d.data()}))),fail("job")),onSnapshot(collection(db,"bookingRequests"),s=>setRequests(s.docs.map(d=>({id:d.id,...d.data()}))),fail("booking request")),onSnapshot(collection(db,"inquiries"),s=>setInquiries(s.docs.map(d=>({id:d.id,...d.data()}))),fail("inbox")),onSnapshot(collection(db,"vouchers"),s=>setVouchers(s.docs.map(d=>({id:d.id,...d.data()}))),fail("voucher")),onSnapshot(doc(db,"settings","booking"),s=>s.exists()&&setSettings({...defaultBookingSettings,...s.data()}),fail("booking settings"))];return()=>stops.forEach(stop=>stop())},[owner]);',
+          'listeners');
+
+          replace(
+          'if(form.bookingDate&&form.bookingTime&&!["Lead","Quote Requested","Quote Sent","Approved"].includes(form.status)){await syncJobToCalendar({jobId:form.id}).catch(()=>{})}notify("Job updated.")',
+          'if(form.bookingDate&&form.bookingTime&&!["Lead","Quote Requested","Quote Sent","Approved"].includes(form.status)){try{await syncJobToCalendar({jobId:form.id});notify("Job updated and Calendar synced.")}catch(err){console.error("Calendar sync after job save failed",err);notify("Job saved, but Calendar sync failed. Open Calendar and retry sync.")}}else notify("Job updated.")',
+          'job calendar sync');
+
+          replace(
+          '<button onClick={()=>setDoc(doc(db,"inquiries",i.id),{status:"resolved",updatedAt:serverTimestamp()},{merge:true})}>Mark resolved</button>',
+          '<button disabled={busy} onClick={async()=>{setBusy(true);try{await setDoc(doc(db,"inquiries",i.id),{status:"resolved",updatedAt:serverTimestamp()},{merge:true});notify("Inquiry marked resolved.")}catch(err){notify(err.message||"Could not resolve inquiry.")}finally{setBusy(false)}}}>Mark resolved</button>',
+          'resolve inquiry');
+
+          replace(
+          '<input type="checkbox" checked={Boolean(v.used)} onChange={e=>setDoc(doc(db,"vouchers",v.id),{used:e.target.checked,usedDate:e.target.checked?today:"",updatedAt:serverTimestamp()},{merge:true})}/>',
+          '<input type="checkbox" disabled={busy} checked={Boolean(v.used)} onChange={async e=>{const used=e.target.checked;setBusy(true);try{await setDoc(doc(db,"vouchers",v.id),{used,usedDate:used?today:"",updatedAt:serverTimestamp()},{merge:true});notify(used?"Voucher marked used.":"Voucher marked unused.")}catch(err){notify(err.message||"Could not update voucher.")}finally{setBusy(false)}}}/>',
+          'voucher toggle');
+
+          replace(
+          '<main>\n {tab==="dashboard"',
+          '<main>{dataError&&<div className="alert" role="alert">{dataError}</div>}\n {tab==="dashboard"',
+          'data error banner');
+
+          replace(
+          'function Settings({user,settings,setSettings,notify}){const[pin,setPinValue]=useState("");async function save(){await setDoc(doc(db,"settings","booking"),settings,{merge:true});notify("Booking settings saved.")}',
+          'function Settings({user,settings,setSettings,notify}){const[pin,setPinValue]=useState(""),[saving,setSaving]=useState(false);async function save(){const notice=Number(settings.minimumNoticeHours),windowDays=Number(settings.bookingWindowDays);if(!Number.isFinite(notice)||notice<0||notice>720)return notify("Minimum notice must be between 0 and 720 hours.");if(!Number.isFinite(windowDays)||windowDays<1||windowDays>730)return notify("Booking window must be between 1 and 730 days.");setSaving(true);try{await setDoc(doc(db,"settings","booking"),{...settings,minimumNoticeHours:notice,bookingWindowDays:windowDays},{merge:true});notify("Booking settings saved.")}catch(err){notify(err.message||"Could not save booking settings.")}finally{setSaving(false)}}',
+          'settings save');
+
+          replace(
+          '<button className="danger" onClick={()=>{disableDeviceLock();notify("Device lock removed.")}}>Remove device lock</button>',
+          '<button className="danger" onClick={()=>{if(!confirm("Remove the device lock from this device? Apex HQ will open without Face ID or PIN until you enable it again."))return;disableDeviceLock();notify("Device lock removed.")}}>Remove device lock</button>',
+          'device lock confirmation');
+
+          replace(
+          '<button onClick={save}>Save booking settings</button>',
+          '<button onClick={save} disabled={saving}>{saving?"Saving...":"Save booking settings"}</button>',
+          'settings busy');
+
+          fs.writeFileSync(p,s);
+          NODE
+      - name: Validate build
+        run: npm ci && npm run build
+      - name: Validate Functions
+        working-directory: functions
+        run: npm ci && npm run lint
+      - name: Commit Phase 1 fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/hq-v6.jsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Harden launch-critical owner workflows"
+          git push origin HEAD:prelaunch-professional-cleanup
