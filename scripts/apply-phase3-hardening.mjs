@@ -163,8 +163,8 @@ if (!source.includes("export const importGoogleCalendarEvents =")) {
         const start = DateTime.fromISO(rawStart, { zone: ZONE.value() }).setZone(ZONE.value());
         const end = DateTime.fromISO(rawEnd, { zone: ZONE.value() }).setZone(ZONE.value());
         if (!start.isValid || !end.isValid) continue;
-        const externalId = crypto.createHash("sha256").update(`${calendarId}:${event.id}`).digest("hex").slice(0, 40);
-        const reference = db.doc(`jobs/google_${externalId}`);
+        const externalId = crypto.createHash("sha256").update(calendarId + ":" + event.id).digest("hex").slice(0, 40);
+        const reference = db.doc("jobs/google_" + externalId);
         const existing = await reference.get();
         const allDay = !event.start?.dateTime;
         const payload = {
