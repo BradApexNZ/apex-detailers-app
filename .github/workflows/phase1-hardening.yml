@@ -29,11 +29,11 @@ jobs:
         run: node scripts/apply-launch-hardening.mjs
 
       - name: Validate app build
-        run: npm ci && npm run build
+        run: npm install && npm run build
 
       - name: Validate Functions
         working-directory: functions
-        run: npm ci && npm run lint
+        run: npm install && npm run lint
 
       - name: Commit hardened launch candidate
         run: |
