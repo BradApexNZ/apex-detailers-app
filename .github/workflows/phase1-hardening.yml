@@ -36,12 +36,11 @@ jobs:
       - name: Validate app build
         run: npm install && npm run build
 
-      - name: Run launch verification
-        run: npm run verify
+      - name: Install Functions dependencies
+        run: npm --prefix functions install
 
-      - name: Validate Functions
-        working-directory: functions
-        run: npm install && npm run lint
+      - name: Run Apex launch checks
+        run: npm run check
 
       - name: Commit hardened launch candidate
         run: |
