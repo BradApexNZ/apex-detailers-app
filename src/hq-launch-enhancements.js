@@ -10,6 +10,8 @@ let selectedDate = null;
 let syncInFlight = false;
 let liveFetchInFlight = false;
 let lastLiveRange = "";
+let googleFeedState = "idle";
+let googleFeedError = "";
 
 const clean = value => String(value || "").trim();
 const isoDate = date => {
@@ -25,7 +27,12 @@ function buttons() {
 
 function buttonByLabel(label) {
   const wanted = label.toLowerCase();
-  return buttons().find(button => clean(button.textContent).toLowerCase() === wanted);
+  // Desktop/hidden V6 navigation includes a two-letter icon inside the button,
+  // so textContent can be "QTQuotes" rather than exactly "Quotes".
+  return buttons().find(button => {
+    const value = clean(button.textContent).toLowerCase();
+    return value === wanted || value.endsWith(wanted);
+  });
 }
 
 function navigateTo(label) {
@@ -33,6 +40,7 @@ function navigateTo(label) {
   if (!target) return;
   closeMoreSheet();
   target.click();
+  target.blur?.();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -63,16 +71,21 @@ function openMoreSheet() {
   document.body.appendChild(back);
 }
 
-// Use one delegated handler instead of binding a React-rendered button that can be
-// replaced on every navigation/render. This makes More reliable on mobile.
+// One delegated listener survives React re-renders and works for the mobile dock.
 document.addEventListener("click", event => {
   const button = event.target.closest?.("button");
   if (!button) return;
-  if (clean(button.textContent).toLowerCase() !== "more") return;
-  if (button.closest("[data-apex-more-sheet]")) return;
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  openMoreSheet();
+  const label = clean(button.textContent).toLowerCase();
+  if (label === "more" && !button.closest("[data-apex-more-sheet]")) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    openMoreSheet();
+    button.blur?.();
+    return;
+  }
+  if (label.includes("save calendar setup") || label.includes("import google events now") || label.includes("refresh health")) {
+    setTimeout(() => fetchLiveGoogleEvents({ force: true }), 900);
+  }
 }, true);
 
 function isCalendarPage() {
@@ -120,13 +133,18 @@ function renderSelected(container) {
   const date = selectedDate || isoDate(new Date());
   const rows = eventsFor(date);
   const dateLabel = new Date(`${date}T12:00:00`).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long" });
-  list.innerHTML = `<div class="apexDayHead"><strong>${dateLabel}</strong><span>${rows.length ? `${rows.length} item${rows.length === 1 ? "" : "s"}` : "Clear"}</span></div>` +
+  const emptyMessage = googleFeedState === "error"
+    ? "Google Calendar could not be loaded, so this day cannot be confirmed clear yet."
+    : googleFeedState === "loading"
+      ? "Loading Google Calendar…"
+      : "No bookings or Google Calendar blocks on this day.";
+  list.innerHTML = `<div class="apexDayHead"><strong>${dateLabel}</strong><span>${rows.length ? `${rows.length} item${rows.length === 1 ? "" : "s"}` : (googleFeedState === "ready" ? "Clear" : "Checking")}</span></div>` +
     (rows.length ? rows.map(job => `
       <article class="apexCalendarEvent ${sourceLabel(job).toLowerCase()}">
         <time>${eventTime(job) || "All day"}</time>
         <div><strong>${eventLabel(job)}</strong><span>${clean(job.address || job.packageName || job.vehicle || job.status || "Booking")}</span></div>
         <em>${sourceLabel(job)}</em>
-      </article>`).join("") : `<div class="apexCalendarEmpty">No bookings or Google Calendar blocks on this day.</div>`);
+      </article>`).join("") : `<div class="apexCalendarEmpty">${emptyMessage}</div>`);
 }
 
 function visibleRange() {
@@ -142,17 +160,25 @@ async function fetchLiveGoogleEvents({ force = false } = {}) {
   if (!isCalendarPage() || liveFetchInFlight) return;
   const range = visibleRange();
   const rangeKey = `${range.startDate}:${range.endDate}`;
-  if (!force && rangeKey === lastLiveRange) return;
+  if (!force && rangeKey === lastLiveRange && googleFeedState === "ready") return;
   liveFetchInFlight = true;
+  googleFeedState = "loading";
+  googleFeedError = "";
+  renderCalendar();
   try {
     const result = await getGoogleCalendarEvents(range);
     googleEvents = Array.isArray(result?.events) ? result.events : [];
     lastLiveRange = rangeKey;
-    renderCalendar();
+    googleFeedState = "ready";
   } catch (error) {
     console.warn("Apex live Google Calendar feed unavailable", error);
+    googleEvents = [];
+    lastLiveRange = "";
+    googleFeedState = "error";
+    googleFeedError = clean(error?.message || "Google Calendar could not be loaded.");
   } finally {
     liveFetchInFlight = false;
+    renderCalendar();
   }
 }
 
@@ -185,12 +211,21 @@ function renderCalendar() {
     </button>`;
   }
 
+  const feedCopy = googleFeedState === "ready"
+    ? `${googleEvents.length} Google event${googleEvents.length === 1 ? "" : "s"} loaded`
+    : googleFeedState === "loading"
+      ? "Loading Google Calendar…"
+      : googleFeedState === "error"
+        ? (googleFeedError || "Google Calendar unavailable")
+        : "Checking Google Calendar…";
+
   container.innerHTML = `
     <section class="apexMonthPanel">
       <header class="apexMonthHead">
         <div><span>LIVE SCHEDULE</span><h2>${monthName}</h2></div>
         <div><button type="button" data-cal-prev aria-label="Previous month">←</button><button type="button" data-cal-today>Today</button><button type="button" data-cal-next aria-label="Next month">→</button></div>
       </header>
+      <div class="apexCalendarFeed ${googleFeedState}"><span>${feedCopy}</span>${googleFeedState === "error" ? '<button type="button" data-cal-retry>Retry</button>' : ""}</div>
       <div class="apexCalWeek"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
       <div class="apexCalGrid">${cells}</div>
       <div class="apexCalendarLegend"><span><i class="apexDot apex"></i>Apex booking</span><span><i class="apexDot google"></i>Google block</span></div>
@@ -216,6 +251,7 @@ function renderCalendar() {
     renderCalendar();
     fetchLiveGoogleEvents({ force: true });
   });
+  container.querySelector("[data-cal-retry]")?.addEventListener("click", () => fetchLiveGoogleEvents({ force: true }));
   container.querySelectorAll("[data-apex-calendar-date]").forEach(button => button.addEventListener("click", () => {
     selectedDate = button.dataset.apexCalendarDate;
     renderCalendar();
@@ -227,10 +263,11 @@ async function opportunisticGoogleSync() {
   if (syncInFlight || !isCalendarPage()) return;
   syncInFlight = true;
   try {
-    // Keep Firestore history in sync, but do not make the live Calendar UI depend on it.
+    // This is only a server-side cache/history sync. The live Calendar UI reads
+    // Google directly and never depends on the cache being complete.
     await importGoogleCalendarEvents({ daysBack: 30, daysForward: 365 });
   } catch (error) {
-    console.warn("Apex Google Calendar history import unavailable", error);
+    console.warn("Apex Google Calendar cache sync unavailable", error);
   } finally {
     syncInFlight = false;
   }
@@ -241,6 +278,8 @@ function ensureCalendar() {
     document.querySelector("[data-apex-month-calendar]")?.remove();
     googleEvents = [];
     lastLiveRange = "";
+    googleFeedState = "idle";
+    googleFeedError = "";
     return;
   }
   if (document.querySelector("[data-apex-month-calendar]")) return;
@@ -267,6 +306,7 @@ function refreshEnhancements() {
 
 new MutationObserver(refreshEnhancements).observe(document.body, { childList: true, subtree: true });
 window.addEventListener("popstate", refreshEnhancements);
+window.addEventListener("apex:calendar-refresh", () => fetchLiveGoogleEvents({ force: true }));
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
     refreshEnhancements();
