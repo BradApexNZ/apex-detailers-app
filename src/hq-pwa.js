@@ -2,6 +2,7 @@ import { waitForPendingWrites } from "firebase/firestore";
 import { db } from "./firebase";
 
 let deferredInstallPrompt = null;
+let reloadingForWorker = false;
 
 function isStandalone() {
   return window.matchMedia("(display-mode: standalone)").matches
@@ -48,7 +49,7 @@ async function checkConnection() {
       new Promise(resolve => window.setTimeout(resolve, 4000))
     ]);
   } catch {
-    // Firestore already exposes operation errors where they matter. No persistent status UI needed.
+    // Firestore exposes operation errors where they matter. Healthy connectivity stays invisible.
   }
 }
 
@@ -69,13 +70,19 @@ async function installApp() {
   showMessage("Use your browser menu and choose Install Apex HQ or Add to Home Screen.");
 }
 
+function removeLegacyConnectionUi() {
+  document.querySelectorAll("[data-apex-connection], .apexConnectionStatus").forEach(node => node.remove());
+  document.querySelectorAll("button,div,span,p").forEach(node => {
+    if (node.children.length === 0 && /^Apex HQ Online$/i.test((node.textContent || "").trim())) {
+      const removable = node.closest("[data-apex-connection],.apexConnectionStatus,button,div");
+      removable?.remove();
+    }
+  });
+}
+
 function ensureControls() {
   injectStyles();
-
-  // Older builds injected a permanent connection badge into the header. Remove it if
-  // a cached service worker or stale DOM leaves one behind; connectivity should stay invisible
-  // while healthy and only surface when the user actually needs to know about a problem.
-  document.querySelectorAll("[data-apex-connection], .apexConnectionStatus").forEach(node => node.remove());
+  removeLegacyConnectionUi();
 
   const actions = document.querySelector(".top > div:last-child");
   if (!actions) return;
@@ -118,10 +125,22 @@ document.addEventListener("visibilitychange", () => {
 });
 
 if ("serviceWorker" in navigator && window.isSecureContext) {
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloadingForWorker) return;
+    reloadingForWorker = true;
+    window.location.reload();
+  });
+
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/apex-hq-sw.js", { scope: "/hq" })
-      .then(registration => registration.update())
-      .catch(error => console.warn("Apex HQ offline shell could not start.", error));
+    navigator.serviceWorker.register("/apex-hq-sw.js?v=4", {
+      scope: "/hq",
+      updateViaCache: "none"
+    })
+      .then(async registration => {
+        await registration.update();
+        if (registration.waiting) registration.waiting.postMessage?.({ type: "SKIP_WAITING" });
+      })
+      .catch(error => console.warn("Apex HQ offline support could not start.", error));
   });
 }
 
