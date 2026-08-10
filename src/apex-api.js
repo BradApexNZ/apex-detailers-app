@@ -24,6 +24,7 @@ export const createManualBooking = privateCall("createManualBooking");
 export const syncJobToCalendar = privateCall("syncJobToCalendar");
 export const submitInquiry = privateCall("submitInquiry");
 export const startGoogleCalendarConnect = privateCall("startGoogleCalendarConnect");
+export const getGoogleCalendarEvents = privateCall("getGoogleCalendarEvents");
 export const importGoogleCalendarEvents = privateCall("importGoogleCalendarEvents");
 export const scanGoogleCalendarProspects = privateCall("scanGoogleCalendarProspects");
 export const saveGoogleCalendarProspect = privateCall("saveGoogleCalendarProspect");
