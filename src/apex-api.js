@@ -14,6 +14,11 @@ const availabilityCall = async payload => { try { return await cloudCall("listBo
 const bookingSubmitCall = async payload => { try { return await cloudCall("submitBookingRequest")(payload); } catch (error) { console.error("Apex booking submission unavailable.", error); throw new Error(error?.message || "Live booking validation is temporarily unavailable. Please contact Apex Detailers directly."); } };
 async function ensureAuthenticatedUser() { await authPersistenceReady; await auth.authStateReady(); const user = auth.currentUser; if (!user) throw new Error("Sign in to Apex HQ again to use cloud tools."); await user.getIdToken(); return user; }
 const privateCall = name => async payload => { try { await ensureAuthenticatedUser(); return await cloudCall(name)(payload); } catch (error) { throw new Error(error?.message || "Apex cloud services are temporarily unavailable."); } };
+const calendarGatewayCall = apexCloudEnabled ? privateCall("listGoogleCalendarsV6") : async payload => {
+  if (payload?.action === "events") return { events: [], calendars: 0 };
+  if (payload?.action === "sync") return { imported: 0, updated: 0, skipped: 0, calendars: 0 };
+  return { connected:false, healthy:false, calendars:[], selectedCalendarIds:[], primaryCalendarId:"" };
+};
 
 export const getPublicBookingConfig = configCall;
 export const listBookingAvailability = availabilityCall;
@@ -24,15 +29,18 @@ export const createManualBooking = privateCall("createManualBooking");
 export const syncJobToCalendar = privateCall("syncJobToCalendar");
 export const submitInquiry = privateCall("submitInquiry");
 export const startGoogleCalendarConnect = privateCall("startGoogleCalendarConnect");
-export const getGoogleCalendarEvents = privateCall("getGoogleCalendarEvents");
-export const importGoogleCalendarEvents = privateCall("importGoogleCalendarEvents");
+// Live Google Calendar reads and manual sync now go through listGoogleCalendarsV6.
+// That function already exists in production, so this avoids requiring a new
+// Cloud Run invoker IAM binding during launch.
+export const getGoogleCalendarEvents = async payload => calendarGatewayCall({ ...(payload || {}), action:"events" });
+export const importGoogleCalendarEvents = async payload => calendarGatewayCall({ ...(payload || {}), action:"sync" });
 export const scanGoogleCalendarProspects = privateCall("scanGoogleCalendarProspects");
 export const saveGoogleCalendarProspect = privateCall("saveGoogleCalendarProspect");
 export const dismissGoogleCalendarProspect = privateCall("dismissGoogleCalendarProspect");
 export const disconnectGoogleCalendar = privateCall("disconnectGoogleCalendar");
 
 const readLegacyGoogleCalendarStatus = apexCloudEnabled ? privateCall("getGoogleCalendarStatus") : async () => ({ connected:false, disabled:true, email:"Cloud automation is off" });
-const readGoogleCalendars = apexCloudEnabled ? privateCall("listGoogleCalendarsV6") : async () => ({ connected:false, healthy:false, calendars:[], selectedCalendarIds:[], primaryCalendarId:"" });
+const readGoogleCalendars = calendarGatewayCall;
 let statusPromise = null;
 let statusPromiseStartedAt = 0;
 const STATUS_DEDUPE_MS = 1200;
