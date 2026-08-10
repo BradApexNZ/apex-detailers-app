@@ -29,31 +29,38 @@ export const saveGoogleCalendarProspect = privateCall("saveGoogleCalendarProspec
 export const dismissGoogleCalendarProspect = privateCall("dismissGoogleCalendarProspect");
 export const disconnectGoogleCalendar = privateCall("disconnectGoogleCalendar");
 
-const readGoogleCalendarStatus = apexCloudEnabled ? privateCall("getGoogleCalendarStatus") : async () => ({ connected:false, disabled:true, email:"Cloud automation is off" });
+const readLegacyGoogleCalendarStatus = apexCloudEnabled ? privateCall("getGoogleCalendarStatus") : async () => ({ connected:false, disabled:true, email:"Cloud automation is off" });
+const readGoogleCalendars = apexCloudEnabled ? privateCall("listGoogleCalendarsV6") : async () => ({ connected:false, healthy:false, calendars:[], selectedCalendarIds:[], primaryCalendarId:"" });
+const saveCalendarSelection = privateCall("saveGoogleCalendarSelectionV6");
 let statusPromise = null;
 let statusPromiseStartedAt = 0;
 const STATUS_DEDUPE_MS = 1200;
+
 export const getGoogleCalendarStatus = async ({ force=false }={}) => {
   const now=Date.now();
   if(!force && statusPromise && now-statusPromiseStartedAt<STATUS_DEDUPE_MS) return statusPromise;
   statusPromiseStartedAt=now;
-  statusPromise=readGoogleCalendarStatus().finally(()=>setTimeout(()=>{ if(Date.now()-statusPromiseStartedAt>=STATUS_DEDUPE_MS) statusPromise=null; },STATUS_DEDUPE_MS));
+  statusPromise=(async()=>{
+    try {
+      return await readGoogleCalendars();
+    } catch {
+      return await readLegacyGoogleCalendarStatus();
+    }
+  })().finally(()=>setTimeout(()=>{ if(Date.now()-statusPromiseStartedAt>=STATUS_DEDUPE_MS) statusPromise=null; },STATUS_DEDUPE_MS));
   return statusPromise;
 };
+
 export const listGoogleCalendars = async () => {
-  const status=await getGoogleCalendarStatus();
+  const status=await getGoogleCalendarStatus({force:true});
   return { connected:Boolean(status.connected), healthy:Boolean(status.healthy), email:status.email||"", error:status.error||"", reason:status.reason||"", calendars:Array.isArray(status.calendars)?status.calendars:[], selectedCalendarIds:Array.isArray(status.selectedCalendarIds)?status.selectedCalendarIds:[], primaryCalendarId:status.primaryCalendarId||"" };
 };
 
-// Calendar preferences are validated server-side against the connected Google account.
-// If the UI has no writable primary selected, the backend automatically chooses the
-// connected account's writable primary calendar and includes it in the selected set.
-const saveCalendarSelectionCall = privateCall("saveGoogleCalendarSelection");
 export const saveGoogleCalendarSelection = async payload => {
-  const result = await saveCalendarSelectionCall(payload || {});
+  const result = await saveCalendarSelection(payload || {});
   statusPromise = null;
   return result;
 };
+
 export const getCalendarHealth = async () => {
   const status=await getGoogleCalendarStatus({force:true});
   return { ...status, healthy:Boolean(status.healthy ?? (status.connected && status.primaryCalendarId && status.selectedCalendarIds?.length)), reason:status.reason || (status.connected ? (status.primaryCalendarId ? "ok" : "primary-calendar-required") : "not-connected") };
