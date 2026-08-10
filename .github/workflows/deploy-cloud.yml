@@ -53,7 +53,7 @@ jobs:
         run: npm run lint
       - name: Deploy Firestore rules
         run: npx firebase-tools@latest deploy --only firestore:rules --project apex-detailers --non-interactive
-      - name: Deploy launch-critical Functions sequentially
+      - name: Deploy existing launch-critical Functions sequentially
         shell: bash
         run: |
           set -euo pipefail
@@ -72,11 +72,6 @@ jobs:
             listGoogleCalendarsV6
             saveGoogleCalendarSelectionV6
             disconnectGoogleCalendar
-            getGoogleCalendarEvents
-            importGoogleCalendarEvents
-            scanGoogleCalendarProspects
-            saveGoogleCalendarProspect
-            dismissGoogleCalendarProspect
           )
           for fn in "${functions[@]}"; do
             echo "::group::Deploy $fn"
@@ -84,3 +79,15 @@ jobs:
             echo "::endgroup::"
             sleep 8
           done
+
+      # These Calendar-import functions are new HTTPS endpoints. Creating a new
+      # public HTTPS function also requires permission to change its Cloud Run
+      # invoker IAM policy. The GitHub deployer currently cannot grant that IAM
+      # binding, so trying to create them makes the entire production deploy fail.
+      # Keep production deploys healthy until github-deployer is granted the
+      # required Cloud Run IAM permission, then move these functions into the
+      # deployment list above.
+      - name: Calendar import functions pending IAM permission
+        run: |
+          echo "Skipping new Calendar import functions until Cloud Run invoker IAM permission is granted to github-deployer."
+          echo "Pending: getGoogleCalendarEvents importGoogleCalendarEvents scanGoogleCalendarProspects saveGoogleCalendarProspect dismissGoogleCalendarProspect"
