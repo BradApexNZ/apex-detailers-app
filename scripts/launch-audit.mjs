@@ -13,18 +13,19 @@ const api = read("src/apex-api.js");
 const backend = read("functions/index.js");
 const rules = read("firestore.v5.rules");
 const storage = read("storage.rules");
+const deviceLock = read("src/device-lock.js");
+const deviceControls = read("src/hq-device-lock-controls.js");
 const cloudWorkflow = read(".github/workflows/deploy-cloud.yml");
 const hostingWorkflow = read(".github/workflows/deploy-hosting.yml");
 const packageJson = JSON.parse(read("package.json"));
 
 assert("HQ uses consolidated launch UI", hq.includes('/src/hq-v6.jsx'), "hq.html must load hq-v6.jsx");
 assert("Final mobile shell loads last", hq.includes('/src/hq-launch-shell.css') && hq.lastIndexOf('/src/hq-launch-shell.css') > hq.lastIndexOf('/src/hq-mobile-dock-fix.css'), "The launch shell must be the final HQ stylesheet authority");
+assert("Premium auth UI is loaded", hq.includes('/src/hq-auth-polish.css') && hq.includes('/src/hq-device-lock-controls.js'), "Login and trusted-device unlock must ship in HQ");
+assert("Trusted-device PIN remains hardened", deviceLock.includes('PIN_LENGTH = 4') && deviceLock.includes('MAX_PIN_FAILURES = 5') && deviceLock.includes('INACTIVITY_LIMIT_MS = 5 * 60 * 1000'), "PIN unlock must retain 4 digits, lockout and inactivity protection");
+assert("PIN setup is reachable in Settings", deviceControls.includes('Set 4-digit PIN') && deviceControls.includes('data-apex-device-lock-card'), "Owner must be able to configure quick unlock on-device");
 assert("Old Google DOM controller is not loaded", !hq.includes("hq-google-calendar.js"), "Calendar must live inside React HQ");
-assert(
-  "Old runtime patch stack is not loaded",
-  !hq.includes("hq-production.js") && !hq.includes("hq-final-polish.js") && !hq.includes("hq-booking-controls.js"),
-  "Do not reintroduce competing runtime controllers"
-);
+assert("Old runtime patch stack is not loaded", !hq.includes("hq-production.js") && !hq.includes("hq-final-polish.js") && !hq.includes("hq-booking-controls.js"), "Do not reintroduce competing runtime controllers");
 assert("Legacy V5 app entry is gone", !fs.existsSync("src/main.jsx") && !fs.existsSync("src/hq-v5.jsx"), "Only the current V6 application entry should remain");
 assert("HQ shell is not precached", !worker.includes('cache.put("/hq"') && !worker.includes('cache.put("/hq.html"'), "A deployed HQ must not resurrect an obsolete HTML shell");
 assert("HQ navigation bypasses browser cache", worker.includes('cache: "no-store"') && pwa.includes('updateViaCache: "none"'), "Service-worker updates and live HQ navigation must fetch fresh code");
@@ -53,10 +54,7 @@ assert("Production cloud automation is enabled", read(".env.production").include
 assert("Root check script exists", typeof packageJson.scripts?.check === "string", "CI must have a root verification command");
 assert("Storage deploy is explicit", packageJson.scripts?.["deploy:storage"] === "firebase deploy --only storage", "Storage must be an intentional separate deployment");
 
-for (const check of checks) {
-  console.log(`${check.ok ? "PASS" : "FAIL"}  ${check.name}${check.ok ? "" : ` — ${check.detail}`}`);
-}
-
+for (const check of checks) console.log(`${check.ok ? "PASS" : "FAIL"}  ${check.name}${check.ok ? "" : ` — ${check.detail}`}`);
 const failures = checks.filter(check => !check.ok);
 if (failures.length) {
   console.error(`\n${failures.length} launch architecture check(s) failed.`);
