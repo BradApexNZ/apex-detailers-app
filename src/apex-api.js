@@ -1,5 +1,6 @@
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { auth, authPersistenceReady, functions } from "./firebase";
+import { auth, authPersistenceReady, db, functions } from "./firebase";
 import { fallbackConfig } from "./public-booking-fallback";
 
 const cloudOverride = import.meta.env.VITE_APEX_CLOUD_ENABLED;
@@ -31,7 +32,6 @@ export const disconnectGoogleCalendar = privateCall("disconnectGoogleCalendar");
 
 const readLegacyGoogleCalendarStatus = apexCloudEnabled ? privateCall("getGoogleCalendarStatus") : async () => ({ connected:false, disabled:true, email:"Cloud automation is off" });
 const readGoogleCalendars = apexCloudEnabled ? privateCall("listGoogleCalendarsV6") : async () => ({ connected:false, healthy:false, calendars:[], selectedCalendarIds:[], primaryCalendarId:"" });
-const saveCalendarSelection = privateCall("saveGoogleCalendarSelectionV6");
 let statusPromise = null;
 let statusPromiseStartedAt = 0;
 const STATUS_DEDUPE_MS = 1200;
@@ -55,10 +55,26 @@ export const listGoogleCalendars = async () => {
   return { connected:Boolean(status.connected), healthy:Boolean(status.healthy), email:status.email||"", error:status.error||"", reason:status.reason||"", calendars:Array.isArray(status.calendars)?status.calendars:[], selectedCalendarIds:Array.isArray(status.selectedCalendarIds)?status.selectedCalendarIds:[], primaryCalendarId:status.primaryCalendarId||"" };
 };
 
+// Calendar choices are ordinary owner settings, not OAuth credentials. This keeps
+// calendar selection independent from the encrypted Google refresh token/secrets.
 export const saveGoogleCalendarSelection = async payload => {
-  const result = await saveCalendarSelection(payload || {});
+  await ensureAuthenticatedUser();
+  const status = await getGoogleCalendarStatus({ force:true });
+  if (!status.connected) throw new Error("Reconnect Google Calendar first.");
+  const calendars = Array.isArray(status.calendars) ? status.calendars : [];
+  const allowed = new Set(calendars.map(row => String(row.id || "")).filter(Boolean));
+  const writable = new Set(calendars.filter(row => row.writable || ["owner","writer"].includes(row.accessRole)).map(row => String(row.id || "")).filter(Boolean));
+  const requested = Array.isArray(payload?.selectedCalendarIds) ? payload.selectedCalendarIds.map(String).filter(id => allowed.has(id)) : [];
+  let selectedCalendarIds = [...new Set(requested)];
+  let primaryCalendarId = String(payload?.primaryCalendarId || "");
+  if (!writable.has(primaryCalendarId)) primaryCalendarId = "";
+  if (!primaryCalendarId) primaryCalendarId = selectedCalendarIds.find(id => writable.has(id)) || calendars.find(row => row.primary && writable.has(String(row.id)))?.id || [...writable][0] || "";
+  if (!primaryCalendarId) throw new Error("Google did not expose a writable calendar for this account.");
+  primaryCalendarId = String(primaryCalendarId);
+  if (!selectedCalendarIds.includes(primaryCalendarId)) selectedCalendarIds.unshift(primaryCalendarId);
+  await setDoc(doc(db, "settings", "googleCalendar"), { selectedCalendarIds, primaryCalendarId, updatedAt: serverTimestamp() }, { merge:true });
   statusPromise = null;
-  return result;
+  return { selectedCalendarIds, primaryCalendarId };
 };
 
 export const getCalendarHealth = async () => {
