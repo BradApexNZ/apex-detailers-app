@@ -47,6 +47,24 @@
     ],
     "headers": [
       {
+        "source": "/hq",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache,no-store,must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/hq.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache,no-store,must-revalidate"
+          }
+        ]
+      },
+      {
         "source": "/apex-hq-sw.js",
         "headers": [
           {
@@ -91,7 +109,7 @@
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "no-cache"
+            "value": "no-cache,no-store,must-revalidate"
           }
         ]
       }
