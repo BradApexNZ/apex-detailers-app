@@ -1,6 +1,8 @@
 export * from "./index.js";
 export * from "./calendar-prospects.js";
-export * from "./calendar-import.js";
+// index.js already exports importGoogleCalendarEvents. Do not star-export
+// calendar-import.js as well, because duplicate star exports make that name
+// ambiguous and Firebase then omits it from function discovery.
 export * from "./launch-v6.js";
 export * from "./calendar-settings-v6.js";
 export * from "./public-config-v6.js";
