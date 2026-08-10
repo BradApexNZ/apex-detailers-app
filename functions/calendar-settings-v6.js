@@ -54,20 +54,47 @@ async function calendars(client) {
   }));
 }
 
+function resolvedSelection(rows, data = {}) {
+  const allowed = new Set(rows.map(row => row.id));
+  const writableRows = rows.filter(row => row.writable);
+  const writableIds = new Set(writableRows.map(row => row.id));
+  const configured = Array.isArray(data.selectedCalendarIds)
+    ? [...new Set(data.selectedCalendarIds.map(value => text(value, 300)).filter(id => allowed.has(id)))]
+    : [];
+
+  let selectedCalendarIds = configured.length ? configured : rows.filter(row => row.primary).map(row => row.id);
+  const requestedPrimary = text(data.primaryCalendarId, 300);
+  let primaryCalendarId = selectedCalendarIds.includes(requestedPrimary) && writableIds.has(requestedPrimary)
+    ? requestedPrimary
+    : selectedCalendarIds.find(id => writableIds.has(id)) || "";
+
+  // A stale selection can survive an account switch when a shared calendar (for example
+  // NZ Holidays) exists in both accounts. Always add the current account's writable
+  // primary calendar so Apex cannot be left "connected" but unusable.
+  if (!primaryCalendarId) {
+    const preferredWritable = writableRows.find(row => row.primary) || writableRows[0];
+    if (preferredWritable) {
+      primaryCalendarId = preferredWritable.id;
+      if (!selectedCalendarIds.includes(primaryCalendarId)) selectedCalendarIds = [primaryCalendarId, ...selectedCalendarIds];
+    }
+  }
+
+  return { selectedCalendarIds, primaryCalendarId };
+}
+
 export const listGoogleCalendarsV6 = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
   requireOwner(request);
   const connected = await connection();
   if (!connected) return { connected: false, calendars: [], selectedCalendarIds: [], primaryCalendarId: "" };
   const rows = await calendars(connected.client);
-  const allowed = new Set(rows.map(row => row.id));
-  const configured = Array.isArray(connected.data.selectedCalendarIds) ? connected.data.selectedCalendarIds.filter(id => allowed.has(id)) : [];
-  const selectedCalendarIds = configured.length ? configured : rows.filter(row => row.primary).map(row => row.id);
-  const writableIds = new Set(rows.filter(row => row.writable).map(row => row.id));
-  const requestedPrimary = text(connected.data.primaryCalendarId, 300);
-  const primaryCalendarId = selectedCalendarIds.includes(requestedPrimary) && writableIds.has(requestedPrimary)
-    ? requestedPrimary
-    : selectedCalendarIds.find(id => writableIds.has(id)) || "";
-  return { connected: true, email: connected.data.email || "", calendars: rows, selectedCalendarIds, primaryCalendarId };
+  const selection = resolvedSelection(rows, connected.data);
+  return {
+    connected: true,
+    healthy: Boolean(selection.selectedCalendarIds.length && selection.primaryCalendarId),
+    email: connected.data.email || "",
+    calendars: rows,
+    ...selection
+  };
 });
 
 export const saveGoogleCalendarSelectionV6 = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
@@ -78,13 +105,27 @@ export const saveGoogleCalendarSelectionV6 = onCall({ region: REGION, secrets: G
   const allowed = new Set(rows.map(row => row.id));
   const writable = new Set(rows.filter(row => row.writable).map(row => row.id));
   const requested = Array.isArray(request.data?.selectedCalendarIds) ? request.data.selectedCalendarIds.map(value => text(value, 300)) : [];
-  const selectedCalendarIds = [...new Set(requested.filter(id => allowed.has(id)))];
+  let selectedCalendarIds = [...new Set(requested.filter(id => allowed.has(id)))];
   if (!selectedCalendarIds.length) throw new HttpsError("invalid-argument", "Select at least one Google Calendar.");
   const requestedPrimary = text(request.data?.primaryCalendarId, 300);
-  const primaryCalendarId = selectedCalendarIds.includes(requestedPrimary) && writable.has(requestedPrimary)
+  let primaryCalendarId = selectedCalendarIds.includes(requestedPrimary) && writable.has(requestedPrimary)
     ? requestedPrimary
     : selectedCalendarIds.find(id => writable.has(id)) || "";
-  if (!primaryCalendarId) throw new HttpsError("failed-precondition", "Select at least one Google Calendar that Apex has permission to write to as the primary calendar.");
-  await db.doc("integrations/google").set({ selectedCalendarIds, primaryCalendarId, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-  return { selectedCalendarIds, primaryCalendarId };
+  if (!primaryCalendarId) {
+    const fallback = rows.find(row => row.primary && row.writable) || rows.find(row => row.writable);
+    if (fallback) {
+      primaryCalendarId = fallback.id;
+      if (!selectedCalendarIds.includes(primaryCalendarId)) selectedCalendarIds = [primaryCalendarId, ...selectedCalendarIds];
+    }
+  }
+  if (!primaryCalendarId) throw new HttpsError("failed-precondition", "No writable Google Calendar is available for Apex.");
+
+  const payload = { selectedCalendarIds, primaryCalendarId, updatedAt: FieldValue.serverTimestamp() };
+  const batch = db.batch();
+  // Keep both generations in sync during launch: V6 reads integration state while the
+  // proven booking/import functions read settings/googleCalendar.
+  batch.set(db.doc("integrations/google"), payload, { merge: true });
+  batch.set(db.doc("settings/googleCalendar"), payload, { merge: true });
+  await batch.commit();
+  return { selectedCalendarIds, primaryCalendarId, healthy: true };
 });
