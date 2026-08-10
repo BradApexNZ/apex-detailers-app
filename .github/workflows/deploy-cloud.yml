@@ -72,6 +72,7 @@ jobs:
             listGoogleCalendarsV6
             saveGoogleCalendarSelectionV6
             disconnectGoogleCalendar
+            getGoogleCalendarEvents
             importGoogleCalendarEvents
             scanGoogleCalendarProspects
             saveGoogleCalendarProspect
