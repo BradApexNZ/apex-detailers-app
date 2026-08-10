@@ -1,0 +1,16 @@
+@media(max-width:900px){
+  .mobile{height:auto!important;min-height:52px!important;padding:4px 8px calc(4px + env(safe-area-inset-bottom))!important;background:rgba(7,8,9,.985)!important;border-top:1px solid rgba(255,255,255,.07)!important;backdrop-filter:blur(18px)!important}
+  .mobile button{position:relative!important;height:44px!important;min-height:44px!important;border-radius:10px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:3px!important;color:#8f9498!important;transition:background .16s ease,color .16s ease,transform .16s ease!important}
+  .mobile button:active{transform:scale(.96)!important}
+  .mobile button.active{background:linear-gradient(180deg,rgba(239,196,20,.13),rgba(239,196,20,.055))!important;color:#efc414!important;box-shadow:inset 0 0 0 1px rgba(239,196,20,.16)!important}
+  .mobile button i{font-size:0!important;width:18px!important;height:18px!important;display:grid!important;place-items:center!important;font-style:normal!important;color:currentColor!important}
+  .mobile button i:before{font-size:16px!important;line-height:1!important;font-weight:500!important}
+  .mobile button:nth-child(1) i:before{content:"◆"}
+  .mobile button:nth-child(2) i:before{content:"▱"}
+  .mobile button:nth-child(3) i:before{content:"□"}
+  .mobile button:nth-child(4) i:before{content:"▣"}
+  .mobile button:nth-child(5) i:before{content:"●"}
+  .mobile button:nth-child(7) i:before,.mobile button:last-child i:before{content:"•••";font-size:13px!important;letter-spacing:1px!important}
+  .mobile button small{font-size:7px!important;line-height:1!important;font-weight:760!important;letter-spacing:-.01em!important;color:currentColor!important}
+  .workspace>main{padding-bottom:calc(64px + env(safe-area-inset-bottom))!important}
+}
