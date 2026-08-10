@@ -5,5 +5,6 @@ export * from "./calendar-prospects.js";
 // ambiguous and Firebase then omits it from function discovery.
 export * from "./launch-v6.js";
 export * from "./calendar-settings-v6.js";
+export * from "./calendar-save.js";
 export * from "./public-config-v6.js";
 export * from "./google-disconnect-v6.js";
