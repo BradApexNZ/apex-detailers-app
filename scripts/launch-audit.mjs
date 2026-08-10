@@ -6,6 +6,9 @@ const assert = (name, condition, detail) => checks.push({ name, ok: Boolean(cond
 
 const hq = read("hq.html");
 const hqApp = read("src/hq-v6.jsx");
+const pwa = read("src/hq-pwa.js");
+const worker = read("public/apex-hq-sw.js");
+const firebaseConfig = read("firebase.json");
 const api = read("src/apex-api.js");
 const backend = read("functions/index.js");
 const rules = read("firestore.v5.rules");
@@ -15,6 +18,7 @@ const hostingWorkflow = read(".github/workflows/deploy-hosting.yml");
 const packageJson = JSON.parse(read("package.json"));
 
 assert("HQ uses consolidated launch UI", hq.includes('/src/hq-v6.jsx'), "hq.html must load hq-v6.jsx");
+assert("Final mobile shell loads last", hq.includes('/src/hq-launch-shell.css') && hq.lastIndexOf('/src/hq-launch-shell.css') > hq.lastIndexOf('/src/hq-mobile-dock-fix.css'), "The launch shell must be the final HQ stylesheet authority");
 assert("Old Google DOM controller is not loaded", !hq.includes("hq-google-calendar.js"), "Calendar must live inside React HQ");
 assert(
   "Old runtime patch stack is not loaded",
@@ -22,6 +26,9 @@ assert(
   "Do not reintroduce competing runtime controllers"
 );
 assert("Legacy V5 app entry is gone", !fs.existsSync("src/main.jsx") && !fs.existsSync("src/hq-v5.jsx"), "Only the current V6 application entry should remain");
+assert("HQ shell is not precached", !worker.includes('cache.put("/hq"') && !worker.includes('cache.put("/hq.html"'), "A deployed HQ must not resurrect an obsolete HTML shell");
+assert("HQ navigation bypasses browser cache", worker.includes('cache: "no-store"') && pwa.includes('updateViaCache: "none"'), "Service-worker updates and live HQ navigation must fetch fresh code");
+assert("HQ route is no-store at Firebase", firebaseConfig.includes('"source": "/hq"') && firebaseConfig.includes('"value": "no-cache,no-store,must-revalidate"'), "The /hq rewrite itself must not be browser cached");
 assert("Launch API uses proven existing endpoints", api.includes('cloudCall("listBookingAvailability")') && api.includes('privateCall("syncJobToCalendar")') && !api.includes('listBookingAvailabilityV6'), "Launch must not depend on blocked new Cloud Run services");
 assert("Public booking fails closed", !api.includes("fallbackAvailability") && !api.includes("fallbackSubmit"), "Do not accept bookings through a direct Firestore fallback");
 assert("Calendar preferences stay outside OAuth credentials", api.includes('doc(db, "settings", "googleCalendar")') && backend.includes('db.doc("settings/googleCalendar")'), "Selected calendars must not require client access to OAuth secrets");
