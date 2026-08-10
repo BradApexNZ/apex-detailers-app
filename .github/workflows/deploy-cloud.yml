@@ -80,21 +80,41 @@ jobs:
       - name: Deploy Firestore rules
         run: npx firebase-tools@latest deploy --only firestore:rules --project apex-detailers --non-interactive
 
-      # Firebase deploys every 2nd-gen function in a target concurrently. Apex now has
-      # enough functions to exceed the australia-southeast1 regional CPU quota during
-      # a full deploy, even though steady-state usage is fine. Keep batches deliberately
-      # small so Cloud Run revisions are created within quota.
-      - name: Deploy public booking functions
-        run: npx firebase-tools@latest deploy --only functions:getPublicBookingConfig,functions:getPublicBookingConfigV6,functions:getPublicBookingConfigLaunch,functions:listBookingAvailability,functions:listBookingAvailabilityV6,functions:submitBookingRequest,functions:submitBookingRequestV6 --project apex-detailers --non-interactive
+      - name: Deploy launch-critical Functions sequentially
+        shell: bash
+        run: |
+          set -euo pipefail
 
-      - name: Deploy booking management functions
-        run: npx firebase-tools@latest deploy --only functions:approveBookingRequest,functions:approveBookingRequestV6,functions:declineBookingRequest,functions:declineBookingRequestV6,functions:createManualBooking,functions:createManualBookingV6,functions:submitInquiry --project apex-detailers --non-interactive
+          # Deploy only the endpoints the production app actually calls. The older V6/
+          # Launch duplicates remain untouched for now and are deliberately excluded from
+          # launch deployment because creating many Gen-2 Cloud Run revisions concurrently
+          # exceeds the australia-southeast1 regional CPU quota.
+          functions=(
+            getPublicBookingConfig
+            listBookingAvailability
+            submitBookingRequest
+            approveBookingRequest
+            declineBookingRequest
+            createManualBooking
+            syncJobToCalendar
+            submitInquiry
+            startGoogleCalendarConnect
+            googleCalendarCallback
+            getGoogleCalendarStatus
+            disconnectGoogleCalendar
+            importGoogleCalendarEvents
+            scanGoogleCalendarProspects
+            saveGoogleCalendarProspect
+            dismissGoogleCalendarProspect
+          )
 
-      - name: Deploy Google connection functions
-        run: npx firebase-tools@latest deploy --only functions:startGoogleCalendarConnect,functions:googleCalendarCallback,functions:getGoogleCalendarStatus,functions:disconnectGoogleCalendar,functions:listGoogleCalendars,functions:listGoogleCalendarsV6 --project apex-detailers --non-interactive
-
-      - name: Deploy Google calendar management functions
-        run: npx firebase-tools@latest deploy --only functions:saveGoogleCalendarSelection,functions:saveGoogleCalendarSelectionV6,functions:importGoogleCalendarEvents,functions:syncJobToCalendar,functions:syncJobToCalendarV6,functions:getCalendarHealthV6 --project apex-detailers --non-interactive
-
-      - name: Deploy Calendar prospect functions
-        run: npx firebase-tools@latest deploy --only functions:saveGoogleCalendarProspect,functions:dismissGoogleCalendarProspect,functions:scanGoogleCalendarProspects --project apex-detailers --non-interactive
+          for fn in "${functions[@]}"; do
+            echo "::group::Deploy $fn"
+            npx firebase-tools@latest deploy \
+              --only "functions:${fn}" \
+              --project apex-detailers \
+              --non-interactive
+            echo "::endgroup::"
+            # Give Cloud Run a short window to settle the new revision before the next one.
+            sleep 8
+          done
