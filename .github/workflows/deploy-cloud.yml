@@ -16,7 +16,7 @@ permissions:
   id-token: write
 concurrency:
   group: apex-detailers-cloud
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   deploy-cloud:
     name: Deploy Functions and Firestore Rules
