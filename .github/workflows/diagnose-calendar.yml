@@ -1,0 +1,40 @@
+name: Diagnose Calendar Runtime
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnose-calendar.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: apex-detailers
+          workload_identity_provider: projects/845997886809/locations/global/workloadIdentityPools/github-actions/providers/apex-detailers
+          service_account: github-deployer@apex-detailers.iam.gserviceaccount.com
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+      - name: Read recent Calendar gateway logs
+        run: |
+          set +e
+          echo "=== Firebase Functions logs ==="
+          gcloud functions logs read listGoogleCalendarsV6 \
+            --gen2 \
+            --region=australia-southeast1 \
+            --project=apex-detailers \
+            --limit=80
+          echo "=== Cloud Run error logs ==="
+          gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="listgooglecalendarsv6" AND severity>=ERROR' \
+            --project=apex-detailers \
+            --freshness=2h \
+            --limit=80 \
+            --format='value(timestamp,severity,textPayload,jsonPayload.message,jsonPayload.error.message)'
