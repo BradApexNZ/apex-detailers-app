@@ -1,13 +1,12 @@
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
-import { getGoogleCalendarEvents, importGoogleCalendarEvents } from "./apex-api";
+import { getGoogleCalendarEvents } from "./apex-api";
 
 const SECONDARY_TABS = ["Quotes", "Photos", "Vouchers", "Settings"];
 let jobs = [];
 let googleEvents = [];
 let monthCursor = new Date();
 let selectedDate = null;
-let syncInFlight = false;
 let liveFetchInFlight = false;
 let lastLiveRange = "";
 let googleFeedState = "idle";
@@ -27,8 +26,8 @@ function buttons() {
 
 function buttonByLabel(label) {
   const wanted = label.toLowerCase();
-  // Desktop/hidden V6 navigation includes a two-letter icon inside the button,
-  // so textContent can be "QTQuotes" rather than exactly "Quotes".
+  // V6 nav buttons include their icon text inside the button (for example
+  // "QTQuotes"), so match the visible label at the end of textContent.
   return buttons().find(button => {
     const value = clean(button.textContent).toLowerCase();
     return value === wanted || value.endsWith(wanted);
@@ -71,12 +70,16 @@ function openMoreSheet() {
   document.body.appendChild(back);
 }
 
-// One delegated listener survives React re-renders and works for the mobile dock.
+// Capture the dock tap before React's legacy mobile-menu handler. The real button
+// text is "•••More", not exactly "More", because its icon lives inside the button.
 document.addEventListener("click", event => {
   const button = event.target.closest?.("button");
   if (!button) return;
   const label = clean(button.textContent).toLowerCase();
-  if (label === "more" && !button.closest("[data-apex-more-sheet]")) {
+  const isMoreTrigger = !button.closest("[data-apex-more-sheet]") &&
+    (label === "more" || label.endsWith("more")) &&
+    (button.closest("nav.mobile") || button.closest("aside nav"));
+  if (isMoreTrigger) {
     event.preventDefault();
     event.stopImmediatePropagation();
     openMoreSheet();
@@ -115,7 +118,7 @@ function eventKey(job) {
 
 function allEvents() {
   const merged = new Map();
-  // Firestore first so direct Google data can overwrite stale imported copies.
+  // Firestore first so the direct Google result can replace stale imported copies.
   for (const row of jobs) merged.set(eventKey(row), row);
   for (const row of googleEvents) merged.set(eventKey(row), row);
   return [...merged.values()];
@@ -259,20 +262,6 @@ function renderCalendar() {
   renderSelected(container);
 }
 
-async function opportunisticGoogleSync() {
-  if (syncInFlight || !isCalendarPage()) return;
-  syncInFlight = true;
-  try {
-    // This is only a server-side cache/history sync. The live Calendar UI reads
-    // Google directly and never depends on the cache being complete.
-    await importGoogleCalendarEvents({ daysBack: 30, daysForward: 365 });
-  } catch (error) {
-    console.warn("Apex Google Calendar cache sync unavailable", error);
-  } finally {
-    syncInFlight = false;
-  }
-}
-
 function ensureCalendar() {
   if (!isCalendarPage()) {
     document.querySelector("[data-apex-month-calendar]")?.remove();
@@ -292,7 +281,6 @@ function ensureCalendar() {
   selectedDate ||= isoDate(new Date());
   renderCalendar();
   fetchLiveGoogleEvents({ force: true });
-  opportunisticGoogleSync();
 }
 
 onSnapshot(collection(db, "jobs"), snapshot => {
