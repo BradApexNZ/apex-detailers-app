@@ -1,18 +1,35 @@
 # Apex HQ
 
-A private business operations system and public service showcase for Apex Detailers, built with React, Vite and Firebase.
+A private business operations system and public service/booking surface for Apex Detailers, built with React, Vite and Firebase.
 
 ## Production routes
 
 - `/hq` — private Apex operations centre
-- `/book` — public Apex services and pricing / booking surface
-- `/tools` — private backups, exports and customer-import tools
+- `/book` — public services, pricing and booking surface
+- `/tools` — private backup, export and import utilities
+- `/` — redirects to `/hq`
+
+## Application structure
+
+The production runtime is intentionally small and explicit:
+
+- `hq.html` → `src/hq-v6.jsx` — current private HQ application
+- `booking.html` → `src/booking.jsx` — public booking/service experience
+- `data-tools.html` → `src/data-tools.jsx` — owner-only data utilities
+- `src/apex-api.js` — browser-to-Functions/API integration layer
+- `src/firebase.js` — Firebase client bootstrap, auth persistence and private-route offline cache
+- `functions/` — Firebase Functions and Google Calendar/Gmail integration
+- `firestore.v5.rules` — active Firestore security rules
+- `storage.rules` — active Storage security rules
+- `scripts/launch-audit.mjs` — architecture guardrails used by CI
+
+Old global DOM controllers and V5 application entry points are not part of the production runtime.
 
 ## Launch model
 
 Apex HQ has two separate readiness gates so Google Calendar can remain a feature without becoming a dependency for the core business app.
 
-### Gate A — Apex HQ core launch / showcase
+### Gate A — core HQ / showcase
 
 The private HQ can be launched and showcased when authentication, Firestore, Storage, customers, quotes, jobs, photos, Hnry/payment tracking, follow-ups, vouchers, backups, PWA/mobile behaviour and owner data protection pass acceptance testing.
 
@@ -24,7 +41,7 @@ Automated public booking is an additional integration gate. Only enable/share li
 
 If Calendar or email health is not verified, `/book` may still be used as a service/pricing showcase, but booking submission must remain disabled or fail closed rather than accepting an unverified time.
 
-Production currently declares cloud automation explicitly:
+Production declares cloud automation explicitly:
 
 ```env
 VITE_APEX_CLOUD_ENABLED=true
@@ -90,13 +107,40 @@ npm install
 npm run check
 ```
 
-`npm run check` builds the frontend, lints Functions and runs the launch architecture audit. Do not deploy a candidate when this command fails.
+`npm run check` builds the frontend, validates Functions and runs the launch architecture audit. Do not deploy a candidate when this command fails.
+
+Useful commands:
+
+```bash
+npm run dev             # local Vite development server
+npm run preview         # preview a production build locally
+npm run deploy:cloud    # Functions + Firestore rules
+npm run deploy:hosting  # production Hosting
+npm run deploy:storage  # Storage rules only; intentional separate step
+```
+
+Storage deployment is deliberately separate because Storage IAM should never block Functions, Firestore rules or the frontend release.
+
+## Firebase configuration and secrets
+
+Firebase browser configuration is safe to ship in a web client and is not treated as a server secret. Access control is enforced by authentication and Firebase security rules.
+
+`functions/.env` contains deployable **non-secret** runtime configuration such as timezone, owner IDs and callback URLs. OAuth client secrets and the token-encryption key live in Google Secret Manager and must never be committed to GitHub.
 
 ## Deployment
 
-Follow `docs/DEPLOYMENT.md`. The launch candidate is PR #13 / branch `launch-hardening-2026-08` until merged.
+Follow `docs/DEPLOYMENT.md` and `docs/LAUNCH_CHECKLIST.md`.
 
-## Showcase today
+Normal release flow:
+
+1. Work on a review branch.
+2. Run `npm run check` / CI.
+3. Deploy a Firebase preview channel.
+4. Perform the phone/desktop smoke test.
+5. Merge the reviewed PR to `main`.
+6. Confirm production Hosting and cloud workflows are green.
+
+## Showcase
 
 Use `docs/SHOWCASE_TODAY.md` for the demo path. Keep Privacy Mode enabled whenever real customer information could be visible.
 
@@ -104,7 +148,7 @@ Use `docs/SHOWCASE_TODAY.md` for the demo path. Keep Privacy Mode enabled whenev
 
 - Hnry remains the official invoicing, payment-collection and tax system.
 - Take a full backup from `/tools` before customer imports or major data changes.
-- Firebase and Google secrets must remain outside GitHub source files.
+- OAuth/encryption secrets must remain outside GitHub source files.
 - Owner UID access must remain aligned across frontend, Functions, Firestore and Storage rules.
 - Public booking must fail closed when server-side availability cannot be verified.
-- A repository safety branch named `backup/pre-cleanup-2026-08-03` preserves the pre-cleanup state.
+- A repository safety branch named `backup/pre-cleanup-2026-08-03` preserves the earlier pre-cleanup state.

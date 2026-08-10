@@ -1,0 +1,52 @@
+name: Phase 3 Calendar and Booking Hardening
+
+on:
+  push:
+    branches:
+      - prelaunch-professional-cleanup
+    paths:
+      - ".github/workflows/phase3-hardening.yml"
+      - "scripts/apply-phase3-hardening.mjs"
+
+permissions:
+  contents: write
+
+jobs:
+  harden-phase-3:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout launch candidate
+        uses: actions/checkout@v4
+        with:
+          ref: prelaunch-professional-cleanup
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Apply Phase 3 fixes once
+        run: |
+          if grep -q 'export const importGoogleCalendarEvents' functions/index.js; then
+            echo "Phase 3 hardening already applied."
+          else
+            node scripts/apply-phase3-hardening.mjs
+          fi
+
+      - name: Install app dependencies
+        run: npm install
+
+      - name: Install Functions dependencies
+        run: npm --prefix functions install
+
+      - name: Run Apex launch checks
+        run: npm run check
+
+      - name: Commit Phase 3 launch candidate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add functions/index.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Harden Calendar and public booking launch flows"
+          git push origin HEAD:prelaunch-professional-cleanup

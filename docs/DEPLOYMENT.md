@@ -1,6 +1,4 @@
-# Apex HQ V6 production deployment
-
-This runbook applies to PR #13 / `launch-hardening-2026-08` and then to `main` after the PR is approved and merged.
+# Apex HQ production deployment
 
 Apex has two deployment acceptance gates:
 
@@ -11,58 +9,68 @@ Gate B must not prevent Gate A from being deployed or used. Keep public booking 
 
 ## 1. Verify the candidate
 
+Work from a review branch and pull request. Do not test experimental cleanup directly on `main`.
+
 ```bash
 npm install
 npm run check
 ```
 
-`npm run check` must build the frontend, lint Functions and pass the launch architecture audit. Do not continue when it fails.
+`npm run check` must build the frontend, validate Functions and pass the launch architecture audit. Do not continue when it fails.
 
-GitHub Actions must also show a completed successful verification run. If the workflow shows `action_required` with no jobs, approve/enable that Actions run in GitHub and re-run it before calling CI green.
+The PR must also have successful **Build check**, **Verify Apex HQ** and **Preview Apex Launch** runs before it is considered ready for the owner smoke test.
 
-## 2. Confirm Firebase project
+## 2. Test the Firebase preview
 
-```bash
-firebase login
-firebase use
-```
+Use the Firebase preview URL produced by **Preview Apex Launch** and complete Gate A on phone and desktop before merging.
 
-The selected project must be the production Apex Detailers Firebase project.
+Temporary Firebase preview hosts may need to be added to Firebase Authentication Authorized Domains for Google sign-in. That preview-host limitation does not affect the production Apex domain.
 
-## 3. Confirm server configuration
+## 3. Confirm Firebase project and server configuration
 
-The non-secret Functions configuration is documented in `functions/.env`. Google OAuth secrets must be stored in Firebase/Google Secret Manager and never committed.
+The production project is `apex-detailers`.
+
+The non-secret Functions configuration is documented in `functions/.env`. Google OAuth secrets must remain in Google Secret Manager and must never be committed.
 
 Required secrets for the Google integration:
 
-```bash
-firebase functions:secrets:set GOOGLE_OAUTH_CLIENT_ID
-firebase functions:secrets:set GOOGLE_OAUTH_CLIENT_SECRET
-firebase functions:secrets:set TOKEN_ENCRYPTION_KEY
-```
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- `TOKEN_ENCRYPTION_KEY`
 
-Only set/rotate these when necessary.
+Only set or rotate these when necessary.
 
 ## 4. Take a pre-deploy backup
 
 Open `/tools`, sign in as an authorised owner and download a full backup before production changes or large imports.
 
-## 5. Deploy the production stack
+## 5. Merge the reviewed candidate
+
+Only after the preview smoke test passes, merge the reviewed pull request into `main`.
+
+A push to `main` triggers the normal production workflows:
+
+- **Deploy Apex Detailers** — validates Functions, builds the frontend and deploys Firebase Hosting.
+- **Deploy Apex Cloud** — deploys Functions and Firestore rules when cloud/backend paths change.
+
+Storage rules are intentionally a separate deployment because Storage IAM must never block Functions, Firestore rules or Hosting.
+
+Manual equivalents are:
 
 ```bash
-firebase deploy --only firestore:rules,storage,functions,hosting
+npm run deploy:cloud
+npm run deploy:hosting
+npm run deploy:storage   # only when storage.rules actually needs deployment
 ```
 
-This deploys owner-only Firestore rules, owner-only image Storage rules, Functions and the `/hq`, `/book` and `/tools` hosting routes.
+Do not replace this with one giant `firebase deploy` command. The separation is deliberate containment.
 
 ## 6. Gate A acceptance — core HQ
 
-Do this before any live public-booking test.
-
-1. Open `/hq` on the production domain.
+1. Open `/hq` on the candidate preview, then repeat the critical checks on production after merge.
 2. Sign in as an approved Apex owner.
-3. Confirm owner-only access, PIN masking and quick-lock behaviour.
-4. Confirm Dashboard/Command loads without depending on Google Calendar health.
+3. Confirm Dashboard/Command loads without the Calendar view appearing underneath it.
+4. Confirm Calendar content appears only when Calendar is selected.
 5. Add/edit a labelled test customer.
 6. Create a quote with vehicle, package, condition and add-ons.
 7. Create/associate a job and move it through the operational status pipeline.
@@ -72,7 +80,6 @@ Do this before any live public-booking test.
 11. Check vouchers/referrals and `/tools` backup/export.
 12. Test iPhone navigation/PWA behaviour and desktop Chrome.
 13. Sign out and confirm private records are inaccessible.
-14. Download a post-test backup.
 
 If Gate A passes, Apex HQ is acceptable for private production use and showcase even while Google integration remains disconnected.
 
@@ -113,33 +120,11 @@ For a same-day showcase, Gate A is the required minimum. Use `docs/SHOWCASE_TODA
 
 The `/book` route can be shown as the public service/pricing experience without submitting a real booking if Gate B has not yet been signed off.
 
-## Customer import format
-
-`/tools` accepts an array of customer objects, `{ "customers": [] }`, or `{ "collections": { "customers": [] } }`.
-
-Example:
-
-```json
-[
-  {
-    "firstName": "Jane",
-    "lastName": "Example",
-    "phone": "0210000000",
-    "email": "jane@example.co.nz",
-    "address": "1 Example Street",
-    "area": "Napier",
-    "preferredContact": "text",
-    "customerType": "standard",
-    "notes": "Imported customer"
-  }
-]
-```
-
-Duplicate checks use normalised email, phone and customer/business name. Always review the import result and customer list afterward.
-
 ## Rollback / containment
 
-If Gate A fails, stop the production rollout and fix the launch candidate before relying on HQ operationally.
+If Gate A fails, do not merge the candidate. Fix it on the review branch and deploy a fresh preview.
+
+If a regression is found immediately after production merge, use the previous known-good commit/backup branch as the rollback point and redeploy Hosting. Do not hand-edit generated `dist` files.
 
 If only Gate B fails:
 
@@ -147,4 +132,4 @@ If only Gate B fails:
 2. Keep using the private HQ if Gate A is healthy.
 3. Do not accept automated booking requests until Calendar/email health is restored.
 4. Review Functions and Google integration logs/settings.
-5. Fix in GitHub and redeploy; never hand-edit generated `dist` files.
+5. Fix through GitHub review and redeploy.

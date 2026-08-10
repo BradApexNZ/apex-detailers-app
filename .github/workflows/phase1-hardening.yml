@@ -1,0 +1,33 @@
+name: Launch Reliability Hardening
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout launch candidate
+        uses: actions/checkout@v4
+        with:
+          ref: prelaunch-professional-cleanup
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install app dependencies
+        run: npm install
+
+      - name: Install Functions dependencies
+        run: npm --prefix functions install
+
+      - name: Build Apex HQ
+        run: npm run build
+
+      - name: Run Apex launch checks
+        run: npm run check

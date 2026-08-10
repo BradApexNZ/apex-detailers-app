@@ -1,0 +1,44 @@
+name: Deploy Apex Storage Rules
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - storage.rules
+      - firebase.json
+      - .firebaserc
+      - .github/workflows/deploy-storage.yml
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: apex-detailers-storage
+  cancel-in-progress: false
+
+jobs:
+  deploy-storage-rules:
+    name: Deploy Firebase Storage Rules
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: apex-detailers
+          workload_identity_provider: projects/845997886809/locations/global/workloadIdentityPools/github-actions/providers/apex-detailers
+          service_account: github-deployer@apex-detailers.iam.gserviceaccount.com
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Deploy Firebase Storage rules only
+        run: npx firebase-tools@latest deploy --only storage --project apex-detailers --non-interactive

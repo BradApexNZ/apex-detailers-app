@@ -2,6 +2,18 @@
 
 Apex HQ uses two readiness gates. **Gate A** is required for the private HQ and showcase. **Gate B** is required before enabling automated public booking. Google Calendar remains a feature, but it must not be able to block core HQ use.
 
+## Pre-merge engineering gate
+
+- [ ] Candidate is on a review branch, not directly on `main`.
+- [ ] `npm run check` passes.
+- [ ] GitHub **Build check** passes.
+- [ ] GitHub **Verify Apex HQ** passes.
+- [ ] **Preview Apex Launch** produces a usable Firebase preview.
+- [ ] No obsolete global HQ runtime/controller scripts are loaded by `hq.html`.
+- [ ] The active Firestore rules source is `firestore.v5.rules`.
+- [ ] Storage deploy is separate from Functions/Firestore deployment.
+- [ ] Owner smoke test passes on phone and desktop before merge.
+
 ## Gate A — Core HQ / showcase
 
 ### 1. Service catalogue and quoting
@@ -18,7 +30,6 @@ Apex HQ uses two readiness gates. **Gate A** is required for the private HQ and 
 
 - [ ] Firebase Authentication contains only approved Apex owner accounts.
 - [ ] The same owner UID allow-list is used by V6 frontend, Cloud Functions, Firestore rules and Storage rules.
-- [ ] Firestore rules are deployed from `firestore.v5.rules`.
 - [ ] Firestore public direct booking writes remain closed.
 - [ ] Storage permits approved owners to upload/read/delete job images only.
 - [ ] Image uploads are restricted to supported image types and 10 MB per file.
@@ -27,22 +38,24 @@ Apex HQ uses two readiness gates. **Gate A** is required for the private HQ and 
 ### 3. Core owner workflow
 
 1. Sign in to `/hq` as an approved owner.
-2. Add or edit a customer.
-3. Create a quote with vehicle, package, condition and at least one add-on.
-4. Save/approve the quote and create or associate a booking/job.
-5. Move the job through Booked → In Progress → Completed → Prepare Hnry Invoice → Invoice Sent → Paid → Review Request Sent.
-6. Confirm paid revenue updates correctly.
-7. Add follow-up and maintenance dates.
-8. Upload before/during/after test photos and confirm they stay attached to the correct job.
-9. Create/update a voucher or referral record.
-10. Download a full backup from `/tools`.
+2. Confirm **Overview/Command does not show the bookings Calendar underneath it**.
+3. Tap Calendar and confirm the Calendar appears only there.
+4. Add or edit a customer.
+5. Create a quote with vehicle, package, condition and at least one add-on.
+6. Save/approve the quote and create or associate a booking/job.
+7. Move the job through Booked → In Progress → Completed → Prepare Hnry Invoice → Invoice Sent → Paid → Review Request Sent.
+8. Confirm paid revenue updates correctly.
+9. Add follow-up and maintenance dates.
+10. Upload before/during/after test photos and confirm they stay attached to the correct job.
+11. Create/update a voucher or referral record.
+12. Download a full backup from `/tools`.
 
 ### 4. Customers, imports and backups
 
 - [ ] `/tools` requires an approved owner login.
 - [ ] Full backup includes customers, jobs, vouchers, booking requests and inquiries.
 - [ ] Customer-only export downloads successfully.
-- [ ] Sample customer JSON/CSV import succeeds.
+- [ ] Sample customer import succeeds.
 - [ ] Duplicate email/phone/name matches are skipped.
 - [ ] Incomplete customer records are skipped.
 - [ ] Imported customers appear correctly in Apex HQ.
@@ -54,6 +67,7 @@ Apex HQ uses two readiness gates. **Gate A** is required for the private HQ and 
 - [ ] PIN is visually masked.
 - [ ] Biometric quick unlock works on a supported trusted device if enabled.
 - [ ] Mobile navigation reaches Dashboard, Inbox, Calendar, Jobs, Customers, Quotes, Photos, Vouchers and Settings.
+- [ ] Bottom/mobile navigation never makes a destination unreachable.
 - [ ] Desktop Chrome owner workflow works.
 - [ ] `/hq`, `/book` and `/tools` display correctly.
 - [ ] Privacy Mode protects real customer/revenue information during recording.
@@ -69,7 +83,7 @@ Do not enable live public booking submission until every item below passes.
 ### 6. Google Calendar and Gmail
 
 - [ ] Calendar API and Gmail API are enabled in the correct Google Cloud project.
-- [ ] OAuth client ID, client secret and token encryption key are configured as Firebase secrets.
+- [ ] OAuth client ID, client secret and token encryption key are configured in Google Secret Manager.
 - [ ] OAuth callback URL exactly matches the deployed Australia Southeast function URL.
 - [ ] `APP_BASE_URL` matches the live Apex domain.
 - [ ] Apex connects to the correct Google account.
@@ -107,14 +121,14 @@ Do not enable live public booking submission until every item below passes.
 
 **Gate B pass means automated public booking can be enabled publicly.**
 
-## Deployment gate
+## Production deployment gate
 
-Follow `docs/DEPLOYMENT.md` exactly.
+Do not use one combined `firebase deploy --only firestore:rules,storage,functions,hosting` command. The release is intentionally separated:
 
 ```bash
-npm install
-npm run check
-firebase deploy --only firestore:rules,storage,functions,hosting
+npm run deploy:cloud    # Functions + Firestore rules
+npm run deploy:hosting  # frontend Hosting
+npm run deploy:storage  # only when Storage rules need changing
 ```
 
-Do not merge/deploy a candidate with failing build, Functions lint or launch architecture audit. If GitHub Actions reports `action_required` without running jobs, approve/enable the repository workflow run and re-run it before treating CI as green.
+After the reviewed PR is merged to `main`, confirm the relevant production workflows are green before declaring the release finished.
