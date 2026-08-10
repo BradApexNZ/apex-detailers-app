@@ -1,12 +1,15 @@
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
-import { importGoogleCalendarEvents } from "./apex-api";
+import { getGoogleCalendarEvents, importGoogleCalendarEvents } from "./apex-api";
 
 const SECONDARY_TABS = ["Quotes", "Photos", "Vouchers", "Settings"];
 let jobs = [];
+let googleEvents = [];
 let monthCursor = new Date();
 let selectedDate = null;
 let syncInFlight = false;
+let liveFetchInFlight = false;
+let lastLiveRange = "";
 
 const clean = value => String(value || "").trim();
 const isoDate = date => {
@@ -21,16 +24,16 @@ function buttons() {
 }
 
 function buttonByLabel(label) {
-  return buttons().find(button => clean(button.textContent).toLowerCase() === label.toLowerCase());
+  const wanted = label.toLowerCase();
+  return buttons().find(button => clean(button.textContent).toLowerCase() === wanted);
 }
 
 function navigateTo(label) {
   const target = buttonByLabel(label);
-  if (target) {
-    target.click();
-    closeMoreSheet();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+  if (!target) return;
+  closeMoreSheet();
+  target.click();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function closeMoreSheet() {
@@ -50,24 +53,27 @@ function openMoreSheet() {
       </div>
     </section>`;
   back.addEventListener("click", event => {
-    if (event.target === back || event.target.closest("[data-close-more]")) closeMoreSheet();
+    if (event.target === back || event.target.closest("[data-close-more]")) {
+      closeMoreSheet();
+      return;
+    }
     const target = event.target.closest("[data-apex-more-target]");
     if (target) navigateTo(target.dataset.apexMoreTarget);
   });
   document.body.appendChild(back);
 }
 
-function bindMore() {
-  const candidates = buttons().filter(button => clean(button.textContent).toLowerCase() === "more");
-  const more = candidates[candidates.length - 1];
-  if (!more || more.dataset.apexMoreBound) return;
-  more.dataset.apexMoreBound = "true";
-  more.addEventListener("click", event => {
-    event.preventDefault();
-    event.stopPropagation();
-    openMoreSheet();
-  }, true);
-}
+// Use one delegated handler instead of binding a React-rendered button that can be
+// replaced on every navigation/render. This makes More reliable on mobile.
+document.addEventListener("click", event => {
+  const button = event.target.closest?.("button");
+  if (!button) return;
+  if (clean(button.textContent).toLowerCase() !== "more") return;
+  if (button.closest("[data-apex-more-sheet]")) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  openMoreSheet();
+}, true);
 
 function isCalendarPage() {
   const topTitle = document.querySelector(".top h1");
@@ -75,21 +81,37 @@ function isCalendarPage() {
 }
 
 function eventLabel(job) {
-  return clean(job.customerName || job.packageName || job.title || "Booking");
+  return clean(job.customerName || job.title || job.packageName || "Booking");
 }
 
 function eventTime(job) {
+  if (job.allDay) return "";
   return clean(job.bookingTime || job.startTime || "");
 }
 
-function eventsFor(date) {
-  return jobs
-    .filter(job => clean(job.bookingDate) === date && !["Cancelled", "Archived"].includes(job.status))
-    .sort((a, b) => eventTime(a).localeCompare(eventTime(b)));
+function sourceLabel(job) {
+  return String(job.source || "").startsWith("google-calendar") || job.calendarImported ? "Google" : "Apex";
 }
 
-function sourceLabel(job) {
-  return job.source === "google-calendar" || job.calendarImported ? "Google" : "Apex";
+function eventKey(job) {
+  if (sourceLabel(job) === "Google") {
+    return `google:${clean(job.calendarId || job.sourceCalendarId)}:${clean(job.calendarEventId || job.sourceCalendarEventId || job.id)}`;
+  }
+  return `apex:${clean(job.id || job.jobId || `${job.bookingDate}:${job.bookingTime}:${eventLabel(job)}`)}`;
+}
+
+function allEvents() {
+  const merged = new Map();
+  // Firestore first so direct Google data can overwrite stale imported copies.
+  for (const row of jobs) merged.set(eventKey(row), row);
+  for (const row of googleEvents) merged.set(eventKey(row), row);
+  return [...merged.values()];
+}
+
+function eventsFor(date) {
+  return allEvents()
+    .filter(job => clean(job.bookingDate) === date && !["Cancelled", "Archived"].includes(job.status))
+    .sort((a, b) => eventTime(a).localeCompare(eventTime(b)));
 }
 
 function renderSelected(container) {
@@ -102,9 +124,36 @@ function renderSelected(container) {
     (rows.length ? rows.map(job => `
       <article class="apexCalendarEvent ${sourceLabel(job).toLowerCase()}">
         <time>${eventTime(job) || "All day"}</time>
-        <div><strong>${eventLabel(job)}</strong><span>${clean(job.packageName || job.vehicle || job.status || "Booking")}</span></div>
+        <div><strong>${eventLabel(job)}</strong><span>${clean(job.address || job.packageName || job.vehicle || job.status || "Booking")}</span></div>
         <em>${sourceLabel(job)}</em>
       </article>`).join("") : `<div class="apexCalendarEmpty">No bookings or Google Calendar blocks on this day.</div>`);
+}
+
+function visibleRange() {
+  const year = monthCursor.getFullYear();
+  const month = monthCursor.getMonth();
+  return {
+    startDate: isoDate(new Date(year, month, 1)),
+    endDate: isoDate(new Date(year, month + 1, 0))
+  };
+}
+
+async function fetchLiveGoogleEvents({ force = false } = {}) {
+  if (!isCalendarPage() || liveFetchInFlight) return;
+  const range = visibleRange();
+  const rangeKey = `${range.startDate}:${range.endDate}`;
+  if (!force && rangeKey === lastLiveRange) return;
+  liveFetchInFlight = true;
+  try {
+    const result = await getGoogleCalendarEvents(range);
+    googleEvents = Array.isArray(result?.events) ? result.events : [];
+    lastLiveRange = rangeKey;
+    renderCalendar();
+  } catch (error) {
+    console.warn("Apex live Google Calendar feed unavailable", error);
+  } finally {
+    liveFetchInFlight = false;
+  }
 }
 
 function renderCalendar() {
@@ -148,24 +197,40 @@ function renderCalendar() {
       <div data-calendar-day-list></div>
     </section>`;
 
-  container.querySelector("[data-cal-prev]")?.addEventListener("click", () => { monthCursor = new Date(year, month - 1, 1); renderCalendar(); });
-  container.querySelector("[data-cal-next]")?.addEventListener("click", () => { monthCursor = new Date(year, month + 1, 1); renderCalendar(); });
-  container.querySelector("[data-cal-today]")?.addEventListener("click", () => { monthCursor = new Date(); selectedDate = isoDate(new Date()); renderCalendar(); });
-  container.querySelectorAll("[data-apex-calendar-date]").forEach(button => button.addEventListener("click", () => { selectedDate = button.dataset.apexCalendarDate; renderCalendar(); }));
+  container.querySelector("[data-cal-prev]")?.addEventListener("click", () => {
+    monthCursor = new Date(year, month - 1, 1);
+    lastLiveRange = "";
+    renderCalendar();
+    fetchLiveGoogleEvents({ force: true });
+  });
+  container.querySelector("[data-cal-next]")?.addEventListener("click", () => {
+    monthCursor = new Date(year, month + 1, 1);
+    lastLiveRange = "";
+    renderCalendar();
+    fetchLiveGoogleEvents({ force: true });
+  });
+  container.querySelector("[data-cal-today]")?.addEventListener("click", () => {
+    monthCursor = new Date();
+    selectedDate = isoDate(new Date());
+    lastLiveRange = "";
+    renderCalendar();
+    fetchLiveGoogleEvents({ force: true });
+  });
+  container.querySelectorAll("[data-apex-calendar-date]").forEach(button => button.addEventListener("click", () => {
+    selectedDate = button.dataset.apexCalendarDate;
+    renderCalendar();
+  }));
   renderSelected(container);
 }
 
 async function opportunisticGoogleSync() {
   if (syncInFlight || !isCalendarPage()) return;
-  const key = "apexCalendarAutoSyncAt";
-  const last = Number(sessionStorage.getItem(key) || 0);
-  if (Date.now() - last < 5 * 60 * 1000) return;
   syncInFlight = true;
   try {
-    await importGoogleCalendarEvents({ daysBack: 30, daysForward: 180 });
-    sessionStorage.setItem(key, String(Date.now()));
-  } catch {
-    // The existing Calendar health/settings UI owns user-facing Google errors.
+    // Keep Firestore history in sync, but do not make the live Calendar UI depend on it.
+    await importGoogleCalendarEvents({ daysBack: 30, daysForward: 365 });
+  } catch (error) {
+    console.warn("Apex Google Calendar history import unavailable", error);
   } finally {
     syncInFlight = false;
   }
@@ -174,6 +239,8 @@ async function opportunisticGoogleSync() {
 function ensureCalendar() {
   if (!isCalendarPage()) {
     document.querySelector("[data-apex-month-calendar]")?.remove();
+    googleEvents = [];
+    lastLiveRange = "";
     return;
   }
   if (document.querySelector("[data-apex-month-calendar]")) return;
@@ -185,6 +252,7 @@ function ensureCalendar() {
   else anchor.prepend(host);
   selectedDate ||= isoDate(new Date());
   renderCalendar();
+  fetchLiveGoogleEvents({ force: true });
   opportunisticGoogleSync();
 }
 
@@ -194,11 +262,15 @@ onSnapshot(collection(db, "jobs"), snapshot => {
 }, () => undefined);
 
 function refreshEnhancements() {
-  bindMore();
   ensureCalendar();
 }
 
 new MutationObserver(refreshEnhancements).observe(document.body, { childList: true, subtree: true });
 window.addEventListener("popstate", refreshEnhancements);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshEnhancements(); });
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    refreshEnhancements();
+    fetchLiveGoogleEvents({ force: true });
+  }
+});
 refreshEnhancements();
