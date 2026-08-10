@@ -69,7 +69,8 @@ jobs:
             startGoogleCalendarConnect
             googleCalendarCallback
             getGoogleCalendarStatus
-            saveGoogleCalendarSelection
+            listGoogleCalendarsV6
+            saveGoogleCalendarSelectionV6
             disconnectGoogleCalendar
             importGoogleCalendarEvents
             scanGoogleCalendarProspects
