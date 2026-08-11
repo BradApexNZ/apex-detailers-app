@@ -1,0 +1,178 @@
+/* Apex HQ secure-device guard — part of the V6 redesign */
+html.apex-auth-guarded,
+html.apex-auth-guarded body{overflow:hidden}
+
+html.apex-auth-guarded #root{visibility:hidden;pointer-events:none}
+html.apex-auth-guarded .mobile{display:none!important}
+
+.apexLaunchAuthGuard{
+  position:fixed;
+  inset:0;
+  z-index:5000;
+  display:grid;
+  place-items:center;
+  min-height:100dvh;
+  padding:max(24px,env(safe-area-inset-top)) 18px max(24px,env(safe-area-inset-bottom));
+  overflow:auto;
+  background:
+    radial-gradient(720px 300px at 8% 0%,var(--gold-soft),transparent 58%),
+    radial-gradient(620px 320px at 100% 100%,var(--sheen-soft),transparent 62%),
+    var(--ink);
+}
+
+.apexLaunchAuthCard{
+  position:relative;
+  width:min(100%,430px);
+  padding:28px;
+  border:1px solid var(--line-strong);
+  border-radius:var(--r-lg);
+  background:rgba(21,21,26,.96);
+  box-shadow:var(--shadow-2);
+  overflow:hidden;
+}
+.apexLaunchAuthCard::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;
+  height:2px;
+  background:var(--sheen-bar);
+}
+
+.apexLaunchAuthBrand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:28px;
+}
+.apexLaunchAuthBrand img{
+  width:58px;
+  height:58px;
+  flex:0 0 58px;
+  object-fit:contain;
+}
+.apexLaunchAuthBrand strong{
+  display:block;
+  font-family:var(--display);
+  font-size:14px;
+  font-weight:800;
+  letter-spacing:.09em;
+}
+.apexLaunchAuthBrand span{
+  display:block;
+  margin-top:2px;
+  color:var(--paper-faint);
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.16em;
+}
+
+.apexLaunchAuthEyebrow{
+  display:block;
+  margin-bottom:8px;
+  color:var(--gold);
+  font-family:var(--mono);
+  font-size:9.5px;
+  font-weight:700;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+.apexLaunchAuthCard h1{
+  font-size:clamp(30px,8vw,42px);
+  line-height:1.02;
+  letter-spacing:-.035em;
+}
+.apexLaunchAuthCard>p{
+  margin-top:12px;
+  color:var(--paper-dim);
+  font-size:13.5px;
+  line-height:1.55;
+}
+
+.apexLaunchPinInputs{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin:22px 0 10px;
+}
+.apexLaunchPinInputs input{
+  width:100%;
+  min-width:0;
+  height:62px;
+  min-height:62px;
+  padding:0;
+  border:1px solid var(--line-strong);
+  border-radius:14px;
+  background:var(--panel-2);
+  text-align:center;
+  font-family:var(--mono);
+  font-size:25px;
+  font-weight:700;
+  letter-spacing:0;
+}
+.apexLaunchPinInputs input:focus{
+  border-color:var(--gold);
+  box-shadow:0 0 0 3px var(--gold-soft);
+}
+
+.apexLaunchAuthError{
+  min-height:20px;
+  margin:2px 0 8px;
+  color:#ffb9b4;
+  font-size:11.5px;
+  line-height:1.4;
+}
+.apexLaunchPrimary,
+.apexLaunchSecondary,
+.apexLaunchText{
+  width:100%;
+  min-height:48px;
+  border-radius:var(--r-md);
+  font-size:13px;
+  font-weight:800;
+}
+.apexLaunchPrimary{
+  background:linear-gradient(135deg,#f6dd8f,var(--gold) 55%,#d9a51f);
+  color:var(--on-gold);
+  box-shadow:0 10px 24px rgba(232,185,58,.16);
+}
+.apexLaunchSecondary{
+  margin-top:9px;
+  border:1px solid var(--sheen-line);
+  background:var(--sheen-soft);
+  color:var(--sheen);
+}
+.apexLaunchText{
+  min-height:40px;
+  margin-top:10px;
+  padding:0 8px;
+  background:transparent;
+  color:var(--paper-faint);
+  font-size:11px;
+  font-weight:600;
+}
+.apexLaunchText:hover{color:var(--paper-dim)}
+
+@media (max-width:520px){
+  .apexLaunchAuthGuard{
+    place-items:start center;
+    padding:max(18px,env(safe-area-inset-top)) 14px max(18px,env(safe-area-inset-bottom));
+  }
+  .apexLaunchAuthCard{
+    margin:auto 0;
+    padding:22px 18px;
+    border-radius:20px;
+  }
+  .apexLaunchAuthBrand{margin-bottom:22px}
+  .apexLaunchAuthBrand img{width:50px;height:50px;flex-basis:50px}
+  .apexLaunchAuthCard h1{font-size:34px}
+  .apexLaunchAuthCard>p{font-size:13px}
+  .apexLaunchPinInputs{gap:8px;margin-top:18px}
+  .apexLaunchPinInputs input{height:56px;min-height:56px;font-size:23px;border-radius:12px}
+}
+
+@media (max-width:360px){
+  .apexLaunchAuthCard{padding:20px 14px}
+  .apexLaunchAuthCard h1{font-size:30px}
+  .apexLaunchPinInputs{gap:6px}
+  .apexLaunchPinInputs input{height:52px;min-height:52px}
+}
