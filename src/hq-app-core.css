@@ -1,0 +1,222 @@
+/* ============================================================
+   APEX HQ — private operations dashboard
+   ============================================================ */
+
+html,body,#root{background:var(--ink)}
+.shell{display:flex;min-height:100dvh}
+
+/* ---- desktop sidebar ---- */
+.shell>aside{
+  display:flex;
+  flex-direction:column;
+  width:248px;
+  flex:0 0 248px;
+  padding:22px 16px;
+  border-right:1px solid var(--line);
+  background:var(--panel);
+}
+.hqBrand{display:flex;align-items:center;gap:11px;padding:0 4px 22px}
+.hqBrand img{width:38px;height:38px;object-fit:contain}
+.hqBrand strong{display:block;font-family:var(--display);font-size:13px;font-weight:800;letter-spacing:.1em}
+.hqBrand span{display:block;margin-top:2px;color:var(--paper-faint);font-family:var(--mono);font-size:8.5px;letter-spacing:.16em}
+
+.shell>aside>nav{display:flex;flex-direction:column;gap:2px;flex:1}
+.shell>aside>nav button{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:11px;
+  min-height:40px;
+  padding:0 12px;
+  border-radius:var(--r-sm);
+  color:var(--paper-dim);
+  font-size:13px;
+  font-weight:600;
+  text-align:left;
+}
+.shell>aside>nav button i{
+  display:grid;
+  place-items:center;
+  width:16px;
+  font-style:normal;
+  color:currentColor;
+  opacity:.75;
+}
+.shell>aside>nav button em{
+  margin-left:auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:18px;
+  height:18px;
+  padding:0 5px;
+  border-radius:99px;
+  background:var(--gold);
+  color:var(--on-gold);
+  font-style:normal;
+  font-size:10px;
+  font-weight:800;
+}
+.shell>aside>nav button:hover{background:var(--panel-2);color:var(--paper)}
+.shell>aside>nav button.active{background:var(--gold-soft);color:var(--gold);box-shadow:inset 2px 0 0 var(--gold)}
+.shell>aside>footer{display:flex;flex-direction:column;gap:6px;padding-top:14px;border-top:1px solid var(--line)}
+.shell>aside>footer button{min-height:38px;padding:0 12px;border-radius:var(--r-sm);color:var(--paper-dim);font-size:12.5px;font-weight:600;text-align:left}
+.shell>aside>footer button:hover{background:var(--panel-2);color:var(--paper)}
+.v6MobileClose{display:none}
+
+/* ---- workspace / top bar ---- */
+.workspace{flex:1;min-width:0}
+.workspace>main{max-width:1080px;margin:0 auto;padding:26px 32px 60px}
+.top{
+  position:sticky;
+  top:0;
+  z-index:30;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  min-height:0;
+  padding:18px 32px;
+  background:rgba(10,10,13,.86);
+  border-bottom:1px solid var(--line);
+  backdrop-filter:blur(18px) saturate(140%);
+}
+.top .eyebrow{display:block}
+.top h1{margin-top:5px;font-size:26px;line-height:1;letter-spacing:-.03em}
+.topActions{display:flex;gap:8px}
+.topActions button{min-height:38px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel-2);font-size:12px;font-weight:700}
+.topActions button:last-child{background:linear-gradient(135deg,#f6dd8f,var(--gold) 55%,#d9a51f);color:var(--on-gold);border-color:transparent}
+[data-apex-connection],.apexConnectionStatus{display:none}
+
+/* ---- shared section intro ---- */
+.intro{margin-bottom:20px}
+.intro h2{margin-top:6px;font-size:24px}
+.intro p{margin-top:6px;color:var(--paper-dim);font-size:13.5px;line-height:1.5}
+.sectionLead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px}
+.sectionLead .intro{margin-bottom:0}
+.sectionLead>button{flex:0 0 auto;min-height:38px;padding:0 16px;border-radius:var(--r-sm);font-size:12px}
+
+/* ---- command deck (dashboard) ---- */
+.command{
+  position:relative;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  padding:26px;
+  margin-bottom:18px;
+  border:1px solid var(--gold-line);
+  border-radius:var(--r-lg);
+  background:
+    radial-gradient(600px 220px at 0% 0%,var(--gold-soft),transparent 60%),
+    var(--panel);
+  overflow:hidden;
+}
+.command::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--sheen-bar)}
+.command h2{margin:6px 0 10px;max-width:560px;font-size:clamp(24px,4vw,34px);line-height:1.05}
+.command p{margin:0 0 16px;max-width:560px;color:var(--paper-dim);font-size:13.5px;line-height:1.55}
+.heroActions{display:flex;gap:10px;flex-wrap:wrap}
+.heroActions button{min-height:40px;padding:0 16px;border-radius:var(--r-sm);font-size:12.5px}
+.heroActions .secondaryTop{background:var(--panel-2);border:1px solid var(--line)}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 20px}
+.stats>article{
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  background:var(--panel);
+}
+.stats span{display:block;color:var(--paper-faint);font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase}
+.stats b{display:block;margin-top:8px;font-family:var(--display);font-size:26px;font-weight:700}
+
+/* ---- generic card grid primitives shared across tabs ---- */
+.cards{display:grid;grid-template-columns:1fr;gap:10px}
+article.request,article.job,.customerGrid>article,.voucherGrid>article,.settings>section,.calendarSettings,.panel{
+  padding:18px;
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  background:var(--panel);
+}
+.request header,.quoteCard header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.request h3{font-size:16px}
+.request header span{display:block;margin-top:4px;color:var(--paper-dim);font-size:12px}
+.request header b{display:flex;flex-direction:column;align-items:flex-end;font-family:var(--mono);font-size:13px;color:var(--gold);white-space:nowrap}
+.request header b small{margin-top:3px;color:var(--paper-faint);font-family:var(--body);font-size:10.5px;font-weight:600}
+.request p{margin-top:10px;color:var(--paper-dim);font-size:13px;line-height:1.5}
+.request blockquote{margin:10px 0 0;padding:10px 12px;border-left:2px solid var(--gold-line);background:var(--panel-2);border-radius:0 var(--r-sm) var(--r-sm) 0;color:var(--paper-dim);font-size:12.5px;font-style:italic}
+.request footer{display:flex;gap:8px;margin-top:14px}
+.request footer button{min-height:36px;padding:0 14px;border-radius:var(--r-sm);font-size:12px;background:var(--panel-2);border:1px solid var(--line)}
+.request footer button:first-child{background:var(--good-soft);border-color:rgba(123,201,154,.3);color:var(--good)}
+.quoteCard header b{color:var(--sheen)}
+
+/* ---- jobs / agenda list ---- */
+.calendar{display:grid;gap:8px}
+.agenda{
+  display:grid;
+  grid-template-columns:44px 1fr auto auto;
+  align-items:center;
+  gap:14px;
+  padding:14px 16px;
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  background:var(--panel);
+}
+.agenda time{display:flex;flex-direction:column;align-items:center;color:var(--paper-dim);font-family:var(--mono)}
+.agenda time b{font-size:18px;color:var(--paper)}
+.agenda time span{font-size:9px;text-transform:uppercase;letter-spacing:.08em}
+.agenda>div{min-width:0;cursor:pointer}
+.agenda>div b{display:block;font-size:14px}
+.agenda>div span{display:block;margin-top:2px;color:var(--paper-dim);font-size:12px}
+.agenda>div small{display:block;margin-top:3px;color:var(--paper-faint);font-size:10.5px}
+.agenda em{font-family:var(--mono);font-style:normal;color:var(--sheen);font-size:12.5px}
+.agenda button{min-height:32px;padding:0 12px;border-radius:var(--r-sm);background:var(--panel-2);border:1px solid var(--line);font-size:11px}
+
+.job{
+  display:grid;
+  grid-template-columns:34px 1fr auto auto;
+  align-items:center;
+  gap:12px;
+  padding:14px 16px;
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  background:var(--panel);
+  cursor:pointer;
+}
+.job:hover{border-color:var(--line-strong)}
+.job>i{
+  display:grid;
+  place-items:center;
+  width:34px;
+  height:34px;
+  border-radius:var(--r-sm);
+  background:var(--panel-2);
+  font-style:normal;
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:700;
+  color:var(--paper-dim);
+}
+.job>div{min-width:0}
+.job>div b{display:block;font-size:14px}
+.job>div span{display:block;margin-top:2px;color:var(--paper-dim);font-size:12px}
+.job>strong{font-family:var(--mono);font-size:13px;color:var(--gold);white-space:nowrap}
+
+/* ---- status pills ---- */
+.statusPill{
+  display:inline-flex;
+  align-items:center;
+  padding:5px 10px;
+  border-radius:var(--r-pill);
+  border:1px solid var(--line);
+  background:var(--panel-2);
+  color:var(--paper-dim);
+  font-family:var(--mono);
+  font-size:9.5px;
+  font-weight:600;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.status-lead,.status-quote-requested,.status-quote-sent{border-color:var(--gold-line);background:var(--gold-soft);color:var(--gold)}
+.status-booked,.status-confirmed,.status-approved{border-color:var(--sheen-line);background:var(--sheen-soft);color:var(--sheen)}
+.status-completed,.status-paid,.status-review-request-sent{border-color:rgba(123,201,154,.35);background:var(--good-soft);color:var(--good)}
+.status-cancelled,.status-declined,.status-archived{border-color:rgba(226,113,107,.3);background:var(--bad-soft);color:#ffb9b4;opacity:.9}
