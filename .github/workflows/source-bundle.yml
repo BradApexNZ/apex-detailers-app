@@ -1,0 +1,38 @@
+name: Build Full Source Bundle
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/source-bundle.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Create full source zip
+        run: |
+          zip -r apex-detailers-full-source.zip . \
+            -x '.git/*' \
+               'node_modules/*' \
+               'functions/node_modules/*' \
+               'dist/*' \
+               'functions/lib/*' \
+               '*.log'
+
+      - name: Upload full source bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: apex-detailers-full-source
+          path: apex-detailers-full-source.zip
+          if-no-files-found: error
+          retention-days: 7
