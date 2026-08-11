@@ -11,7 +11,6 @@ import {
   publicServicePackages,
   serviceById
 } from "./booking-data";
-import "./booking.css";
 
 const today = () => new Date().toLocaleDateString("en-CA", {
   timeZone: "Pacific/Auckland"

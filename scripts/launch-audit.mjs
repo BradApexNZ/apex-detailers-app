@@ -20,8 +20,8 @@ const hostingWorkflow = read(".github/workflows/deploy-hosting.yml");
 const packageJson = JSON.parse(read("package.json"));
 
 assert("HQ uses consolidated launch UI", hq.includes('/src/hq-v6.jsx'), "hq.html must load hq-v6.jsx");
-assert("Final mobile shell loads last", hq.includes('/src/hq-launch-shell.css') && hq.lastIndexOf('/src/hq-launch-shell.css') > hq.lastIndexOf('/src/hq-mobile-dock-fix.css'), "The launch shell must be the final HQ stylesheet authority");
-assert("Premium auth UI is loaded", hq.includes('/src/hq-auth-polish.css') && hq.includes('/src/hq-device-lock-controls.js'), "Login and trusted-device unlock must ship in HQ");
+assert("HQ theme + app stylesheet load", hq.includes('/src/apex-theme.css') && hq.includes('/src/hq-app.css'), "hq.html must load the consolidated Apex theme and HQ stylesheet");
+assert("Premium auth UI is loaded", hq.includes('/src/hq-app.css') && hq.includes('/src/hq-device-lock-controls.js'), "Login and trusted-device unlock must ship in HQ");
 assert("Trusted-device PIN remains hardened", deviceLock.includes('PIN_LENGTH = 4') && deviceLock.includes('MAX_PIN_FAILURES = 5') && deviceLock.includes('INACTIVITY_LIMIT_MS = 5 * 60 * 1000'), "PIN unlock must retain 4 digits, lockout and inactivity protection");
 assert("PIN setup is reachable in Settings", deviceControls.includes('Set 4-digit PIN') && deviceControls.includes('data-apex-device-lock-card'), "Owner must be able to configure quick unlock on-device");
 assert("Old Google DOM controller is not loaded", !hq.includes("hq-google-calendar.js"), "Calendar must live inside React HQ");

@@ -5,14 +5,14 @@
   "engines": { "node": "22" },
   "main": "entry.js",
   "scripts": {
-    "lint": "node --check index.js && node --check calendar-prospects.js && node --check calendar-import.js && node --check launch-v6.js && node --check calendar-settings-v6.js && node --check calendar-gateway-v6.js && node --check public-config-v6.js && node --check google-disconnect-v6.js && node --check google-events.js && node --check entry.js",
+    "lint": "node --check index.js && node --check calendar-prospects.js && node --check calendar-import.js && node --check calendar-save.js && node --check calendar-gateway-v6.js && node --check launch-v6.js && node --check calendar-settings-v6.js && node --check public-config-v6.js && node --check google-disconnect-v6.js && node --check google-events.js && node --check entry.js",
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions"
   },
   "dependencies": {
-    "firebase-admin": "latest",
-    "firebase-functions": "latest",
-    "googleapis": "latest",
-    "luxon": "latest"
+    "firebase-admin": "^14.2.0",
+    "firebase-functions": "^7.3.2",
+    "googleapis": "^174.0.1",
+    "luxon": "^3.7.2"
   }
 }

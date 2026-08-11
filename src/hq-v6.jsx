@@ -10,8 +10,7 @@ import{
 }from"./apex-api";
 import{defaultBookingSettings,formatDate,money,servicePackages,vehicleTypes}from"./booking-data";
 import{disableDeviceLock,hasBiometricLock,hasPinLock,isDeviceLockEnabled,isSessionUnlocked,lockSession,markSessionUnlocked,registerBiometricLock,setPin,supportsBiometrics,verifyBiometricLock,verifyPin}from"./device-lock";
-import"./hq-v5.css";
-import"./hq-v6.css";
+
 
 const ownerUids=(import.meta.env.VITE_APEX_OWNER_UIDS||"fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42,maefd5cQ9qcIKSeU4b3yZKUL8UW2").split(",").map(v=>v.trim()).filter(Boolean);
 const nav=[["dashboard","Command","HQ"],["inbox","Inbox","IN"],["calendar","Calendar","CA"],["jobs","Jobs","JB"],["customers","Customers","CU"],["quotes","Quotes","QT"],["photos","Photos","PH"],["vouchers","Vouchers","VC"],["settings","Settings","ST"]];
