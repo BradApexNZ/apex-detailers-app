@@ -29,11 +29,14 @@ export const createManualBooking = privateCall("createManualBooking");
 export const syncJobToCalendar = privateCall("syncJobToCalendar");
 export const submitInquiry = privateCall("submitInquiry");
 export const startGoogleCalendarConnect = privateCall("startGoogleCalendarConnect");
-// Live Google Calendar reads and manual sync now go through listGoogleCalendarsV6.
-// That function already exists in production, so this avoids requiring a new
-// Cloud Run invoker IAM binding during launch.
+// Live Google Calendar reads (the month view / day list) go through
+// listGoogleCalendarsV6, which reads events straight from the Google API without
+// writing anything to Firestore. "Import" is a separate, real write: it calls the
+// importGoogleCalendarEvents Cloud Function directly so blocked times are saved as
+// jobs (mode: "calendar-block") and show up everywhere in HQ, not just in the live
+// calendar widget.
 export const getGoogleCalendarEvents = async payload => calendarGatewayCall({ ...(payload || {}), action:"events" });
-export const importGoogleCalendarEvents = async payload => calendarGatewayCall({ ...(payload || {}), action:"sync" });
+export const importGoogleCalendarEvents = privateCall("importGoogleCalendarEvents");
 export const scanGoogleCalendarProspects = privateCall("scanGoogleCalendarProspects");
 export const saveGoogleCalendarProspect = privateCall("saveGoogleCalendarProspect");
 export const dismissGoogleCalendarProspect = privateCall("dismissGoogleCalendarProspect");
