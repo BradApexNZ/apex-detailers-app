@@ -1646,11 +1646,17 @@ function App() {
                 <Stat label="Completed" value={completed.length} />
                 <Stat label="Follow-ups" value={followups.length} />
               </section>
-              <Panel title="Coming up">
-                {upcoming.slice(0, 6).map(j => (
-                  <Agenda key={j.id} job={j} open={() => setSelectedJob(j)} />
-                ))}
-              </Panel>
+              <div className="dashboardGrid">
+                <Panel title="Coming up">
+                  {upcoming.slice(0, 6).map(j => (
+                    <Agenda key={j.id} job={j} open={() => setSelectedJob(j)} />
+                  ))}
+                  {!upcoming.length && <Empty text="No upcoming bookings." />}
+                </Panel>
+                <section className="panel">
+                  <RevenueChart points={revenueTrend} total={monthRevenue} />
+                </section>
+              </div>
             </>
           )}
           {tab === "inbox" && (
