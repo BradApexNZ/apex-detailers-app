@@ -76,41 +76,6 @@ async function calendarRows(client) {
     }));
 }
 
-export const listGoogleCalendars = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
-  requireOwner(request);
-  const connected = await connectedGoogle();
-  if (!connected) return { connected: false, calendars: [], selectedCalendarIds: [], primaryCalendarId: "" };
-  const calendars = await calendarRows(connected.client);
-  const selectedCalendarIds =
-    Array.isArray(connected.data.selectedCalendarIds) && connected.data.selectedCalendarIds.length
-      ? connected.data.selectedCalendarIds
-      : calendars.filter(row => row.primary).map(row => row.id);
-  return {
-    connected: true,
-    email: connected.data.email || "",
-    calendars,
-    selectedCalendarIds,
-    primaryCalendarId: connected.data.primaryCalendarId || selectedCalendarIds[0] || calendars[0]?.id || ""
-  };
-});
-
-export const saveGoogleCalendarSelection = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
-  requireOwner(request);
-  const connected = await connectedGoogle();
-  if (!connected) throw new HttpsError("failed-precondition", "Connect Google Calendar first.");
-  const available = await calendarRows(connected.client);
-  const allowed = new Set(available.map(row => row.id));
-  const requested = Array.isArray(request.data?.selectedCalendarIds) ? request.data.selectedCalendarIds.map(value => text(value, 300)) : [];
-  const selectedCalendarIds = [...new Set(requested.filter(id => allowed.has(id)))];
-  if (!selectedCalendarIds.length) throw new HttpsError("invalid-argument", "Select at least one Google Calendar.");
-  const requestedPrimary = text(request.data?.primaryCalendarId, 300);
-  const primaryCalendarId = selectedCalendarIds.includes(requestedPrimary) ? requestedPrimary : selectedCalendarIds[0];
-  await db
-    .doc("integrations/google")
-    .set({ selectedCalendarIds, primaryCalendarId, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-  return { selectedCalendarIds, primaryCalendarId };
-});
-
 function emailsFromEvent(event) {
   const values = new Set();
   for (const attendee of event.attendees || []) {

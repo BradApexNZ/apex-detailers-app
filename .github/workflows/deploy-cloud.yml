@@ -79,6 +79,10 @@ jobs:
             googleCalendarCallback
             getGoogleCalendarStatus
             disconnectGoogleCalendar
+            importGoogleCalendarEvents
+            scanGoogleCalendarProspects
+            saveGoogleCalendarProspect
+            dismissGoogleCalendarProspect
           )
           for fn in "${functions[@]}"; do
             echo "::group::Deploy $fn"
