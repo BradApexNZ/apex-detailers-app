@@ -501,6 +501,34 @@
   white-space: nowrap;
 }
 
+/* ---- desktop: page never had a wide-screen treatment, just centered the mobile column ---- */
+@media (min-width: 900px) {
+  .publicPage,
+  .splash {
+    max-width: 1080px;
+    padding-top: max(28px, env(safe-area-inset-top));
+  }
+  .hero {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-top: 56px;
+  }
+  .card {
+    padding: 44px 52px;
+  }
+  .services {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .slotGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .form {
+    gap: 0 20px;
+  }
+}
+
 /* ---- responsive ---- */
 @media (max-width: 640px) {
   .publicPage,
