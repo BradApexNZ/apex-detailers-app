@@ -921,6 +921,70 @@ article.job,
   color: var(--paper-faint);
 }
 
+/* ---- wide desktop: the composition was a small centered clump adrift in empty space - scale it up to feel designed for the screen, not just less-cramped mobile. Placed after every base .loginPage/.gate rule above so it actually wins the cascade. ---- */
+@media (min-width: 1100px) {
+  .loginPage,
+  .gate {
+    grid-template-columns: minmax(0, 1fr);
+    place-items: stretch center;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .loginPage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(70px, 9vw, 150px);
+  }
+  .loginPage > section,
+  .loginPage > form {
+    flex: 0 1 auto;
+  }
+  .loginPage > section {
+    max-width: 560px;
+  }
+  .loginPage > form {
+    width: 460px;
+    max-width: 460px;
+    padding: 40px;
+  }
+  .loginPage .hqBrand img,
+  .gate .hqBrand img {
+    width: 52px;
+    height: 52px;
+  }
+  .loginPage .hqBrand strong {
+    font-size: 17px;
+  }
+  .loginPage h1 {
+    font-size: clamp(52px, 4.5vw, 74px);
+    margin-top: 16px;
+  }
+  .loginPage > section > p {
+    font-size: 17px;
+    margin-top: 20px;
+  }
+  .loginPage form h2 {
+    font-size: 26px;
+  }
+  .gate {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .gate > section {
+    max-width: 460px;
+    padding: 48px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-lg);
+    background: var(--panel);
+    box-shadow: var(--shadow-2);
+  }
+  .gate h1 {
+    font-size: clamp(40px, 3.5vw, 52px);
+  }
+}
+
 /* ---- PIN pad: unlock + set-once flow, styled like a phone/banking lock screen ---- */
 .pinEntry {
   display: flex;
