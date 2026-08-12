@@ -128,6 +128,25 @@ function phonesFromEvent(event) {
   return [...values];
 }
 
+// NZ plates: 2-3 letters + 2-4 digits (ABC123, AB1234) or the reverse digit-first
+// legacy format. Deliberately loose - a false positive just means the rego field
+// shows something odd, a false negative just falls back to the keyword check below.
+const REGO_PATTERN = /\b[A-Z]{2,3}[\s-]?\d{2,4}\b|\b\d{2,4}[\s-]?[A-Z]{2,3}\b/;
+const VEHICLE_KEYWORDS =
+  /\b(car|vehicle|ute|van|truck|suv|wagon|hatch|sedan|4wd|rego|registration|detail|detailing|wash|wax|ceramic|interior|exterior|valet|clean|tradie|maintenance|ford|toyota|holden|mazda|nissan|honda|hyundai|kia|mitsubishi|subaru|volkswagen|\bvw\b|bmw|mercedes|audi|jeep|isuzu|range\s*rover)\b/i;
+
+function regoFromEvent(event) {
+  const body = `${event.summary || ""}\n${event.description || ""}\n${event.location || ""}`;
+  const match = body.match(REGO_PATTERN);
+  return match ? text(match[0].toUpperCase().replace(/[\s-]/g, ""), 12) : "";
+}
+
+function looksLikeVehicleBooking(event, rego) {
+  if (rego) return true;
+  const body = `${event.summary || ""}\n${event.description || ""}`;
+  return VEHICLE_KEYWORDS.test(body);
+}
+
 function likelyName(event) {
   const attendee = (event.attendees || []).find(row => !row.self && !row.resource && row.displayName);
   if (attendee?.displayName) return text(attendee.displayName, 120);
@@ -187,7 +206,9 @@ export const scanGoogleCalendarProspects = onCall({ region: REGION, secrets: GOO
         const emails = emailsFromEvent(event);
         const phones = phonesFromEvent(event);
         const name = likelyName(event);
+        const rego = regoFromEvent(event);
         if (!name || /holiday|birthday|reminder|focus time|out of office/i.test(event.summary || "")) continue;
+        if (!looksLikeVehicleBooking(event, rego)) continue;
         const key = emails[0] || digits(phones[0]) || `${normal(name)}|${eventDate(event).slice(0, 10)}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -204,6 +225,7 @@ export const scanGoogleCalendarProspects = onCall({ region: REGION, secrets: GOO
           calendarId,
           calendarName: calendars.find(row => row.id === calendarId)?.name || calendarId,
           name,
+          rego,
           email: emails[0] || "",
           phone: phones[0] || "",
           address: text(event.location, 300),
