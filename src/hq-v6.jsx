@@ -8,10 +8,13 @@ import {
   approveBookingRequest,
   createManualBooking,
   declineBookingRequest,
+  dismissGoogleCalendarProspect,
   getCalendarHealth,
   importGoogleCalendarEvents,
   listGoogleCalendars,
+  saveGoogleCalendarProspect,
   saveGoogleCalendarSelection,
+  scanGoogleCalendarProspects,
   startGoogleCalendarConnect,
   syncJobToCalendar
 } from "./apex-api";
@@ -896,6 +899,117 @@ function CalendarSettings({ notify }) {
   );
 }
 
+function CalendarProspects({ notify, openBooking }) {
+  const [prospects, setProspects] = useState([]);
+  const [scanned, setScanned] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function scan() {
+    setBusy(true);
+    try {
+      const result = await scanGoogleCalendarProspects({ days: 120 });
+      setProspects(result.suggestions || []);
+      setScanned(true);
+      if (!result.suggestions?.length) notify("No new customers found in your connected Calendar.");
+    } catch (e) {
+      notify(e.message || "Could not scan Calendar for new customers.");
+    }
+    setBusy(false);
+  }
+
+  async function addCustomer(p) {
+    setBusy(true);
+    try {
+      await saveGoogleCalendarProspect({
+        name: p.name,
+        email: p.email,
+        phone: p.phone,
+        address: p.address,
+        notes: p.notes,
+        eventId: p.eventId,
+        calendarId: p.calendarId,
+        eventTitle: p.eventTitle
+      });
+      setProspects(list => list.filter(x => x.eventId !== p.eventId));
+      notify(`${p.name} added as a customer.`);
+    } catch (e) {
+      notify(e.message || "Could not add customer.");
+    }
+    setBusy(false);
+  }
+
+  async function dismiss(p) {
+    setBusy(true);
+    try {
+      await dismissGoogleCalendarProspect({ eventId: p.eventId });
+      setProspects(list => list.filter(x => x.eventId !== p.eventId));
+    } catch (e) {
+      notify(e.message || "Could not dismiss.");
+    }
+    setBusy(false);
+  }
+
+  function convertToBooking(p) {
+    const start = new Date(p.eventStart);
+    const valid = !Number.isNaN(start.getTime());
+    openBooking({
+      customerName: p.name,
+      phone: p.phone,
+      email: p.email,
+      address: p.address,
+      notes: p.notes ? `${p.notes}\n\nFrom Calendar: ${p.eventTitle}` : `From Calendar: ${p.eventTitle}`,
+      bookingDate: valid ? start.toLocaleDateString("en-CA", { timeZone: "Pacific/Auckland" }) : "",
+      bookingTime: valid ? start.toLocaleTimeString("en-GB", { timeZone: "Pacific/Auckland", hour: "2-digit", minute: "2-digit" }) : "08:30"
+    });
+  }
+
+  return (
+    <section className="calendarProspects">
+      <p className="muted">
+        Scans your connected Google Calendar for events that don't look like existing Apex customers or jobs — new enquiries booked straight
+        into Calendar, walk-ins, anything that hasn't made it into Apex yet.
+      </p>
+      <div className="detailActions">
+        <button onClick={scan} disabled={busy}>
+          {busy ? "Scanning..." : scanned ? "Rescan Calendar" : "Scan Calendar for new customers"}
+        </button>
+      </div>
+      {scanned && !prospects.length && <Empty text="No new prospects found." />}
+      {Boolean(prospects.length) && (
+        <div className="cards">
+          {prospects.map(p => (
+            <article className="request" key={p.eventId}>
+              <header>
+                <div>
+                  <h3>{p.name}</h3>
+                  <span>{p.email || p.phone || "No contact info on the event"}</span>
+                </div>
+                <b>{new Date(p.eventStart).toLocaleDateString("en-NZ", { day: "numeric", month: "short" })}</b>
+              </header>
+              <p>
+                {p.eventTitle} · {p.calendarName}
+              </p>
+              {p.address && <p>{p.address}</p>}
+              {p.existingCustomerId && <p className="muted">Might already be: {p.existingCustomerName}</p>}
+              <footer>
+                <button onClick={() => addCustomer(p)} disabled={busy}>
+                  Add as customer
+                </button>
+                <button className="secondary" onClick={() => convertToBooking(p)} disabled={busy}>
+                  Also create booking
+                </button>
+                <button className="danger" onClick={() => dismiss(p)} disabled={busy}>
+                  Dismiss
+                </button>
+              </footer>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function parseCsv(text) {
   const lines = text
     .replace(/^\uFEFF/, "")
@@ -1490,6 +1604,13 @@ function App() {
               </div>
               {!upcoming.length && <Empty text="No upcoming bookings." />}
               <CalendarSettings notify={notify} />
+              <CalendarProspects
+                notify={notify}
+                openBooking={preset => {
+                  setManualPreset(preset);
+                  setManual(true);
+                }}
+              />
             </>
           )}
           {tab === "jobs" && (
