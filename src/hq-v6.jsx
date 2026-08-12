@@ -1557,6 +1557,8 @@ function App() {
         j.status === "Paid" || (j.followUpDueDate && j.followUpDueDate <= today) || (j.maintenanceDueDate && j.maintenanceDueDate <= today)
     ),
     completed = jobs.filter(j => ["Completed", "Prepare Hnry Invoice", "Invoice Sent", "Paid", "Review Request Sent"].includes(j.status));
+  const activeJobsCount = jobs.filter(j => ["Booked", "In Progress"].includes(j.status)).length,
+    jobsNeedingInvoice = jobs.filter(j => j.status === "Completed").length;
   const month = today.slice(0, 7),
     monthRevenue = jobs
       .filter(j => ["Paid", "Review Request Sent"].includes(j.status) && String(j.bookingDate || j.serviceDate || "").startsWith(month))
@@ -1840,7 +1842,14 @@ function App() {
           {tab === "jobs" && (
             <>
               <div className="sectionLead">
-                <Intro title="Jobs" text="Operational job pipeline, Hnry handoff, payment and review status." />
+                <Intro
+                  title="Jobs"
+                  text={
+                    activeJobsCount || jobsNeedingInvoice
+                      ? `${activeJobsCount} active, ${jobsNeedingInvoice} ready to invoice.`
+                      : "Operational job pipeline, Hnry handoff, payment and review status."
+                  }
+                />
                 <button onClick={() => setJobModal(true)}>+ Add job</button>
               </div>
               <div className="table">
