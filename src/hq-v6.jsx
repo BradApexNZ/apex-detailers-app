@@ -1016,70 +1016,7 @@ function CalendarSettings({ notify }) {
   );
 }
 
-function CalendarProspects({ notify, openBooking }) {
-  const [prospects, setProspects] = useState([]);
-  const [scanned, setScanned] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  async function scan() {
-    setBusy(true);
-    try {
-      const result = await scanGoogleCalendarProspects({ days: 120 });
-      setProspects(result.suggestions || []);
-      setScanned(true);
-      if (!result.suggestions?.length) notify("No new customers found in your connected Calendar.");
-    } catch (e) {
-      notify(e.message || "Could not scan Calendar for new customers.");
-    }
-    setBusy(false);
-  }
-
-  async function addCustomer(p) {
-    setBusy(true);
-    try {
-      await saveGoogleCalendarProspect({
-        name: p.name,
-        email: p.email,
-        phone: p.phone,
-        address: p.address,
-        notes: p.notes,
-        eventId: p.eventId,
-        calendarId: p.calendarId,
-        eventTitle: p.eventTitle
-      });
-      setProspects(list => list.filter(x => x.eventId !== p.eventId));
-      notify(`${p.name} added as a customer.`);
-    } catch (e) {
-      notify(e.message || "Could not add customer.");
-    }
-    setBusy(false);
-  }
-
-  async function dismiss(p) {
-    setBusy(true);
-    try {
-      await dismissGoogleCalendarProspect({ eventId: p.eventId });
-      setProspects(list => list.filter(x => x.eventId !== p.eventId));
-    } catch (e) {
-      notify(e.message || "Could not dismiss.");
-    }
-    setBusy(false);
-  }
-
-  function convertToBooking(p) {
-    const start = new Date(p.eventStart);
-    const valid = !Number.isNaN(start.getTime());
-    openBooking({
-      customerName: p.name,
-      phone: p.phone,
-      email: p.email,
-      address: p.address,
-      notes: p.notes ? `${p.notes}\n\nFrom Calendar: ${p.eventTitle}` : `From Calendar: ${p.eventTitle}`,
-      bookingDate: valid ? start.toLocaleDateString("en-CA", { timeZone: "Pacific/Auckland" }) : "",
-      bookingTime: valid ? start.toLocaleTimeString("en-GB", { timeZone: "Pacific/Auckland", hour: "2-digit", minute: "2-digit" }) : "08:30"
-    });
-  }
-
+function CalendarProspects({ prospects, scanned, busy, onScan, onAdd, onConvert, onDismiss }) {
   return (
     <section className="calendarProspects">
       <p className="muted">
@@ -1087,7 +1024,7 @@ function CalendarProspects({ notify, openBooking }) {
         into Calendar, walk-ins, anything that hasn't made it into Apex yet.
       </p>
       <div className="detailActions">
-        <button onClick={scan} disabled={busy}>
+        <button onClick={onScan} disabled={busy}>
           {busy ? "Scanning..." : scanned ? "Rescan Calendar" : "Scan Calendar for new customers"}
         </button>
       </div>
@@ -1109,19 +1046,55 @@ function CalendarProspects({ notify, openBooking }) {
               {p.address && <p>{p.address}</p>}
               {p.existingCustomerId && <p className="muted">Might already be: {p.existingCustomerName}</p>}
               <footer>
-                <button onClick={() => addCustomer(p)} disabled={busy}>
+                <button onClick={() => onAdd(p)} disabled={busy}>
                   Add as customer
                 </button>
-                <button className="secondary" onClick={() => convertToBooking(p)} disabled={busy}>
+                <button className="secondary" onClick={() => onConvert(p)} disabled={busy}>
                   Also create booking
                 </button>
-                <button className="danger" onClick={() => dismiss(p)} disabled={busy}>
+                <button className="danger" onClick={() => onDismiss(p)} disabled={busy}>
                   Dismiss
                 </button>
               </footer>
             </article>
           ))}
         </div>
+      )}
+    </section>
+  );
+}
+
+function ProspectsWidget({ prospects, busy, onAdd, onDismiss, openTab }) {
+  if (!prospects.length) return null;
+  return (
+    <section className="panel prospectsWidget">
+      <div className="panel-head">
+        <h3>New from Calendar</h3>
+        <span className="muted">{prospects.length} waiting</span>
+      </div>
+      {prospects.slice(0, 4).map(p => (
+        <div className="prospectRow" key={p.eventId}>
+          <div className="prospectAvatar">{(p.name || "?").slice(0, 1).toUpperCase()}</div>
+          <div className="prospectInfo">
+            <b className="pii">{p.name}</b>
+            <span className="pii">
+              {p.eventTitle} - {new Date(p.eventStart).toLocaleDateString("en-NZ", { day: "numeric", month: "short" })}
+            </span>
+          </div>
+          <div className="prospectActions">
+            <button className="btnMini primary" onClick={() => onAdd(p)} disabled={busy}>
+              Add
+            </button>
+            <button className="btnMini" onClick={() => onDismiss(p)} disabled={busy}>
+              Skip
+            </button>
+          </div>
+        </div>
+      ))}
+      {prospects.length > 4 && (
+        <button className="text" onClick={() => openTab("calendar")}>
+          +{prospects.length - 4} more in Calendar
+        </button>
       )}
     </section>
   );
@@ -1196,6 +1169,9 @@ function App() {
     [busy, setBusy] = useState(false),
     [toast, setToast] = useState(""),
     [dataError, setDataError] = useState("");
+  const [prospects, setProspects] = useState([]),
+    [prospectsScanned, setProspectsScanned] = useState(false),
+    [prospectsBusy, setProspectsBusy] = useState(false);
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem("apexPrivacyMode") === "1");
   const togglePrivacy = () =>
     setPrivacyMode(value => {
@@ -1247,6 +1223,67 @@ function App() {
     const fresh = jobs.find(j => j.id === selectedJob.id);
     if (fresh && fresh !== selectedJob) setSelectedJob(fresh);
   }, [jobs, selectedJob]);
+  useEffect(() => {
+    if (!owner) return;
+    scanProspects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owner]);
+  async function scanProspects() {
+    setProspectsBusy(true);
+    try {
+      const result = await scanGoogleCalendarProspects({ days: 120 });
+      setProspects(result.suggestions || []);
+      setProspectsScanned(true);
+    } catch {
+      // Silent on the automatic once-per-login scan - Calendar tab's manual
+      // rescan button surfaces real errors if the owner explicitly retries.
+    }
+    setProspectsBusy(false);
+  }
+  async function addProspectAsCustomer(p) {
+    setProspectsBusy(true);
+    try {
+      await saveGoogleCalendarProspect({
+        name: p.name,
+        email: p.email,
+        phone: p.phone,
+        address: p.address,
+        notes: p.notes,
+        eventId: p.eventId,
+        calendarId: p.calendarId,
+        eventTitle: p.eventTitle
+      });
+      setProspects(list => list.filter(x => x.eventId !== p.eventId));
+      notify(`${p.name} added as a customer.`);
+    } catch (err) {
+      notify(err.message || "Could not add customer.");
+    }
+    setProspectsBusy(false);
+  }
+  async function dismissProspect(p) {
+    setProspectsBusy(true);
+    try {
+      await dismissGoogleCalendarProspect({ eventId: p.eventId });
+      setProspects(list => list.filter(x => x.eventId !== p.eventId));
+    } catch (err) {
+      notify(err.message || "Could not dismiss.");
+    }
+    setProspectsBusy(false);
+  }
+  function convertProspectToBooking(p) {
+    const start = new Date(p.eventStart);
+    const valid = !Number.isNaN(start.getTime());
+    setManualPreset({
+      customerName: p.name,
+      phone: p.phone,
+      email: p.email,
+      address: p.address,
+      notes: p.notes ? `${p.notes}\n\nFrom Calendar: ${p.eventTitle}` : `From Calendar: ${p.eventTitle}`,
+      bookingDate: valid ? start.toLocaleDateString("en-CA", { timeZone: "Pacific/Auckland" }) : "",
+      bookingTime: valid ? start.toLocaleTimeString("en-GB", { timeZone: "Pacific/Auckland", hour: "2-digit", minute: "2-digit" }) : "08:30"
+    });
+    setManual(true);
+  }
   const notify = message => {
     setToast(message);
     setTimeout(() => setToast(""), 4000);
@@ -1554,6 +1591,7 @@ function App() {
               <i>{icon}</i>
               {label}
               {id === "inbox" && pending.length + newInquiries.length > 0 && <em>{pending.length + newInquiries.length}</em>}
+              {id === "dashboard" && prospects.length > 0 && <em>{prospects.length}</em>}
             </button>
           ))}
         </nav>
@@ -1653,9 +1691,18 @@ function App() {
                   ))}
                   {!upcoming.length && <Empty text="No upcoming bookings." />}
                 </Panel>
-                <section className="panel">
-                  <RevenueChart points={revenueTrend} total={monthRevenue} />
-                </section>
+                <div className="dashboardCol">
+                  <section className="panel">
+                    <RevenueChart points={revenueTrend} total={monthRevenue} />
+                  </section>
+                  <ProspectsWidget
+                    prospects={prospects}
+                    busy={prospectsBusy}
+                    onAdd={addProspectAsCustomer}
+                    onDismiss={dismissProspect}
+                    openTab={setTab}
+                  />
+                </div>
               </div>
             </>
           )}
@@ -1752,13 +1799,14 @@ function App() {
                 ))}
               </div>
               {!upcoming.length && <Empty text="No upcoming bookings." />}
-              <CalendarSettings notify={notify} />
               <CalendarProspects
-                notify={notify}
-                openBooking={preset => {
-                  setManualPreset(preset);
-                  setManual(true);
-                }}
+                prospects={prospects}
+                scanned={prospectsScanned}
+                busy={prospectsBusy}
+                onScan={scanProspects}
+                onAdd={addProspectAsCustomer}
+                onConvert={convertProspectToBooking}
+                onDismiss={dismissProspect}
               />
             </>
           )}
