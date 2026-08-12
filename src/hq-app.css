@@ -921,6 +921,85 @@ article.job,
   color: var(--paper-faint);
 }
 
+/* ---- PIN pad: unlock + set-once flow, styled like a phone/banking lock screen ---- */
+.pinEntry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  margin: 22px 0 6px;
+}
+.pinDots {
+  display: flex;
+  gap: 18px;
+}
+.pinDots i {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  background: transparent;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+.pinDots i.filled {
+  background: var(--gold);
+  border-color: var(--gold);
+  transform: scale(1.1);
+}
+.pinDots.shake {
+  animation: pinShake 0.38s ease;
+}
+@keyframes pinShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
+}
+.pinKeypad {
+  display: grid;
+  grid-template-columns: repeat(3, 64px);
+  gap: 14px;
+  justify-content: center;
+}
+.pinKey {
+  width: 64px;
+  height: 64px;
+  min-height: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--paper);
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.pinKey:active {
+  background: var(--gold-soft);
+  border-color: var(--gold-line);
+  transform: scale(0.94);
+}
+.pinKeyBack {
+  color: var(--paper-dim);
+  background: transparent;
+  border-color: transparent;
+}
+.pinEntry .muted {
+  margin: 0;
+}
+
 /* ---- calendar tab: month view + more sheet (fixed IDs from injected widgets) ---- */
 [data-apex-month-calendar] {
   margin-bottom: 14px;
