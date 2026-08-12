@@ -298,6 +298,87 @@ body,
   gap: 14px;
   align-items: start;
 }
+.dashboardCol {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.prospectsWidget .panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.prospectsWidget .panel-head h3 {
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 800;
+}
+.prospectsWidget .panel-head span {
+  font-size: 11.5px;
+}
+.prospectRow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.prospectRow:last-of-type {
+  border-bottom: none;
+}
+.prospectAvatar {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+}
+.prospectInfo {
+  flex: 1;
+  min-width: 0;
+}
+.prospectInfo b {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+}
+.prospectInfo span {
+  display: block;
+  margin-top: 1px;
+  color: var(--paper-faint);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.prospectActions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.btnMini {
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  color: var(--paper-dim);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+}
+.btnMini.primary {
+  color: var(--on-gold);
+  background: linear-gradient(135deg, #f6dd8f, var(--gold) 55%, #d9a51f);
+  border-color: transparent;
+}
 .revenueChart {
   width: 100%;
 }
