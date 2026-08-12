@@ -14,7 +14,11 @@ const OWNER_UIDS = defineString("APEX_OWNER_UIDS", {
 });
 const TOKEN_KEY = defineSecret("TOKEN_ENCRYPTION_KEY");
 
-const owners = () => OWNER_UIDS.value().split(",").map(value => value.trim()).filter(Boolean);
+const owners = () =>
+  OWNER_UIDS.value()
+    .split(",")
+    .map(value => value.trim())
+    .filter(Boolean);
 
 function requireOwner(request) {
   if (!request.auth || !owners().includes(request.auth.uid)) {
@@ -26,10 +30,7 @@ function decrypt(payload) {
   const key = crypto.createHash("sha256").update(TOKEN_KEY.value()).digest();
   const decipher = crypto.createDecipheriv("aes-256-gcm", key, Buffer.from(payload.iv, "base64"));
   decipher.setAuthTag(Buffer.from(payload.tag, "base64"));
-  return Buffer.concat([
-    decipher.update(Buffer.from(payload.data, "base64")),
-    decipher.final()
-  ]).toString("utf8");
+  return Buffer.concat([decipher.update(Buffer.from(payload.data, "base64")), decipher.final()]).toString("utf8");
 }
 
 export const disconnectGoogleCalendar = onCall({ region: REGION, secrets: [TOKEN_KEY] }, async request => {

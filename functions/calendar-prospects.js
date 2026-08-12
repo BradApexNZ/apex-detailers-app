@@ -11,16 +11,25 @@ const db = getFirestore();
 const REGION = "australia-southeast1";
 const ZONE = defineString("APEX_TIME_ZONE", { default: "Pacific/Auckland" });
 const OWNER_UIDS = defineString("APEX_OWNER_UIDS", { default: "fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42" });
-const GOOGLE_CALLBACK_URL = defineString("GOOGLE_CALLBACK_URL", { default: "https://australia-southeast1-apex-detailers.cloudfunctions.net/googleCalendarCallback" });
+const GOOGLE_CALLBACK_URL = defineString("GOOGLE_CALLBACK_URL", {
+  default: "https://australia-southeast1-apex-detailers.cloudfunctions.net/googleCalendarCallback"
+});
 const GOOGLE_CLIENT_ID = defineSecret("GOOGLE_OAUTH_CLIENT_ID");
 const GOOGLE_CLIENT_SECRET = defineSecret("GOOGLE_OAUTH_CLIENT_SECRET");
 const TOKEN_KEY = defineSecret("TOKEN_ENCRYPTION_KEY");
 const GOOGLE_SECRETS = [GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, TOKEN_KEY];
 
-const text = (value, max = 500) => String(value ?? "").trim().slice(0, max);
+const text = (value, max = 500) =>
+  String(value ?? "")
+    .trim()
+    .slice(0, max);
 const normal = value => text(value).toLowerCase().replace(/\s+/g, " ");
 const digits = value => text(value).replace(/\D/g, "");
-const owners = () => OWNER_UIDS.value().split(",").map(value => value.trim()).filter(Boolean);
+const owners = () =>
+  OWNER_UIDS.value()
+    .split(",")
+    .map(value => value.trim())
+    .filter(Boolean);
 
 function requireOwner(request) {
   if (!request.auth || !owners().includes(request.auth.uid)) {
@@ -55,14 +64,16 @@ async function calendarRows(client) {
     rows.push(...(response.data.items || []));
     pageToken = response.data.nextPageToken;
   } while (pageToken);
-  return rows.filter(row => row.id && row.accessRole !== "freeBusyReader").map(row => ({
-    id: row.id,
-    name: row.summaryOverride || row.summary || row.id,
-    primary: Boolean(row.primary),
-    selected: Boolean(row.selected),
-    accessRole: row.accessRole || "reader",
-    backgroundColor: row.backgroundColor || ""
-  }));
+  return rows
+    .filter(row => row.id && row.accessRole !== "freeBusyReader")
+    .map(row => ({
+      id: row.id,
+      name: row.summaryOverride || row.summary || row.id,
+      primary: Boolean(row.primary),
+      selected: Boolean(row.selected),
+      accessRole: row.accessRole || "reader",
+      backgroundColor: row.backgroundColor || ""
+    }));
 }
 
 export const listGoogleCalendars = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
@@ -70,9 +81,10 @@ export const listGoogleCalendars = onCall({ region: REGION, secrets: GOOGLE_SECR
   const connected = await connectedGoogle();
   if (!connected) return { connected: false, calendars: [], selectedCalendarIds: [], primaryCalendarId: "" };
   const calendars = await calendarRows(connected.client);
-  const selectedCalendarIds = Array.isArray(connected.data.selectedCalendarIds) && connected.data.selectedCalendarIds.length
-    ? connected.data.selectedCalendarIds
-    : calendars.filter(row => row.primary).map(row => row.id);
+  const selectedCalendarIds =
+    Array.isArray(connected.data.selectedCalendarIds) && connected.data.selectedCalendarIds.length
+      ? connected.data.selectedCalendarIds
+      : calendars.filter(row => row.primary).map(row => row.id);
   return {
     connected: true,
     email: connected.data.email || "",
@@ -93,7 +105,9 @@ export const saveGoogleCalendarSelection = onCall({ region: REGION, secrets: GOO
   if (!selectedCalendarIds.length) throw new HttpsError("invalid-argument", "Select at least one Google Calendar.");
   const requestedPrimary = text(request.data?.primaryCalendarId, 300);
   const primaryCalendarId = selectedCalendarIds.includes(requestedPrimary) ? requestedPrimary : selectedCalendarIds[0];
-  await db.doc("integrations/google").set({ selectedCalendarIds, primaryCalendarId, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  await db
+    .doc("integrations/google")
+    .set({ selectedCalendarIds, primaryCalendarId, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   return { selectedCalendarIds, primaryCalendarId };
 });
 
@@ -139,7 +153,9 @@ export const scanGoogleCalendarProspects = onCall({ region: REGION, secrets: GOO
   const calendars = await calendarRows(connected.client);
   const availableIds = new Set(calendars.map(row => row.id));
   const configured = Array.isArray(connected.data.selectedCalendarIds) ? connected.data.selectedCalendarIds : [];
-  const calendarIds = (configured.length ? configured : calendars.filter(row => row.primary).map(row => row.id)).filter(id => availableIds.has(id));
+  const calendarIds = (configured.length ? configured : calendars.filter(row => row.primary).map(row => row.id)).filter(id =>
+    availableIds.has(id)
+  );
   const api = google.calendar({ version: "v3", auth: connected.client });
   const now = DateTime.now().setZone(ZONE.value());
   const days = Math.min(Math.max(Number(request.data?.days || 120), 7), 365);
@@ -196,7 +212,7 @@ export const scanGoogleCalendarProspects = onCall({ region: REGION, secrets: GOO
           eventStart: eventDate(event),
           htmlLink: event.htmlLink || "",
           existingCustomerId: match?.id || "",
-          existingCustomerName: match ? (match.businessName || `${match.firstName || ""} ${match.lastName || ""}`.trim()) : "",
+          existingCustomerName: match ? match.businessName || `${match.firstName || ""} ${match.lastName || ""}`.trim() : "",
           missing: [!emails[0] ? "email" : "", !phones[0] ? "mobile" : ""].filter(Boolean)
         });
       }
