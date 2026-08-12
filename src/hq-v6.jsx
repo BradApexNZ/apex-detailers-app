@@ -1181,7 +1181,8 @@ function App() {
     [selectedJob, setSelectedJob] = useState(null),
     [busy, setBusy] = useState(false),
     [toast, setToast] = useState(""),
-    [dataError, setDataError] = useState("");
+    [dataError, setDataError] = useState(""),
+    [customerSearch, setCustomerSearch] = useState("");
   const [prospects, setProspects] = useState([]),
     [prospectsScanned, setProspectsScanned] = useState(false),
     [prospectsBusy, setProspectsBusy] = useState(false);
@@ -1581,6 +1582,14 @@ function App() {
     () => jobs.flatMap(j => (j.photos || []).map(p => ({ ...p, jobId: j.id, customerName: j.customerName, vehicle: vehicleOf(j) }))),
     [jobs]
   );
+  const visibleCustomers = useMemo(() => {
+    const query = normal(customerSearch);
+    if (!query) return customers;
+    return customers.filter(c => {
+      const haystack = normal(`${nameOf(c)} ${c.phone || ""} ${c.email || ""} ${c.lastVehicle || ""}`);
+      return haystack.includes(query);
+    });
+  }, [customers, customerSearch]);
   if (!ready)
     return (
       <main className="boot">
@@ -1880,7 +1889,7 @@ function App() {
               <div className="sectionLead">
                 <Intro
                   title="Customers"
-                  text="Contact details, fleet context, vehicles and repeat-work history. Tap a customer card to edit it."
+                  text={`${customers.length} customer${customers.length === 1 ? "" : "s"}. Tap a card to edit it.`}
                 />
                 <div className="customerActions">
                   <button onClick={() => setCustomerModal(true)}>+ Add customer</button>
@@ -1898,8 +1907,17 @@ function App() {
                   </label>
                 </div>
               </div>
+              {customers.length > 5 && (
+                <input
+                  className="customerSearch"
+                  type="search"
+                  placeholder="Search by name, phone, email or vehicle..."
+                  value={customerSearch}
+                  onChange={e => setCustomerSearch(e.target.value)}
+                />
+              )}
               <div className="customerGrid">
-                {customers.map(c => {
+                {visibleCustomers.map(c => {
                   const history = jobs.filter(j => j.customerId === c.id),
                     vehicles = [...new Set(history.map(vehicleOf).filter(v => v !== "Vehicle not added"))];
                   return (
@@ -1931,6 +1949,7 @@ function App() {
                 })}
               </div>
               {!customers.length && <Empty text="Add your first customer manually or import a JSON/CSV file." />}
+              {Boolean(customers.length) && !visibleCustomers.length && <Empty text="No customers match that search." />}
             </>
           )}
           {tab === "quotes" && (
