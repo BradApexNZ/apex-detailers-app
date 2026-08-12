@@ -1042,9 +1042,10 @@ function CalendarProspects({ prospects, scanned, busy, onScan, onAdd, onConvert,
               </header>
               <p>
                 {p.eventTitle} · {p.calendarName}
+                {p.rego ? ` · ${p.rego}` : ""}
               </p>
               {p.address && <p>{p.address}</p>}
-              {p.existingCustomerId && <p className="muted">Might already be: {p.existingCustomerName}</p>}
+              {p.existingCustomerId && <p className="muted">Might already be an existing customer: {p.existingCustomerName}</p>}
               <footer>
                 <button onClick={() => onAdd(p)} disabled={busy}>
                   Add as customer
@@ -1079,6 +1080,7 @@ function ProspectsWidget({ prospects, busy, onAdd, onDismiss, openTab }) {
             <b className="pii">{p.name}</b>
             <span className="pii">
               {p.eventTitle} - {new Date(p.eventStart).toLocaleDateString("en-NZ", { day: "numeric", month: "short" })}
+              {p.rego ? ` - ${p.rego}` : ""}
             </span>
           </div>
           <div className="prospectActions">
@@ -1278,6 +1280,7 @@ function App() {
       phone: p.phone,
       email: p.email,
       address: p.address,
+      rego: p.rego || "",
       notes: p.notes ? `${p.notes}\n\nFrom Calendar: ${p.eventTitle}` : `From Calendar: ${p.eventTitle}`,
       bookingDate: valid ? start.toLocaleDateString("en-CA", { timeZone: "Pacific/Auckland" }) : "",
       bookingTime: valid ? start.toLocaleTimeString("en-GB", { timeZone: "Pacific/Auckland", hour: "2-digit", minute: "2-digit" }) : "08:30"
