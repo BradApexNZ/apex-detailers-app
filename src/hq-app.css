@@ -291,6 +291,43 @@ body,
   font-weight: 700;
 }
 
+/* ---- dashboard: coming-up + revenue chart side by side on desktop ---- */
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.revenueChart {
+  width: 100%;
+}
+.revenueChartHead b {
+  display: block;
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 700;
+}
+.revenueChartHead span {
+  display: block;
+  margin-top: 2px;
+  color: var(--paper-dim);
+  font-size: 12px;
+}
+.revenueChartSvg {
+  width: 100%;
+  height: 120px;
+  margin-top: 14px;
+  display: block;
+}
+.chartGrid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.revenueChartEmpty {
+  margin-top: 30px;
+  text-align: center;
+}
+
 /* ---- generic card grid primitives shared across tabs ---- */
 .cards {
   display: grid;
@@ -1497,6 +1534,7 @@ article.job,
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .dashboardGrid,
   .customerGrid,
   .voucherGrid,
   .addonGrid {
