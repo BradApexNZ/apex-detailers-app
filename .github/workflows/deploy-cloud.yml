@@ -78,7 +78,6 @@ jobs:
             startGoogleCalendarConnect
             googleCalendarCallback
             getGoogleCalendarStatus
-            saveGoogleCalendarSelectionV6
             disconnectGoogleCalendar
           )
           for fn in "${functions[@]}"; do
