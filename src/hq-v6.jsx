@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { addDoc, arrayUnion, collection, doc, getDocs, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from "firebase/auth";
-import { auth, db, signOutAndClearCache, storage } from "./firebase";
+import { auth, authPersistenceReady, db, signOutAndClearCache, storage } from "./firebase";
 import {
   approveBookingRequest,
   createManualBooking,
@@ -1255,6 +1255,7 @@ function App() {
     setAuthBusy(true);
     setAuthError("");
     try {
+      await authPersistenceReady;
       await signInWithEmailAndPassword(auth, email, password);
     } catch {
       setAuthError("Login failed. Check your email and password.");
@@ -1265,6 +1266,7 @@ function App() {
     setAuthBusy(true);
     setAuthError("");
     try {
+      await authPersistenceReady;
       await signInWithPopup(auth, new GoogleAuthProvider());
     } catch (err) {
       setAuthError(
@@ -1508,6 +1510,20 @@ function App() {
     monthRevenue = jobs
       .filter(j => ["Paid", "Review Request Sent"].includes(j.status) && String(j.bookingDate || j.serviceDate || "").startsWith(month))
       .reduce((sum, j) => sum + Number(j.paidAmount || j.total || 0), 0);
+  const revenueTrend = useMemo(() => {
+    const paidJobs = jobs.filter(j => ["Paid", "Review Request Sent"].includes(j.status));
+    const points = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(`${today}T00:00:00`);
+      d.setDate(d.getDate() - i);
+      const key = d.toLocaleDateString("en-CA", { timeZone: "Pacific/Auckland" });
+      const total = paidJobs
+        .filter(j => (j.bookingDate || j.serviceDate) === key)
+        .reduce((sum, j) => sum + Number(j.paidAmount || j.total || 0), 0);
+      points.push(total);
+    }
+    return points;
+  }, [jobs, today]);
   const allPhotos = useMemo(
     () => jobs.flatMap(j => (j.photos || []).map(p => ({ ...p, jobId: j.id, customerName: j.customerName, vehicle: vehicleOf(j) }))),
     [jobs]
@@ -2009,6 +2025,53 @@ function Stat({ label, value, sensitive }) {
       <span>{label}</span>
       <b>{value}</b>
     </article>
+  );
+}
+function RevenueChart({ points, total }) {
+  const w = 400,
+    h = 120,
+    pad = 8;
+  const max = Math.max(1, ...points);
+  const stepX = points.length > 1 ? w / (points.length - 1) : w;
+  const coords = points.map((v, i) => [i * stepX, h - pad - (v / max) * (h - pad * 2)]);
+  const hasActivity = points.some(v => v > 0);
+  const line = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const area = `${line} L${w},${h} L0,${h} Z`;
+  const last = coords[coords.length - 1];
+  return (
+    <div className="revenueChart">
+      <div className="revenueChartHead">
+        <div>
+          <b className="pii">{money(total)}</b>
+          <span>Revenue - last 30 days</span>
+        </div>
+      </div>
+      {hasActivity ? (
+        <svg className="revenueChartSvg pii" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.32" />
+              <stop offset="100%" stopColor="var(--gold)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <line x1="0" y1={h * 0.25} x2={w} y2={h * 0.25} className="chartGrid" />
+          <line x1="0" y1={h * 0.5} x2={w} y2={h * 0.5} className="chartGrid" />
+          <line x1="0" y1={h * 0.75} x2={w} y2={h * 0.75} className="chartGrid" />
+          <path d={area} fill="url(#revenueFill)" />
+          <polyline
+            points={coords.map(([x, y]) => `${x},${y}`).join(" ")}
+            fill="none"
+            stroke="var(--gold)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {last && <circle cx={last[0]} cy={last[1]} r="4.5" fill="var(--gold)" />}
+        </svg>
+      ) : (
+        <div className="revenueChartEmpty muted">No paid jobs in the last 30 days yet.</div>
+      )}
+    </div>
   );
 }
 function Intro({ title, text }) {
