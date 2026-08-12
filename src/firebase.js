@@ -1,12 +1,14 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
-import { browserLocalPersistence, getAuth, setPersistence } from "firebase/auth";
+import { browserLocalPersistence, getAuth, setPersistence, signOut } from "firebase/auth";
 import {
+  clearIndexedDbPersistence,
   initializeFirestore,
   memoryLocalCache,
   persistentLocalCache,
-  persistentMultipleTabManager
+  persistentMultipleTabManager,
+  terminate
 } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
@@ -41,8 +43,8 @@ if (typeof window !== "undefined" && appCheckSiteKey) {
   });
 }
 
-const privateOfflinePath = typeof window !== "undefined"
-  && /^\/(?:hq(?:\.html)?|tools|data-tools(?:\.html)?)$/.test(window.location.pathname);
+const privateOfflinePath =
+  typeof window !== "undefined" && /^\/(?:hq(?:\.html)?|tools|data-tools(?:\.html)?)$/.test(window.location.pathname);
 
 export const offlinePersistenceEnabled = privateOfflinePath;
 export const auth = getAuth(app);
@@ -54,15 +56,34 @@ export const authPersistenceReady = setPersistence(auth, browserLocalPersistence
 });
 
 export const db = initializeFirestore(app, {
-  localCache: privateOfflinePath
-    ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-    : memoryLocalCache()
+  localCache: privateOfflinePath ? persistentLocalCache({ tabManager: persistentMultipleTabManager() }) : memoryLocalCache()
 });
 export const storage = getStorage(app);
+
+// Owner data (customers, jobs, revenue) is cached in IndexedDB on /hq and /tools
+// for offline use. signOut() alone leaves that cache readable on-device, so a
+// deliberate sign-out must also drop the local cache. Firestore requires the SDK
+// to be terminated before it can be cleared, so we reload afterwards for a clean
+// re-initialised state rather than trying to resurrect `db` mid-session.
+export async function signOutAndClearCache() {
+  await signOut(auth);
+  if (offlinePersistenceEnabled) {
+    try {
+      await terminate(db);
+      await clearIndexedDbPersistence(db);
+    } catch (error) {
+      console.warn("Could not clear cached Apex HQ data on this device.", error);
+    }
+  }
+  window.location.reload();
+}
+
 export const functions = getFunctions(app, "australia-southeast1");
 export const analyticsPromise = firebaseConfig.measurementId
-  ? isSupported().then(supported => (supported ? getAnalytics(app) : null)).catch(error => {
-      console.warn("Firebase Analytics is not available in this environment.", error);
-      return null;
-    })
+  ? isSupported()
+      .then(supported => (supported ? getAnalytics(app) : null))
+      .catch(error => {
+        console.warn("Firebase Analytics is not available in this environment.", error);
+        return null;
+      })
   : Promise.resolve(null);

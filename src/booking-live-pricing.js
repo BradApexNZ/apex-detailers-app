@@ -10,9 +10,7 @@ const vehiclePricing = {
 const money = value => `$${Number(value || 0).toFixed(0)}`;
 
 function getVehicleSelect() {
-  return [...document.querySelectorAll("select")].find(select =>
-    select.closest("label")?.textContent?.includes("Vehicle type")
-  );
+  return [...document.querySelectorAll("select")].find(select => select.closest("label")?.textContent?.includes("Vehicle type"));
 }
 
 function rememberBasePrice(priceElement) {

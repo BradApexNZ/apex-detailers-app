@@ -21,8 +21,10 @@ function removeGuard() {
 
 function pinInputs(mode) {
   const count = mode === "unlock" ? getPinLength() : 4;
-  return Array.from({ length: count }, (_, index) =>
-    `<input inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit ${index + 1}">`
+  return Array.from(
+    { length: count },
+    (_, index) =>
+      `<input inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="one-time-code" aria-label="PIN digit ${index + 1}">`
   ).join("");
 }
 
@@ -85,7 +87,9 @@ function createGuard(user, mode) {
       removeGuard();
     } catch (cause) {
       error.textContent = cause?.message || "Apex HQ could not be unlocked.";
-      inputs.forEach(input => { input.value = ""; });
+      inputs.forEach(input => {
+        input.value = "";
+      });
       inputs[0]?.focus();
       submit.disabled = false;
     }

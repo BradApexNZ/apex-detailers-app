@@ -14,7 +14,9 @@ const MAX_PIN_FAILURES = 5;
 
 function toBase64(bytes) {
   let binary = "";
-  new Uint8Array(bytes).forEach(byte => { binary += String.fromCharCode(byte); });
+  new Uint8Array(bytes).forEach(byte => {
+    binary += String.fromCharCode(byte);
+  });
   return btoa(binary);
 }
 
@@ -126,7 +128,7 @@ export async function verifyPin(pin) {
 
   const stored = readStoredPin();
   const digits = getPinLength();
-  if (!stored || !(new RegExp(`^\\d{${digits}}$`)).test(pin)) return false;
+  if (!stored || !new RegExp(`^\\d{${digits}}$`).test(pin)) return false;
 
   const hash = await digest(`${stored.salt}:${pin}`);
   const valid = hash === stored.hash;

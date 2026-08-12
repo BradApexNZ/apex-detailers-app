@@ -10,10 +10,14 @@ initializeApp();
 const db = getFirestore();
 const REGION = "australia-southeast1";
 const ZONE = defineString("APEX_TIME_ZONE", { default: "Pacific/Auckland" });
-const OWNER_UIDS = defineString("APEX_OWNER_UIDS", { default: "fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42,maefd5cQ9qcIKSeU4b3yZKUL8UW2" });
+const OWNER_UIDS = defineString("APEX_OWNER_UIDS", {
+  default: "fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42,maefd5cQ9qcIKSeU4b3yZKUL8UW2"
+});
 const OWNER_EMAIL = defineString("APEX_OWNER_EMAIL", { default: "bookings@apexdetailers.co.nz" });
 const APP_BASE_URL = defineString("APP_BASE_URL", { default: "https://apex-detailers.web.app" });
-const GOOGLE_CALLBACK_URL = defineString("GOOGLE_CALLBACK_URL", { default: "https://australia-southeast1-apex-detailers.cloudfunctions.net/googleCalendarCallback" });
+const GOOGLE_CALLBACK_URL = defineString("GOOGLE_CALLBACK_URL", {
+  default: "https://australia-southeast1-apex-detailers.cloudfunctions.net/googleCalendarCallback"
+});
 const CALENDAR_ID = defineString("GOOGLE_CALENDAR_ID", { default: "primary" });
 const GOOGLE_CLIENT_ID = defineSecret("GOOGLE_OAUTH_CLIENT_ID");
 const GOOGLE_CLIENT_SECRET = defineSecret("GOOGLE_OAUTH_CLIENT_SECRET");
@@ -21,11 +25,35 @@ const TOKEN_KEY = defineSecret("TOKEN_ENCRYPTION_KEY");
 const GOOGLE_SECRETS = [GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, TOKEN_KEY];
 
 const services = [
-  { id: "maintenance", name: "Maintenance Clean", price: 150, durationMinutes: 180, description: "For regular clients whose vehicle has already had a deep detail." },
-  { id: "deep", name: "Deep Interior Detail", price: 179, durationMinutes: 300, description: "A thorough interior reset with steam cleaning and extraction where required." },
-  { id: "full", name: "Full Detail", price: 249, durationMinutes: 360, description: "Deep interior detail plus exterior wash, wheels, tyres and glass." },
+  {
+    id: "maintenance",
+    name: "Maintenance Clean",
+    price: 150,
+    durationMinutes: 180,
+    description: "For regular clients whose vehicle has already had a deep detail."
+  },
+  {
+    id: "deep",
+    name: "Deep Interior Detail",
+    price: 179,
+    durationMinutes: 300,
+    description: "A thorough interior reset with steam cleaning and extraction where required."
+  },
+  {
+    id: "full",
+    name: "Full Detail",
+    price: 249,
+    durationMinutes: 360,
+    description: "Deep interior detail plus exterior wash, wheels, tyres and glass."
+  },
   { id: "tradie", name: "Tradie Reset", price: 229, durationMinutes: 360, description: "Heavy-duty reset for work utes and vans." },
-  { id: "seats", name: "Seats Out Reset", price: 399, durationMinutes: 480, description: "Maximum-access interior reset, subject to suitability confirmation." }
+  {
+    id: "seats",
+    name: "Seats Out Reset",
+    price: 399,
+    durationMinutes: 480,
+    description: "Maximum-access interior reset, subject to suitability confirmation."
+  }
 ];
 const publicServiceIds = new Set(["deep", "full", "tradie", "seats"]);
 
@@ -43,11 +71,20 @@ const defaults = {
   ownerEmails: true
 };
 
-const text = (value, max = 500) => String(value ?? "").trim().slice(0, max);
+const text = (value, max = 500) =>
+  String(value ?? "")
+    .trim()
+    .slice(0, max);
+const escapeHtml = value =>
+  String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 const cleanEmail = value => text(value, 180).toLowerCase();
 const cleanPhone = value => text(value, 40).replace(/[^0-9+ ]/g, "");
 const serviceById = id => services.find(item => item.id === id) || services[1];
-const owners = () => OWNER_UIDS.value().split(",").map(value => value.trim()).filter(Boolean);
+const owners = () =>
+  OWNER_UIDS.value()
+    .split(",")
+    .map(value => value.trim())
+    .filter(Boolean);
 
 function requireOwner(request) {
   if (!request.auth || !owners().includes(request.auth.uid)) {
@@ -88,11 +125,15 @@ async function rateLimit(request, bucket, limit = 8, minutes = 30) {
     const startedAt = data.windowStart?.toMillis?.() || 0;
     const count = now - startedAt < minutes * 60000 ? Number(data.count || 0) : 0;
     if (count >= limit) throw new HttpsError("resource-exhausted", "Too many attempts. Please try again later.");
-    transaction.set(reference, {
-      count: count + 1,
-      windowStart: count ? data.windowStart : Timestamp.now(),
-      updatedAt: FieldValue.serverTimestamp()
-    }, { merge: true });
+    transaction.set(
+      reference,
+      {
+        count: count + 1,
+        windowStart: count ? data.windowStart : Timestamp.now(),
+        updatedAt: FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
   });
 }
 
@@ -144,15 +185,14 @@ async function calendarConfig(connected) {
   const writableIds = new Set(rows.filter(row => ["owner", "writer"].includes(row.accessRole)).map(row => row.id));
   const preferenceSnapshot = await db.doc("settings/googleCalendar").get();
   const preferences = preferenceSnapshot.exists ? preferenceSnapshot.data() : {};
-  const configured = Array.isArray(preferences.selectedCalendarIds)
-    ? preferences.selectedCalendarIds.filter(id => allowed.has(id))
-    : [];
+  const configured = Array.isArray(preferences.selectedCalendarIds) ? preferences.selectedCalendarIds.filter(id => allowed.has(id)) : [];
   const fallback = rows.filter(row => row.primary).map(row => row.id);
   const selectedCalendarIds = configured.length ? configured : fallback;
   const requestedPrimary = text(preferences.primaryCalendarId, 300);
-  const primaryCalendarId = selectedCalendarIds.includes(requestedPrimary) && writableIds.has(requestedPrimary)
-    ? requestedPrimary
-    : selectedCalendarIds.find(id => writableIds.has(id)) || "";
+  const primaryCalendarId =
+    selectedCalendarIds.includes(requestedPrimary) && writableIds.has(requestedPrimary)
+      ? requestedPrimary
+      : selectedCalendarIds.find(id => writableIds.has(id)) || "";
   return { rows, selectedCalendarIds, primaryCalendarId };
 }
 
@@ -217,7 +257,11 @@ async function availableSlots(date, serviceId) {
   blocked.push(...googleBusy);
 
   const rows = [];
-  for (let start = open; start.plus({ minutes: service.durationMinutes }) <= close; start = start.plus({ minutes: Number(config.slotIntervalMinutes || 30) })) {
+  for (
+    let start = open;
+    start.plus({ minutes: service.durationMinutes }) <= close;
+    start = start.plus({ minutes: Number(config.slotIntervalMinutes || 30) })
+  ) {
     const end = start.plus({ minutes: service.durationMinutes });
     if (start < minimum) continue;
     if (!blocked.some(block => overlaps(start, end, block.start, block.end))) {
@@ -257,45 +301,55 @@ async function sendMail({ to, subject, html }) {
   }
 }
 
-const emailShell = (heading, body) => `<div style="background:#09090a;padding:28px;font-family:Arial,sans-serif;color:#f7f4ea"><div style="max-width:620px;margin:auto;background:#151518;border:1px solid #3a3a3f;border-radius:22px;padding:28px"><div style="color:#ffd21f;font-weight:900;letter-spacing:2px">APEX DETAILERS</div><h1 style="font-size:32px">${heading}</h1>${body}<p style="color:#99958d;margin-top:28px">Apex Detailers · Hawke's Bay</p></div></div>`;
+const emailShell = (heading, body) =>
+  `<div style="background:#09090a;padding:28px;font-family:Arial,sans-serif;color:#f7f4ea"><div style="max-width:620px;margin:auto;background:#151518;border:1px solid #3a3a3f;border-radius:22px;padding:28px"><div style="color:#ffd21f;font-weight:900;letter-spacing:2px">APEX DETAILERS</div><h1 style="font-size:32px">${heading}</h1>${body}<p style="color:#99958d;margin-top:28px">Apex Detailers · Hawke's Bay</p></div></div>`;
 
 async function notifyRequest(data, config) {
-  const vehicle = [data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" ");
-  const details = `<p><b>${data.serviceName}</b><br>${data.bookingDate} at ${data.bookingTime}<br>${vehicle}<br>${data.address}, ${data.area}</p>`;
+  const vehicle = escapeHtml([data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" "));
+  const details = `<p><b>${escapeHtml(data.serviceName)}</b><br>${escapeHtml(data.bookingDate)} at ${escapeHtml(data.bookingTime)}<br>${vehicle}<br>${escapeHtml(data.address)}, ${escapeHtml(data.area)}</p>`;
   const results = { customer: false, owner: false };
   if (config.customerEmails) {
     results.customer = await sendMail({
       to: data.email,
       subject: "Apex booking request received",
-      html: emailShell("We’ve received your booking request.", `${details}<p>Your selected time is being held while Brad reviews the vehicle details and final price.</p>`)
+      html: emailShell(
+        "We’ve received your booking request.",
+        `${details}<p>Your selected time is being held while Brad reviews the vehicle details and final price.</p>`
+      )
     });
   }
   if (config.ownerEmails) {
     results.owner = await sendMail({
       to: OWNER_EMAIL.value(),
       subject: `New Apex booking request — ${data.customerName}`,
-      html: emailShell("New booking request", `${details}<p><b>Customer:</b> ${data.customerName}<br><b>Phone:</b> ${data.phone}<br><b>Email:</b> ${data.email}</p><p>Open Apex HQ to confirm or decline it.</p>`)
+      html: emailShell(
+        "New booking request",
+        `${details}<p><b>Customer:</b> ${escapeHtml(data.customerName)}<br><b>Phone:</b> ${escapeHtml(data.phone)}<br><b>Email:</b> ${escapeHtml(data.email)}</p><p>Open Apex HQ to confirm or decline it.</p>`
+      )
     });
   }
   return results;
 }
 
 async function notifyConfirmed(data, config) {
-  const vehicle = data.vehicle || [data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" ");
-  const details = `<p><b>${data.packageName || data.serviceName}</b><br>${data.bookingDate} at ${data.bookingTime}<br>${vehicle}<br>${data.address}, ${data.area}</p>`;
+  const vehicle = escapeHtml(data.vehicle || [data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" "));
+  const details = `<p><b>${escapeHtml(data.packageName || data.serviceName)}</b><br>${escapeHtml(data.bookingDate)} at ${escapeHtml(data.bookingTime)}<br>${vehicle}<br>${escapeHtml(data.address)}, ${escapeHtml(data.area)}</p>`;
   const results = { customer: false, owner: false };
   if (config.customerEmails) {
     results.customer = await sendMail({
       to: data.email,
       subject: "Your Apex Detailers booking is confirmed",
-      html: emailShell("Your booking is confirmed.", `${details}<p>Please make sure an outside tap is accessible and remove valuables from the vehicle before the appointment.</p>`)
+      html: emailShell(
+        "Your booking is confirmed.",
+        `${details}<p>Please make sure an outside tap is accessible and remove valuables from the vehicle before the appointment.</p>`
+      )
     });
   }
   if (config.ownerEmails) {
     results.owner = await sendMail({
       to: OWNER_EMAIL.value(),
       subject: `Apex booking confirmed — ${data.customerName}`,
-      html: emailShell("Booking confirmed and synced", `${details}<p>${data.customerName} · ${data.phone}</p>`)
+      html: emailShell("Booking confirmed and synced", `${details}<p>${escapeHtml(data.customerName)} · ${escapeHtml(data.phone)}</p>`)
     });
   }
   return results;
@@ -340,7 +394,9 @@ async function deleteCalendarEvent(eventId, calendarId = "") {
     const config = await calendarConfig(connected);
     const targetCalendar = calendarId || config.primaryCalendarId;
     if (!targetCalendar) return;
-    await google.calendar({ version: "v3", auth: connected.client }).events.delete({ calendarId: targetCalendar, eventId, sendUpdates: "none" });
+    await google
+      .calendar({ version: "v3", auth: connected.client })
+      .events.delete({ calendarId: targetCalendar, eventId, sendUpdates: "none" });
   } catch (error) {
     if (![404, 410].includes(error?.code)) console.error("Calendar delete failed", error);
   }
@@ -411,10 +467,20 @@ export const submitBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SEC
     status: "pending",
     source: "public"
   };
-  if (!data.customerName || !data.phone || !data.email || !data.address || !data.vehicleMake || !data.vehicleModel || !data.bookingDate || !data.bookingTime) {
+  if (
+    !data.customerName ||
+    !data.phone ||
+    !data.email ||
+    !data.address ||
+    !data.vehicleMake ||
+    !data.vehicleModel ||
+    !data.bookingDate ||
+    !data.bookingTime
+  ) {
     throw new HttpsError("invalid-argument", "Complete the required booking details.");
   }
-  if (!Boolean(input.acceptedTerms)) throw new HttpsError("invalid-argument", "Accept the booking and pricing conditions before submitting.");
+  if (!Boolean(input.acceptedTerms))
+    throw new HttpsError("invalid-argument", "Accept the booking and pricing conditions before submitting.");
   if (!/^\S+@\S+\.\S+$/.test(data.email)) throw new HttpsError("invalid-argument", "Enter a valid email address.");
   if (data.phone.replace(/\D/g, "").length < 7) throw new HttpsError("invalid-argument", "Enter a valid phone number.");
   if (!(bookingConfig.serviceAreas || []).map(value => String(value).toLowerCase()).includes(data.area.toLowerCase())) {
@@ -457,21 +523,27 @@ export const submitBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SEC
     const calendarResult = await createCalendarEvent({ ...data, requestId: requestReference.id, serviceName: `PENDING — ${service.name}` });
     eventId = calendarResult.eventId;
     calendarId = calendarResult.calendarId;
-    await requestReference.set({
-      calendarEventId: eventId,
-      calendarId,
-      calendarSyncStatus: eventId ? "pending-hold-synced" : "not-connected",
-      calendarSyncedAt: eventId ? FieldValue.serverTimestamp() : null,
-      calendarSyncError: FieldValue.delete()
-    }, { merge: true });
+    await requestReference.set(
+      {
+        calendarEventId: eventId,
+        calendarId,
+        calendarSyncStatus: eventId ? "pending-hold-synced" : "not-connected",
+        calendarSyncedAt: eventId ? FieldValue.serverTimestamp() : null,
+        calendarSyncError: FieldValue.delete()
+      },
+      { merge: true }
+    );
   } catch (error) {
     console.error("Pending calendar hold failed", error);
     calendarError = text(error?.message, 500) || "Calendar hold failed.";
-    await requestReference.set({
-      calendarSyncStatus: "failed",
-      calendarSyncError: calendarError,
-      calendarSyncAttemptedAt: FieldValue.serverTimestamp()
-    }, { merge: true });
+    await requestReference.set(
+      {
+        calendarSyncStatus: "failed",
+        calendarSyncError: calendarError,
+        calendarSyncAttemptedAt: FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
   }
   const config = bookingConfig;
   const emails = await notifyRequest(data, config);
@@ -482,7 +554,7 @@ export const submitBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SEC
     bookingDate: data.bookingDate,
     bookingTime: data.bookingTime,
     emailSent: emails.customer,
-    calendarStatus: calendarError ? "needs-retry" : (eventId ? "held" : "not-connected")
+    calendarStatus: calendarError ? "needs-retry" : eventId ? "held" : "not-connected"
   };
 });
 
@@ -506,7 +578,10 @@ export const submitInquiry = onCall({ region: REGION, secrets: GOOGLE_SECRETS, e
     await sendMail({
       to: OWNER_EMAIL.value(),
       subject: `New Apex inquiry — ${data.name}`,
-      html: emailShell("New customer inquiry", `<p><b>${data.subject || "Website inquiry"}</b></p><p>${data.message.replace(/\n/g, "<br>")}</p><p>${data.name} · ${data.phone} · ${data.email}</p>`)
+      html: emailShell(
+        "New customer inquiry",
+        `<p><b>${escapeHtml(data.subject) || "Website inquiry"}</b></p><p>${escapeHtml(data.message).replace(/\n/g, "<br>")}</p><p>${escapeHtml(data.name)} · ${escapeHtml(data.phone)} · ${escapeHtml(data.email)}</p>`
+      )
     });
   }
   if (config.customerEmails) {
@@ -552,14 +627,18 @@ export const approveBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SE
       updatedAt: FieldValue.serverTimestamp()
     });
   } else {
-    batch.set(customerReference, {
-      phone: item.phone,
-      address: item.address,
-      area: item.area,
-      lastVehicle: vehicle,
-      lastJobStatus: "Booked",
-      updatedAt: FieldValue.serverTimestamp()
-    }, { merge: true });
+    batch.set(
+      customerReference,
+      {
+        phone: item.phone,
+        address: item.address,
+        area: item.area,
+        lastVehicle: vehicle,
+        lastJobStatus: "Booked",
+        updatedAt: FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
   }
 
   const job = {
@@ -594,8 +673,16 @@ export const approveBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SE
     updatedAt: FieldValue.serverTimestamp()
   };
   batch.set(jobReference, job);
-  batch.set(reference, { status: "accepted", jobId: jobReference.id, customerId: customerReference.id, reviewedAt: FieldValue.serverTimestamp() }, { merge: true });
-  batch.set(db.doc(`bookingLocks/${item.lockId}`), { status: "confirmed", jobId: jobReference.id, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  batch.set(
+    reference,
+    { status: "accepted", jobId: jobReference.id, customerId: customerReference.id, reviewedAt: FieldValue.serverTimestamp() },
+    { merge: true }
+  );
+  batch.set(
+    db.doc(`bookingLocks/${item.lockId}`),
+    { status: "confirmed", jobId: jobReference.id, updatedAt: FieldValue.serverTimestamp() },
+    { merge: true }
+  );
   await batch.commit();
 
   let eventId = "";
@@ -605,25 +692,38 @@ export const approveBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SE
     const calendarResult = await createCalendarEvent({ ...job, jobId: jobReference.id }, item.calendarEventId || "", item.calendarId || "");
     eventId = calendarResult.eventId;
     calendarId = calendarResult.calendarId;
-    await jobReference.set({
-      calendarEventId: eventId,
-      calendarId,
-      calendarSyncStatus: eventId ? "synced" : "not-connected",
-      calendarSyncedAt: eventId ? FieldValue.serverTimestamp() : null,
-      calendarSyncError: FieldValue.delete()
-    }, { merge: true });
+    await jobReference.set(
+      {
+        calendarEventId: eventId,
+        calendarId,
+        calendarSyncStatus: eventId ? "synced" : "not-connected",
+        calendarSyncedAt: eventId ? FieldValue.serverTimestamp() : null,
+        calendarSyncError: FieldValue.delete()
+      },
+      { merge: true }
+    );
   } catch (error) {
     console.error("Approved booking Calendar sync failed after commit", error);
     calendarError = text(error?.message, 500) || "Calendar sync failed.";
-    await jobReference.set({
-      calendarSyncStatus: "failed",
-      calendarSyncError: calendarError,
-      calendarSyncAttemptedAt: FieldValue.serverTimestamp()
-    }, { merge: true });
+    await jobReference.set(
+      {
+        calendarSyncStatus: "failed",
+        calendarSyncError: calendarError,
+        calendarSyncAttemptedAt: FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
   }
   const config = await getSettings();
   const emails = await notifyConfirmed(job, config);
-  await reference.set({ confirmationEmailStatus: emails, calendarSyncStatus: calendarError ? "failed" : (eventId ? "synced" : "not-connected"), calendarSyncError: calendarError || FieldValue.delete() }, { merge: true });
+  await reference.set(
+    {
+      confirmationEmailStatus: emails,
+      calendarSyncStatus: calendarError ? "failed" : eventId ? "synced" : "not-connected",
+      calendarSyncError: calendarError || FieldValue.delete()
+    },
+    { merge: true }
+  );
   return { jobId: jobReference.id, calendarEventId: eventId, calendarId, calendarError, emails };
 });
 
@@ -643,7 +743,10 @@ export const declineBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SE
     await sendMail({
       to: item.email,
       subject: "Apex booking request update",
-      html: emailShell("That appointment couldn’t be confirmed.", "<p>The requested time has been released. Please choose another time through the Apex booking page or contact Brad directly.</p>")
+      html: emailShell(
+        "That appointment couldn’t be confirmed.",
+        "<p>The requested time has been released. Please choose another time through the Apex booking page or contact Brad directly.</p>"
+      )
     });
   }
   return { ok: true };
@@ -699,7 +802,15 @@ export const createManualBooking = onCall({ region: REGION, secrets: GOOGLE_SECR
     sourceQuoteId: sourceQuoteId || ""
   };
 
-  if (!data.customerName || !data.phone || !data.address || !data.vehicleMake || !data.vehicleModel || !data.bookingDate || !data.bookingTime) {
+  if (
+    !data.customerName ||
+    !data.phone ||
+    !data.address ||
+    !data.vehicleMake ||
+    !data.vehicleModel ||
+    !data.bookingDate ||
+    !data.bookingTime
+  ) {
     throw new HttpsError("invalid-argument", "Complete the customer, address, vehicle, date and time before booking.");
   }
 
@@ -727,23 +838,29 @@ export const createManualBooking = onCall({ region: REGION, secrets: GOOGLE_SECR
   const parts = data.customerName.split(/\s+/);
   const batch = db.batch();
 
-  batch.set(customerReference, {
-    ...(existingCustomer.exists ? {} : {
-      firstName: parts.shift() || data.customerName,
-      lastName: parts.join(" "),
-      customerName: data.customerName,
-      customerType: "standard",
-      preferredContact: "email",
-      createdAt: FieldValue.serverTimestamp()
-    }),
-    phone: data.phone,
-    email: data.email,
-    address: data.address,
-    area: data.area,
-    lastVehicle: vehicle,
-    lastJobStatus: "Booked",
-    updatedAt: FieldValue.serverTimestamp()
-  }, { merge: true });
+  batch.set(
+    customerReference,
+    {
+      ...(existingCustomer.exists
+        ? {}
+        : {
+            firstName: parts.shift() || data.customerName,
+            lastName: parts.join(" "),
+            customerName: data.customerName,
+            customerType: "standard",
+            preferredContact: "email",
+            createdAt: FieldValue.serverTimestamp()
+          }),
+      phone: data.phone,
+      email: data.email,
+      address: data.address,
+      area: data.area,
+      lastVehicle: vehicle,
+      lastJobStatus: "Booked",
+      updatedAt: FieldValue.serverTimestamp()
+    },
+    { merge: true }
+  );
 
   const jobPayload = {
     ...data,
@@ -754,40 +871,54 @@ export const createManualBooking = onCall({ region: REGION, secrets: GOOGLE_SECR
     updatedAt: FieldValue.serverTimestamp()
   };
   batch.set(jobReference, jobPayload, { merge: true });
-  batch.set(lockReference, {
-    date: data.bookingDate,
-    startTime: data.bookingTime,
-    endTime: data.bookingEndTime,
-    status: "confirmed",
-    jobId: jobReference.id,
-    source: data.source,
-    serverVerified: true,
-    createdAt: FieldValue.serverTimestamp()
-  }, { merge: true });
+  batch.set(
+    lockReference,
+    {
+      date: data.bookingDate,
+      startTime: data.bookingTime,
+      endTime: data.bookingEndTime,
+      status: "confirmed",
+      jobId: jobReference.id,
+      source: data.source,
+      serverVerified: true,
+      createdAt: FieldValue.serverTimestamp()
+    },
+    { merge: true }
+  );
   await batch.commit();
 
   let eventId = "";
   let calendarId = "";
   let calendarError = "";
   try {
-    const calendarResult = await createCalendarEvent({ ...data, vehicle, jobId: jobReference.id }, sourceQuote?.calendarEventId || "", sourceQuote?.calendarId || "");
+    const calendarResult = await createCalendarEvent(
+      { ...data, vehicle, jobId: jobReference.id },
+      sourceQuote?.calendarEventId || "",
+      sourceQuote?.calendarId || ""
+    );
     eventId = calendarResult.eventId;
     calendarId = calendarResult.calendarId;
-    await jobReference.set({
-      calendarEventId: eventId,
-      calendarId,
-      calendarSyncStatus: eventId ? "synced" : "not-connected",
-      calendarSyncedAt: FieldValue.serverTimestamp(),
-      calendarSyncError: FieldValue.delete()
-    }, { merge: true });
+    await jobReference.set(
+      {
+        calendarEventId: eventId,
+        calendarId,
+        calendarSyncStatus: eventId ? "synced" : "not-connected",
+        calendarSyncedAt: FieldValue.serverTimestamp(),
+        calendarSyncError: FieldValue.delete()
+      },
+      { merge: true }
+    );
   } catch (error) {
     console.error("Manual booking Calendar sync failed after commit", error);
     calendarError = text(error?.message, 500) || "Calendar sync failed.";
-    await jobReference.set({
-      calendarSyncStatus: "failed",
-      calendarSyncError: calendarError,
-      calendarSyncAttemptedAt: FieldValue.serverTimestamp()
-    }, { merge: true });
+    await jobReference.set(
+      {
+        calendarSyncStatus: "failed",
+        calendarSyncError: calendarError,
+        calendarSyncAttemptedAt: FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
   }
 
   const emails = await notifyConfirmed({ ...data, vehicle }, await getSettings());
@@ -804,13 +935,28 @@ export const getGoogleCalendarStatus = onCall({ region: REGION, secrets: GOOGLE_
       connected: true,
       email: connected.email,
       connectedAt: connected.data.connectedAt?.toDate?.()?.toISOString?.() || null,
-      calendars: config.rows.map(row => ({ id: row.id, name: row.summaryOverride || row.summary || row.id, primary: Boolean(row.primary), accessRole: row.accessRole || "reader", writable: ["owner", "writer"].includes(row.accessRole) })),
+      calendars: config.rows.map(row => ({
+        id: row.id,
+        name: row.summaryOverride || row.summary || row.id,
+        primary: Boolean(row.primary),
+        accessRole: row.accessRole || "reader",
+        writable: ["owner", "writer"].includes(row.accessRole)
+      })),
       selectedCalendarIds: config.selectedCalendarIds,
       primaryCalendarId: config.primaryCalendarId,
       healthy: Boolean(config.selectedCalendarIds.length && config.primaryCalendarId)
     };
   } catch (error) {
-    return { connected: true, email: connected.email, calendars: [], selectedCalendarIds: [], primaryCalendarId: "", healthy: false, reason: "google-api-error", error: text(error?.message, 500) };
+    return {
+      connected: true,
+      email: connected.email,
+      calendars: [],
+      selectedCalendarIds: [],
+      primaryCalendarId: "",
+      healthy: false,
+      reason: "google-api-error",
+      error: text(error?.message, 500)
+    };
   }
 });
 
@@ -843,14 +989,17 @@ export const googleCalendarCallback = onRequest({ region: REGION, secrets: GOOGL
     if (!tokens.refresh_token) throw new Error("Google did not return a refresh token. Reconnect and approve access.");
     client.setCredentials(tokens);
     const profile = await google.oauth2({ version: "v2", auth: client }).userinfo.get();
-    await db.doc("integrations/google").set({
-      refreshToken: encrypt(tokens.refresh_token),
-      email: profile.data.email || OWNER_EMAIL.value(),
-      scopes: tokens.scope || "",
-      connectedBy: stateSnapshot.data().uid,
-      connectedAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp()
-    }, { merge: true });
+    await db.doc("integrations/google").set(
+      {
+        refreshToken: encrypt(tokens.refresh_token),
+        email: profile.data.email || OWNER_EMAIL.value(),
+        scopes: tokens.scope || "",
+        connectedBy: stateSnapshot.data().uid,
+        connectedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
     await stateReference.delete();
     response.redirect(`${APP_BASE_URL.value()}/hq?google=connected`);
   } catch (error) {
@@ -900,7 +1049,11 @@ export const importGoogleCalendarEvents = onCall({ region: REGION, secrets: GOOG
         const start = DateTime.fromISO(rawStart, { zone: ZONE.value() }).setZone(ZONE.value());
         const end = DateTime.fromISO(rawEnd, { zone: ZONE.value() }).setZone(ZONE.value());
         if (!start.isValid || !end.isValid) continue;
-        const externalId = crypto.createHash("sha256").update(calendarId + ":" + event.id).digest("hex").slice(0, 40);
+        const externalId = crypto
+          .createHash("sha256")
+          .update(calendarId + ":" + event.id)
+          .digest("hex")
+          .slice(0, 40);
         const reference = db.doc("jobs/google_" + externalId);
         const existing = await reference.get();
         const allDay = !event.start?.dateTime;
@@ -950,10 +1103,22 @@ export const syncJobToCalendar = onCall({ region: REGION, secrets: GOOGLE_SECRET
   }
   try {
     const calendarResult = await createCalendarEvent(job, job.calendarEventId || "", job.calendarId || job.sourceCalendarId || "");
-    await reference.set({ calendarEventId: calendarResult.eventId, calendarId: calendarResult.calendarId, calendarSyncStatus: "synced", calendarSyncedAt: FieldValue.serverTimestamp(), calendarSyncError: FieldValue.delete() }, { merge: true });
+    await reference.set(
+      {
+        calendarEventId: calendarResult.eventId,
+        calendarId: calendarResult.calendarId,
+        calendarSyncStatus: "synced",
+        calendarSyncedAt: FieldValue.serverTimestamp(),
+        calendarSyncError: FieldValue.delete()
+      },
+      { merge: true }
+    );
     return calendarResult;
   } catch (error) {
-    await reference.set({ calendarSyncStatus: "failed", calendarSyncError: text(error?.message, 500), calendarSyncAttemptedAt: FieldValue.serverTimestamp() }, { merge: true });
+    await reference.set(
+      { calendarSyncStatus: "failed", calendarSyncError: text(error?.message, 500), calendarSyncAttemptedAt: FieldValue.serverTimestamp() },
+      { merge: true }
+    );
     throw new HttpsError("internal", `Calendar sync failed: ${text(error?.message, 300)}`);
   }
 });

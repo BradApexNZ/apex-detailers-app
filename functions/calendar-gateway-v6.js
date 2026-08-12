@@ -10,14 +10,25 @@ if (!getApps().length) initializeApp();
 const db = getFirestore();
 const REGION = "australia-southeast1";
 const ZONE = defineString("APEX_TIME_ZONE", { default: "Pacific/Auckland" });
-const OWNER_UIDS = defineString("APEX_OWNER_UIDS", { default: "fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42,maefd5cQ9qcIKSeU4b3yZKUL8UW2" });
-const GOOGLE_CALLBACK_URL = defineString("GOOGLE_CALLBACK_URL", { default: "https://australia-southeast1-apex-detailers.cloudfunctions.net/googleCalendarCallback" });
+const OWNER_UIDS = defineString("APEX_OWNER_UIDS", {
+  default: "fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42,maefd5cQ9qcIKSeU4b3yZKUL8UW2"
+});
+const GOOGLE_CALLBACK_URL = defineString("GOOGLE_CALLBACK_URL", {
+  default: "https://australia-southeast1-apex-detailers.cloudfunctions.net/googleCalendarCallback"
+});
 const GOOGLE_CLIENT_ID = defineSecret("GOOGLE_OAUTH_CLIENT_ID");
 const GOOGLE_CLIENT_SECRET = defineSecret("GOOGLE_OAUTH_CLIENT_SECRET");
 const TOKEN_KEY = defineSecret("TOKEN_ENCRYPTION_KEY");
 const GOOGLE_SECRETS = [GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, TOKEN_KEY];
-const text = (value, max = 500) => String(value ?? "").trim().slice(0, max);
-const owners = () => OWNER_UIDS.value().split(",").map(value => value.trim()).filter(Boolean);
+const text = (value, max = 500) =>
+  String(value ?? "")
+    .trim()
+    .slice(0, max);
+const owners = () =>
+  OWNER_UIDS.value()
+    .split(",")
+    .map(value => value.trim())
+    .filter(Boolean);
 
 function requireOwner(request) {
   if (!request.auth || !owners().includes(request.auth.uid)) {
@@ -236,7 +247,10 @@ async function liveEvents(client, rows, selectedCalendarIds, data, scopes = "") 
       const events = await busyFallback(api, rows, selectedCalendarIds, start, end);
       events.sort((a, b) => `${a.bookingDate} ${a.bookingTime}`.localeCompare(`${b.bookingDate} ${b.bookingTime}`));
       const scopeText = String(scopes || "");
-      const hasEventScope = scopeText.includes("https://www.googleapis.com/auth/calendar") || scopeText.includes("https://www.googleapis.com/auth/calendar.readonly") || scopeText.includes("https://www.googleapis.com/auth/calendar.events");
+      const hasEventScope =
+        scopeText.includes("https://www.googleapis.com/auth/calendar") ||
+        scopeText.includes("https://www.googleapis.com/auth/calendar.readonly") ||
+        scopeText.includes("https://www.googleapis.com/auth/calendar.events");
       return {
         events,
         degraded: true,
@@ -287,7 +301,10 @@ export const listGoogleCalendarsV6 = onCall({ region: REGION, secrets: GOOGLE_SE
   }
 
   const scopeText = String(connected.data.scopes || "");
-  const hasEventScope = scopeText.includes("https://www.googleapis.com/auth/calendar") || scopeText.includes("https://www.googleapis.com/auth/calendar.readonly") || scopeText.includes("https://www.googleapis.com/auth/calendar.events");
+  const hasEventScope =
+    scopeText.includes("https://www.googleapis.com/auth/calendar") ||
+    scopeText.includes("https://www.googleapis.com/auth/calendar.readonly") ||
+    scopeText.includes("https://www.googleapis.com/auth/calendar.events");
   return {
     connected: true,
     healthy: Boolean(resolved.selectedCalendarIds.length && resolved.primaryCalendarId),

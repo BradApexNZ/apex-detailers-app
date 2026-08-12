@@ -11,6 +11,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "launch:audit": "node scripts/launch-audit.mjs",
+    "format": "prettier --write \"src/**/*.{js,jsx,css}\" \"functions/**/*.js\"",
     "check:frontend": "npm run build",
     "check:functions": "npm --prefix functions run lint",
     "check": "npm run check:frontend && npm run check:functions && npm run launch:audit",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "6.0.4",
+    "prettier": "^3.9.6",
     "vite": "8.1.5"
   }
 }

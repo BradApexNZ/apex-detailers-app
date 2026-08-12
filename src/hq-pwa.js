@@ -5,8 +5,7 @@ let deferredInstallPrompt = null;
 let reloadingForWorker = false;
 
 function isStandalone() {
-  return window.matchMedia("(display-mode: standalone)").matches
-    || window.navigator.standalone === true;
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 }
 
 function isIos() {
@@ -44,10 +43,7 @@ async function checkConnection() {
     return;
   }
   try {
-    await Promise.race([
-      waitForPendingWrites(db),
-      new Promise(resolve => window.setTimeout(resolve, 4000))
-    ]);
+    await Promise.race([waitForPendingWrites(db), new Promise(resolve => window.setTimeout(resolve, 4000))]);
   } catch {
     // Firestore exposes operation errors where they matter. Healthy connectivity stays invisible.
   }
@@ -132,10 +128,11 @@ if ("serviceWorker" in navigator && window.isSecureContext) {
   });
 
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/apex-hq-sw.js?v=4", {
-      scope: "/hq",
-      updateViaCache: "none"
-    })
+    navigator.serviceWorker
+      .register("/apex-hq-sw.js?v=4", {
+        scope: "/hq",
+        updateViaCache: "none"
+      })
       .then(async registration => {
         await registration.update();
         if (registration.waiting) registration.waiting.postMessage?.({ type: "SKIP_WAITING" });
