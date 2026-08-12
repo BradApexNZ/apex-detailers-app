@@ -59,7 +59,9 @@ function openPinModal() {
     });
   });
   back.querySelector("[data-pin-cancel]").addEventListener("click", closePinModal);
-  back.addEventListener("mousedown", event => { if (event.target === back) closePinModal(); });
+  back.addEventListener("mousedown", event => {
+    if (event.target === back) closePinModal();
+  });
   save.addEventListener("click", async () => {
     const pin = inputs.map(input => input.value).join("");
     if (!/^\d{4}$/.test(pin)) {

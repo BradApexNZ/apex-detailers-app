@@ -1,20 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import {
-  apexCloudEnabled,
-  getPublicBookingConfig,
-  listBookingAvailability,
-  submitBookingRequest
-} from "./apex-api";
-import {
-  money,
-  publicServicePackages,
-  serviceById
-} from "./booking-data";
+import { apexCloudEnabled, getPublicBookingConfig, listBookingAvailability, submitBookingRequest } from "./apex-api";
+import { money, publicServicePackages, serviceById } from "./booking-data";
 
-const today = () => new Date().toLocaleDateString("en-CA", {
-  timeZone: "Pacific/Auckland"
-});
+const today = () =>
+  new Date().toLocaleDateString("en-CA", {
+    timeZone: "Pacific/Auckland"
+  });
 
 const blank = {
   serviceId: "deep",
@@ -79,8 +71,8 @@ function ShowcaseBooking() {
           <span className="eyebrow">MOBILE CAR DETAILING · HAWKE'S BAY</span>
           <h1>Real care for real vehicles.</h1>
           <p>
-            Apex Detailers delivers premium interior resets, full details and
-            work-vehicle cleans across Napier, Hastings and surrounding areas.
+            Apex Detailers delivers premium interior resets, full details and work-vehicle cleans across Napier, Hastings and surrounding
+            areas.
           </p>
         </div>
         <aside>
@@ -92,19 +84,11 @@ function ShowcaseBooking() {
       <section className="card showcaseCard">
         <span className="eyebrow">SERVICES</span>
         <h2>Choose the right level of reset.</h2>
-        <p>
-          Prices are starting points. Final pricing is confirmed from vehicle
-          size, condition and the work required.
-        </p>
+        <p>Prices are starting points. Final pricing is confirmed from vehicle size, condition and the work required.</p>
 
         <div className="services">
           {publicServicePackages.map(item => (
-            <button
-              type="button"
-              key={item.id}
-              className={selectedId === item.id ? "selected" : ""}
-              onClick={() => setSelectedId(item.id)}
-            >
+            <button type="button" key={item.id} className={selectedId === item.id ? "selected" : ""} onClick={() => setSelectedId(item.id)}>
               <div>
                 <strong>{item.name}</strong>
                 <small>{item.description}</small>
@@ -120,14 +104,11 @@ function ShowcaseBooking() {
             <span className="eyebrow">CURRENT BOOKING METHOD</span>
             <h3>Talk directly with Apex.</h3>
             <p>
-              Online Calendar sync and automated confirmations are staged for a
-              future cloud upgrade. No paid automation is active in this build.
+              Online Calendar sync and automated confirmations are staged for a future cloud upgrade. No paid automation is active in this
+              build.
             </p>
           </div>
-          <a
-            className="primary showcaseButton"
-            href={`mailto:bookings@apexdetailers.co.nz?subject=${emailSubject}&body=${emailBody}`}
-          >
+          <a className="primary showcaseButton" href={`mailto:bookings@apexdetailers.co.nz?subject=${emailSubject}&body=${emailBody}`}>
             Enquire about {selected.name}
           </a>
         </div>
@@ -225,10 +206,18 @@ function Booking() {
             Brad will review the vehicle details, final price and Calendar booking before confirming it.
           </p>
           <div className="confirm">
-            <span><b>{done.serviceName}</b>Service</span>
-            <span><b>{done.bookingDate}</b>Date</span>
-            <span><b>{done.bookingTime}</b>Start</span>
-            <span><b>{done.reference}</b>Reference</span>
+            <span>
+              <b>{done.serviceName}</b>Service
+            </span>
+            <span>
+              <b>{done.bookingDate}</b>Date
+            </span>
+            <span>
+              <b>{done.bookingTime}</b>Start
+            </span>
+            <span>
+              <b>{done.reference}</b>Reference
+            </span>
           </div>
         </section>
       </main>
@@ -243,17 +232,19 @@ function Booking() {
         <div>
           <span className="eyebrow">MOBILE CAR DETAILING</span>
           <h1>Book your vehicle in.</h1>
-          <p>
-            Choose a public service and an available time. Your request lands
-            inside Apex HQ for final approval.
-          </p>
+          <p>Choose a public service and an available time. Your request lands inside Apex HQ for final approval.</p>
         </div>
-        <aside><b>Napier</b><span>Hastings · Havelock North</span></aside>
+        <aside>
+          <b>Napier</b>
+          <span>Hastings · Havelock North</span>
+        </aside>
       </section>
 
       <div className="steps">
         {[1, 2, 3, 4].map(number => (
-          <i key={number} className={number <= step ? "on" : ""}>{number}</i>
+          <i key={number} className={number <= step ? "on" : ""}>
+            {number}
+          </i>
         ))}
       </div>
 
@@ -271,7 +262,10 @@ function Booking() {
                 className={form.serviceId === item.id ? "selected" : ""}
                 onClick={() => update("serviceId", item.id)}
               >
-                <div><strong>{item.name}</strong><small>{item.description}</small></div>
+                <div>
+                  <strong>{item.name}</strong>
+                  <small>{item.description}</small>
+                </div>
                 <b>from {money(item.price)}</b>
                 <em>about {Math.round(item.durationMinutes / 30) / 2} hrs</em>
               </button>
@@ -288,25 +282,27 @@ function Booking() {
               <option value="van">Van / oversized</option>
             </select>
           </label>
-          <button className="primary" onClick={() => setStep(2)}>Choose a date →</button>
+          <button className="primary" onClick={() => setStep(2)}>
+            Choose a date →
+          </button>
         </section>
       )}
 
       {step === 2 && (
         <section className="card">
-          <button className="back" onClick={() => setStep(1)}>← Back</button>
+          <button className="back" onClick={() => setStep(1)}>
+            ← Back
+          </button>
           <span className="eyebrow">02 — DATE</span>
           <h2>When suits you?</h2>
           <label>
             Preferred date
-            <input
-              type="date"
-              min={today()}
-              value={form.bookingDate}
-              onChange={event => update("bookingDate", event.target.value)}
-            />
+            <input type="date" min={today()} value={form.bookingDate} onChange={event => update("bookingDate", event.target.value)} />
           </label>
-          <div className="summary"><span>{service.name}</span><b>from {money(service.price)}</b></div>
+          <div className="summary">
+            <span>{service.name}</span>
+            <b>from {money(service.price)}</b>
+          </div>
           <button className="primary" onClick={findTimes} disabled={busy}>
             {busy ? "Checking Calendar…" : "Show available times"}
           </button>
@@ -315,7 +311,9 @@ function Booking() {
 
       {step === 3 && (
         <section className="card">
-          <button className="back" onClick={() => setStep(2)}>← Change date</button>
+          <button className="back" onClick={() => setStep(2)}>
+            ← Change date
+          </button>
           <span className="eyebrow">03 — TIME</span>
           <h2>Pick an available start.</h2>
           <div className="slotGrid">
@@ -338,35 +336,85 @@ function Booking() {
 
       {step === 4 && (
         <section className="card">
-          <button className="back" onClick={() => setStep(3)}>← Change time</button>
+          <button className="back" onClick={() => setStep(3)}>
+            ← Change time
+          </button>
           <span className="eyebrow">04 — DETAILS</span>
           <h2>Tell Apex about the job.</h2>
           <form className="form" onSubmit={submit}>
-            <label>Full name<input required value={form.customerName} onChange={event => update("customerName", event.target.value)} /></label>
-            <label>Mobile<input required inputMode="tel" value={form.phone} onChange={event => update("phone", event.target.value)} /></label>
-            <label>Email<input required type="email" value={form.email} onChange={event => update("email", event.target.value)} /></label>
-            <label>Area<select value={form.area} onChange={event => update("area", event.target.value)}>{config?.serviceAreas?.map(area => <option key={area}>{area}</option>)}</select></label>
-            <label className="wide">Address<input required value={form.address} onChange={event => update("address", event.target.value)} /></label>
-            <label>Year<input value={form.vehicleYear} onChange={event => update("vehicleYear", event.target.value)} /></label>
-            <label>Make<input required value={form.vehicleMake} onChange={event => update("vehicleMake", event.target.value)} /></label>
-            <label>Model<input required value={form.vehicleModel} onChange={event => update("vehicleModel", event.target.value)} /></label>
-            <label>Rego<input value={form.rego} onChange={event => update("rego", event.target.value.toUpperCase())} /></label>
-            <label className="wide">Notes<textarea rows="4" value={form.notes} onChange={event => update("notes", event.target.value)} /></label>
+            <label>
+              Full name
+              <input required value={form.customerName} onChange={event => update("customerName", event.target.value)} />
+            </label>
+            <label>
+              Mobile
+              <input required inputMode="tel" value={form.phone} onChange={event => update("phone", event.target.value)} />
+            </label>
+            <label>
+              Email
+              <input required type="email" value={form.email} onChange={event => update("email", event.target.value)} />
+            </label>
+            <label>
+              Area
+              <select value={form.area} onChange={event => update("area", event.target.value)}>
+                {config?.serviceAreas?.map(area => (
+                  <option key={area}>{area}</option>
+                ))}
+              </select>
+            </label>
+            <label className="wide">
+              Address
+              <input required value={form.address} onChange={event => update("address", event.target.value)} />
+            </label>
+            <label>
+              Year
+              <input value={form.vehicleYear} onChange={event => update("vehicleYear", event.target.value)} />
+            </label>
+            <label>
+              Make
+              <input required value={form.vehicleMake} onChange={event => update("vehicleMake", event.target.value)} />
+            </label>
+            <label>
+              Model
+              <input required value={form.vehicleModel} onChange={event => update("vehicleModel", event.target.value)} />
+            </label>
+            <label>
+              Rego
+              <input value={form.rego} onChange={event => update("rego", event.target.value.toUpperCase())} />
+            </label>
+            <label className="wide">
+              Notes
+              <textarea rows="4" value={form.notes} onChange={event => update("notes", event.target.value)} />
+            </label>
             <label className="check wide">
-              <input required type="checkbox" checked={form.acceptedTerms} onChange={event => update("acceptedTerms", event.target.checked)} />
+              <input
+                required
+                type="checkbox"
+                checked={form.acceptedTerms}
+                onChange={event => update("acceptedTerms", event.target.checked)}
+              />
               I understand this is a booking request and advertised prices are “from”.
             </label>
-            <input className="honeypot" tabIndex="-1" autoComplete="off" value={form.website} onChange={event => update("website", event.target.value)} />
-            <button className="primary wide" disabled={busy}>{busy ? "Sending…" : "Request this booking"}</button>
+            <input
+              className="honeypot"
+              tabIndex="-1"
+              autoComplete="off"
+              value={form.website}
+              onChange={event => update("website", event.target.value)}
+            />
+            <button className="primary wide" disabled={busy}>
+              {busy ? "Sending…" : "Request this booking"}
+            </button>
           </form>
         </section>
       )}
 
-      <footer><strong>APEX DETAILERS</strong><span>Napier · Hastings · Hawke's Bay</span></footer>
+      <footer>
+        <strong>APEX DETAILERS</strong>
+        <span>Napier · Hastings · Hawke's Bay</span>
+      </footer>
     </main>
   );
 }
 
-createRoot(document.getElementById("root")).render(
-  apexCloudEnabled ? <Booking /> : <ShowcaseBooking />
-);
+createRoot(document.getElementById("root")).render(apexCloudEnabled ? <Booking /> : <ShowcaseBooking />);

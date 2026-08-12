@@ -72,24 +72,29 @@ function openMoreSheet() {
 
 // Capture the dock tap before React's legacy mobile-menu handler. The real button
 // text is "•••More", not exactly "More", because its icon lives inside the button.
-document.addEventListener("click", event => {
-  const button = event.target.closest?.("button");
-  if (!button) return;
-  const label = clean(button.textContent).toLowerCase();
-  const isMoreTrigger = !button.closest("[data-apex-more-sheet]") &&
-    (label === "more" || label.endsWith("more")) &&
-    (button.closest("nav.mobile") || button.closest("aside nav"));
-  if (isMoreTrigger) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    openMoreSheet();
-    button.blur?.();
-    return;
-  }
-  if (label.includes("save calendar setup") || label.includes("import google events now") || label.includes("refresh health")) {
-    setTimeout(() => fetchLiveGoogleEvents({ force: true }), 900);
-  }
-}, true);
+document.addEventListener(
+  "click",
+  event => {
+    const button = event.target.closest?.("button");
+    if (!button) return;
+    const label = clean(button.textContent).toLowerCase();
+    const isMoreTrigger =
+      !button.closest("[data-apex-more-sheet]") &&
+      (label === "more" || label.endsWith("more")) &&
+      (button.closest("nav.mobile") || button.closest("aside nav"));
+    if (isMoreTrigger) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openMoreSheet();
+      button.blur?.();
+      return;
+    }
+    if (label.includes("save calendar setup") || label.includes("import google events now") || label.includes("refresh health")) {
+      setTimeout(() => fetchLiveGoogleEvents({ force: true }), 900);
+    }
+  },
+  true
+);
 
 function isCalendarPage() {
   const topTitle = document.querySelector(".top h1");
@@ -136,18 +141,26 @@ function renderSelected(container) {
   const date = selectedDate || isoDate(new Date());
   const rows = eventsFor(date);
   const dateLabel = new Date(`${date}T12:00:00`).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long" });
-  const emptyMessage = googleFeedState === "error"
-    ? "Google Calendar could not be loaded, so this day cannot be confirmed clear yet."
-    : googleFeedState === "loading"
-      ? "Loading Google Calendar…"
-      : "No bookings or Google Calendar blocks on this day.";
-  list.innerHTML = `<div class="apexDayHead"><strong>${dateLabel}</strong><span>${rows.length ? `${rows.length} item${rows.length === 1 ? "" : "s"}` : (googleFeedState === "ready" ? "Clear" : "Checking")}</span></div>` +
-    (rows.length ? rows.map(job => `
+  const emptyMessage =
+    googleFeedState === "error"
+      ? "Google Calendar could not be loaded, so this day cannot be confirmed clear yet."
+      : googleFeedState === "loading"
+        ? "Loading Google Calendar…"
+        : "No bookings or Google Calendar blocks on this day.";
+  list.innerHTML =
+    `<div class="apexDayHead"><strong>${dateLabel}</strong><span>${rows.length ? `${rows.length} item${rows.length === 1 ? "" : "s"}` : googleFeedState === "ready" ? "Clear" : "Checking"}</span></div>` +
+    (rows.length
+      ? rows
+          .map(
+            job => `
       <article class="apexCalendarEvent ${sourceLabel(job).toLowerCase()}">
         <time>${eventTime(job) || "All day"}</time>
         <div><strong>${eventLabel(job)}</strong><span>${clean(job.address || job.packageName || job.vehicle || job.status || "Booking")}</span></div>
         <em>${sourceLabel(job)}</em>
-      </article>`).join("") : `<div class="apexCalendarEmpty">${emptyMessage}</div>`);
+      </article>`
+          )
+          .join("")
+      : `<div class="apexCalendarEmpty">${emptyMessage}</div>`);
 }
 
 function visibleRange() {
@@ -214,13 +227,14 @@ function renderCalendar() {
     </button>`;
   }
 
-  const feedCopy = googleFeedState === "ready"
-    ? `${googleEvents.length} Google event${googleEvents.length === 1 ? "" : "s"} loaded`
-    : googleFeedState === "loading"
-      ? "Loading Google Calendar…"
-      : googleFeedState === "error"
-        ? (googleFeedError || "Google Calendar unavailable")
-        : "Checking Google Calendar…";
+  const feedCopy =
+    googleFeedState === "ready"
+      ? `${googleEvents.length} Google event${googleEvents.length === 1 ? "" : "s"} loaded`
+      : googleFeedState === "loading"
+        ? "Loading Google Calendar…"
+        : googleFeedState === "error"
+          ? googleFeedError || "Google Calendar unavailable"
+          : "Checking Google Calendar…";
 
   container.innerHTML = `
     <section class="apexMonthPanel">
@@ -255,10 +269,12 @@ function renderCalendar() {
     fetchLiveGoogleEvents({ force: true });
   });
   container.querySelector("[data-cal-retry]")?.addEventListener("click", () => fetchLiveGoogleEvents({ force: true }));
-  container.querySelectorAll("[data-apex-calendar-date]").forEach(button => button.addEventListener("click", () => {
-    selectedDate = button.dataset.apexCalendarDate;
-    renderCalendar();
-  }));
+  container.querySelectorAll("[data-apex-calendar-date]").forEach(button =>
+    button.addEventListener("click", () => {
+      selectedDate = button.dataset.apexCalendarDate;
+      renderCalendar();
+    })
+  );
   renderSelected(container);
 }
 
@@ -272,21 +288,27 @@ function ensureCalendar() {
     return;
   }
   if (document.querySelector("[data-apex-month-calendar]")) return;
-  const anchor = document.querySelector(".calendarSettings") || document.querySelector("main .empty") || document.querySelector(".workspace main");
+  const anchor =
+    document.querySelector(".calendarSettings") || document.querySelector("main .empty") || document.querySelector(".workspace main");
   if (!anchor) return;
   const host = document.createElement("div");
   host.dataset.apexMonthCalendar = "true";
-  if (anchor.classList?.contains("calendarSettings") || anchor.classList?.contains("empty")) anchor.parentElement?.insertBefore(host, anchor);
+  if (anchor.classList?.contains("calendarSettings") || anchor.classList?.contains("empty"))
+    anchor.parentElement?.insertBefore(host, anchor);
   else anchor.prepend(host);
   selectedDate ||= isoDate(new Date());
   renderCalendar();
   fetchLiveGoogleEvents({ force: true });
 }
 
-onSnapshot(collection(db, "jobs"), snapshot => {
-  jobs = snapshot.docs.map(row => ({ id: row.id, ...row.data() }));
-  renderCalendar();
-}, () => undefined);
+onSnapshot(
+  collection(db, "jobs"),
+  snapshot => {
+    jobs = snapshot.docs.map(row => ({ id: row.id, ...row.data() }));
+    renderCalendar();
+  },
+  () => undefined
+);
 
 function refreshEnhancements() {
   ensureCalendar();
