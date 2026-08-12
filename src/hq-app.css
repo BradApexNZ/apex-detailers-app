@@ -477,8 +477,18 @@ article.job,
 }
 .request footer {
   display: flex;
+  align-items: center;
   gap: 8px;
   margin-top: 14px;
+}
+.waitBadge {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--paper-faint);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 .request footer button {
   min-height: 36px;

@@ -171,6 +171,17 @@ const statusClass = value =>
     .join("-")
     .toLowerCase();
 const todayNZ = () => new Date().toLocaleDateString("en-CA", { timeZone: "Pacific/Auckland" });
+const timeAgo = timestamp => {
+  const seconds = timestamp?.seconds || timestamp?._seconds;
+  if (!seconds) return "";
+  const diffMinutes = Math.max(0, Math.round((Date.now() - seconds * 1000) / 60000));
+  if (diffMinutes < 1) return "just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.round(diffHours / 24);
+  return `${diffDays}d ago`;
+};
 
 function quoteTotal(form) {
   const base = packageById(form.packageId).price;
@@ -1711,39 +1722,51 @@ function App() {
           )}
           {tab === "inbox" && (
             <>
-              <Intro title="Inbox" text="Booking requests and enquiries arrive here." />
+              <div className="sectionLead">
+                <Intro
+                  title="Inbox"
+                  text={
+                    pending.length || newInquiries.length
+                      ? `${pending.length} booking request${pending.length === 1 ? "" : "s"} and ${newInquiries.length} inquir${newInquiries.length === 1 ? "y" : "ies"} waiting.`
+                      : "Booking requests and enquiries arrive here."
+                  }
+                />
+              </div>
               <div className="cards">
-                {pending.map(r => (
-                  <article className="request" key={r.id}>
-                    <header>
-                      <div>
-                        <h3 className="pii">{r.customerName}</h3>
-                        <span className="pii">
-                          {r.email} - {r.phone}
-                        </span>
-                      </div>
-                      <b>
-                        {formatDate(r.bookingDate)}
-                        <small>{r.bookingTime}</small>
-                      </b>
-                    </header>
-                    <p className="pii">
-                      {r.vehicle || [r.vehicleYear, r.vehicleMake, r.vehicleModel].filter(Boolean).join(" ")} - {r.serviceName}
-                    </p>
-                    <p className="pii">
-                      {r.address}, {r.area}
-                    </p>
-                    {r.notes && <blockquote>{r.notes}</blockquote>}
-                    <footer>
-                      <button onClick={() => approve(r)} disabled={busy}>
-                        Confirm
-                      </button>
-                      <button className="danger" onClick={() => decline(r)} disabled={busy}>
-                        Decline
-                      </button>
-                    </footer>
-                  </article>
-                ))}
+                {[...pending]
+                  .sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0))
+                  .map(r => (
+                    <article className="request" key={r.id}>
+                      <header>
+                        <div>
+                          <h3 className="pii">{r.customerName}</h3>
+                          <span className="pii">
+                            {r.email} - {r.phone}
+                          </span>
+                        </div>
+                        <b>
+                          {formatDate(r.bookingDate)}
+                          <small>{r.bookingTime}</small>
+                        </b>
+                      </header>
+                      <p className="pii">
+                        {r.vehicle || [r.vehicleYear, r.vehicleMake, r.vehicleModel].filter(Boolean).join(" ")} - {r.serviceName}
+                      </p>
+                      <p className="pii">
+                        {r.address}, {r.area}
+                      </p>
+                      {r.notes && <blockquote>{r.notes}</blockquote>}
+                      <footer>
+                        <button onClick={() => approve(r)} disabled={busy}>
+                          Confirm
+                        </button>
+                        <button className="danger" onClick={() => decline(r)} disabled={busy}>
+                          Decline
+                        </button>
+                        {timeAgo(r.createdAt) && <em className="waitBadge">waiting {timeAgo(r.createdAt)}</em>}
+                      </footer>
+                    </article>
+                  ))}
                 {newInquiries.map(i => (
                   <article className="request inquiry" key={i.id}>
                     <header>
@@ -1774,6 +1797,7 @@ function App() {
                       >
                         Mark resolved
                       </button>
+                      {timeAgo(i.createdAt) && <em className="waitBadge">waiting {timeAgo(i.createdAt)}</em>}
                     </footer>
                   </article>
                 ))}
