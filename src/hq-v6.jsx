@@ -137,6 +137,7 @@ const blankQuote = {
   manualTotal: "",
   bookingDate: "",
   bookingTime: "",
+  paidAmount: "",
   notes: ""
 };
 const blankVoucher = {
@@ -439,8 +440,8 @@ function CustomerModal({ close, save, busy, preset }) {
   );
 }
 
-function QuoteModal({ close, save, busy, customers }) {
-  const [form, setForm] = useState(blankQuote),
+function QuoteModal({ close, save, busy, customers, mode = "quote" }) {
+  const [form, setForm] = useState(() => ({ ...blankQuote, status: mode === "job" ? "Booked" : "Quote Sent" })),
     update = (k, v) => setForm(o => ({ ...o, [k]: v }));
   function pick(id) {
     const c = customers.find(x => x.id === id);
@@ -457,12 +458,12 @@ function QuoteModal({ close, save, busy, customers }) {
   }
   const total = quoteTotal(form);
   return (
-    <Modal title="Create quote" close={close} wide>
+    <Modal title={mode === "job" ? "Add job" : "Create quote"} close={close} wide>
       <form
         className="modalForm"
         onSubmit={e => {
           e.preventDefault();
-          save({ ...form, total });
+          save({ ...form, total, entryMode: mode });
         }}
       >
         <div className="formGrid">
@@ -499,12 +500,11 @@ function QuoteModal({ close, save, busy, customers }) {
             </select>
           </label>
           <label>
-            Quote status
+            {mode === "job" ? "Job status" : "Quote status"}
             <select value={form.status} onChange={e => update("status", e.target.value)}>
-              <option>Lead</option>
-              <option>Quote Requested</option>
-              <option>Quote Sent</option>
-              <option>Approved</option>
+              {mode === "job"
+                ? statusList.map(s => <option key={s}>{s}</option>)
+                : ["Lead", "Quote Requested", "Quote Sent", "Approved"].map(s => <option key={s}>{s}</option>)}
             </select>
           </label>
           <label>
@@ -564,13 +564,19 @@ function QuoteModal({ close, save, busy, customers }) {
             <input type="number" value={form.manualTotal} onChange={e => update("manualTotal", e.target.value)} />
           </label>
           <label>
-            Proposed date
+            {mode === "job" ? "Job date" : "Proposed date"}
             <input type="date" value={form.bookingDate} onChange={e => update("bookingDate", e.target.value)} />
           </label>
           <label>
-            Proposed time
+            {mode === "job" ? "Job time" : "Proposed time"}
             <input type="time" value={form.bookingTime} onChange={e => update("bookingTime", e.target.value)} />
           </label>
+          {mode === "job" && (
+            <label>
+              Paid amount (optional)
+              <input type="number" value={form.paidAmount} onChange={e => update("paidAmount", e.target.value)} />
+            </label>
+          )}
           <fieldset className="wide addonGrid">
             <legend>Add-ons</legend>
             {addons.map(a => (
@@ -595,10 +601,10 @@ function QuoteModal({ close, save, busy, customers }) {
           </label>
         </div>
         <div className="quoteTotal">
-          <span>Quote total</span>
+          <span>{mode === "job" ? "Total" : "Quote total"}</span>
           <b>{money(total)}</b>
         </div>
-        <button disabled={busy}>{busy ? "Saving..." : "Save quote"}</button>
+        <button disabled={busy}>{busy ? "Saving..." : mode === "job" ? "Save job" : "Save quote"}</button>
       </form>
     </Modal>
   );
@@ -1074,6 +1080,7 @@ function App() {
     [selectedCustomer, setSelectedCustomer] = useState(null),
     [mobileMenu, setMobileMenu] = useState(false),
     [quoteModal, setQuoteModal] = useState(false),
+    [jobModal, setJobModal] = useState(false),
     [voucherModal, setVoucherModal] = useState(false),
     [selectedJob, setSelectedJob] = useState(null),
     [busy, setBusy] = useState(false),
@@ -1224,29 +1231,38 @@ function App() {
   async function saveQuote(form) {
     setBusy(true);
     try {
+      const isJob = form.entryMode === "job";
       const p = packageById(form.packageId),
         vehicle = [form.vehicleYear, form.vehicleMake, form.vehicleModel].filter(Boolean).join(" ");
       const addonRows = addons.filter(a => form.selectedAddons.includes(a.id));
+      const { entryMode, ...rest } = form;
       const ref = await addDoc(collection(db, "jobs"), {
-        ...form,
+        ...rest,
         vehicle,
         packageName: p.name,
         total: Number(form.total),
+        paidAmount: Number(form.paidAmount || 0),
         addonNames: addonRows.map(a => a.name),
-        status: form.status || "Quote Sent",
-        mode: "quote",
-        source: "hq-v6",
+        status: form.status || (isJob ? "Booked" : "Quote Sent"),
+        mode: isJob ? "job" : "quote",
+        source: isJob ? "hq-manual-job" : "hq-v6",
         ownerUid: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
-      const message = `Hi ${form.customerName}, thanks for getting in touch with Apex Detailers. Your quote for the ${vehicle || "vehicle"} is ${money(form.total)} for ${p.name}${addonRows.length ? ` plus ${addonRows.map(a => a.name).join(", ")}` : ""}. Final pricing may vary if the vehicle is heavily soiled or larger than expected. Access to an outside tap is required.`;
-      await navigator.clipboard?.writeText(message).catch(() => {});
-      setQuoteModal(false);
-      setTab("quotes");
-      notify(`Quote saved${ref.id ? " and message copied" : ""}.`);
+      if (isJob) {
+        setJobModal(false);
+        setTab("jobs");
+        notify("Job saved.");
+      } else {
+        const message = `Hi ${form.customerName}, thanks for getting in touch with Apex Detailers. Your quote for the ${vehicle || "vehicle"} is ${money(form.total)} for ${p.name}${addonRows.length ? ` plus ${addonRows.map(a => a.name).join(", ")}` : ""}. Final pricing may vary if the vehicle is heavily soiled or larger than expected. Access to an outside tap is required.`;
+        await navigator.clipboard?.writeText(message).catch(() => {});
+        setQuoteModal(false);
+        setTab("quotes");
+        notify(`Quote saved${ref.id ? " and message copied" : ""}.`);
+      }
     } catch (err) {
-      notify(err.message || "Could not save quote.");
+      notify(err.message || "Could not save.");
     }
     setBusy(false);
   }
@@ -1616,7 +1632,10 @@ function App() {
           )}
           {tab === "jobs" && (
             <>
-              <Intro title="Jobs" text="Operational job pipeline, Hnry handoff, payment and review status." />
+              <div className="sectionLead">
+                <Intro title="Jobs" text="Operational job pipeline, Hnry handoff, payment and review status." />
+                <button onClick={() => setJobModal(true)}>+ Add job</button>
+              </div>
               <div className="table">
                 {[...jobs]
                   .filter(j => !["Lead", "Quote Requested", "Quote Sent"].includes(j.status))
@@ -1865,6 +1884,7 @@ function App() {
         <CustomerModal preset={selectedCustomer} close={() => setSelectedCustomer(null)} save={saveCustomer} busy={busy} />
       )}{" "}
       {quoteModal && <QuoteModal close={() => setQuoteModal(false)} save={saveQuote} busy={busy} customers={customers} />}{" "}
+      {jobModal && <QuoteModal mode="job" close={() => setJobModal(false)} save={saveQuote} busy={busy} customers={customers} />}{" "}
       {voucherModal && <VoucherModal close={() => setVoucherModal(false)} save={saveVoucher} busy={busy} />}{" "}
       {selectedJob && (
         <JobModal job={selectedJob} close={() => setSelectedJob(null)} save={saveJob} upload={uploadPhotos} busy={busy} notify={notify} />
