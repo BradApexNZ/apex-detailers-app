@@ -19,6 +19,7 @@ import {
   syncJobToCalendar
 } from "./apex-api";
 import { defaultBookingSettings, formatDate, money, servicePackages, vehicleTypes } from "./booking-data";
+import { downloadQuotePdf } from "./quote-pdf";
 import {
   disableDeviceLock,
   hasBiometricLock,
@@ -1744,6 +1745,9 @@ function App() {
                           }}
                         >
                           Convert to booking
+                        </button>
+                        <button className="secondary" onClick={() => downloadQuotePdf(q)}>
+                          Download PDF
                         </button>
                         <button className="secondary" onClick={() => setSelectedJob(q)}>
                           Open
