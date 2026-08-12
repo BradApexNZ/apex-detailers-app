@@ -656,6 +656,11 @@ article.job,
   opacity: 0.9;
 }
 
+.customerSearch {
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
 /* ---- customers / vouchers grids ---- */
 .customerGrid,
 .voucherGrid,
