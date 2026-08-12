@@ -22,6 +22,7 @@ import { defaultBookingSettings, formatDate, money, servicePackages, vehicleType
 import { downloadQuotePdf } from "./quote-pdf";
 import {
   disableDeviceLock,
+  getPinLength,
   hasBiometricLock,
   hasPinLock,
   isDeviceLockEnabled,
@@ -239,9 +240,46 @@ function Login({ busy, error, onEmail, onGoogle }) {
     </main>
   );
 }
+function PinDots({ length, filled, shake }) {
+  return (
+    <div className={`pinDots ${shake ? "shake" : ""}`}>
+      {Array.from({ length }).map((_, i) => (
+        <i key={i} className={i < filled ? "filled" : ""} />
+      ))}
+    </div>
+  );
+}
+
+function PinKeypad({ onDigit, onBackspace, disabled }) {
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"];
+  return (
+    <div className="pinKeypad">
+      {keys.map((k, i) =>
+        k === "" ? (
+          <span key={i} />
+        ) : k === "back" ? (
+          <button key={i} type="button" className="pinKey pinKeyBack" onClick={onBackspace} disabled={disabled} aria-label="Delete">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 4H8l-6 8 6 8h13a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z" strokeLinejoin="round" />
+              <path d="M18 9l-6 6M12 9l6 6" strokeLinecap="round" />
+            </svg>
+          </button>
+        ) : (
+          <button key={i} type="button" className="pinKey" onClick={() => onDigit(k)} disabled={disabled}>
+            {k}
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
 function Gate({ unlock, logout }) {
+  const pinLength = getPinLength();
   const [pin, setPinValue] = useState(""),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [shake, setShake] = useState(false),
+    [checking, setChecking] = useState(false);
   async function face() {
     try {
       if (await verifyBiometricLock()) {
@@ -252,12 +290,30 @@ function Gate({ unlock, logout }) {
       setError("Face ID was cancelled or unavailable. Use your PIN or sign in again.");
     }
   }
-  async function submit(e) {
-    e.preventDefault();
-    if (await verifyPin(pin)) {
+  async function attempt(candidate) {
+    setChecking(true);
+    if (await verifyPin(candidate)) {
       markSessionUnlocked();
       unlock();
-    } else setError("That PIN is not correct.");
+      return;
+    }
+    setError("That PIN is not correct.");
+    setShake(true);
+    setTimeout(() => {
+      setPinValue("");
+      setShake(false);
+      setChecking(false);
+    }, 380);
+  }
+  function digit(d) {
+    if (checking || pin.length >= pinLength) return;
+    setError("");
+    const next = pin + d;
+    setPinValue(next);
+    if (next.length === pinLength) attempt(next);
+  }
+  function backspace() {
+    if (!checking) setPinValue(p => p.slice(0, -1));
   }
   return (
     <main className="gate">
@@ -265,18 +321,16 @@ function Gate({ unlock, logout }) {
         <Brand />
         <span className="eyebrow">APEX HQ LOCKED</span>
         <h1>Welcome back.</h1>
-        {hasBiometricLock() && <button onClick={face}>Unlock with Face ID</button>}
         {hasPinLock() && (
-          <form onSubmit={submit}>
-            <input
-              inputMode="numeric"
-              maxLength="6"
-              value={pin}
-              onChange={e => setPinValue(e.target.value.replace(/\D/g, ""))}
-              placeholder="6-digit PIN"
-            />
-            <button>Unlock with PIN</button>
-          </form>
+          <div className="pinEntry">
+            <PinDots length={pinLength} filled={pin.length} shake={shake} />
+            <PinKeypad onDigit={digit} onBackspace={backspace} disabled={checking} />
+          </div>
+        )}
+        {hasBiometricLock() && (
+          <button className="secondary" onClick={face}>
+            Unlock with Face ID
+          </button>
         )}
         {error && <div className="alert">{error}</div>}
         <button className="text" onClick={logout}>
@@ -437,6 +491,62 @@ function CustomerModal({ close, save, busy, preset }) {
         <button disabled={busy}>{busy ? "Saving..." : "Save customer"}</button>
       </form>
     </Modal>
+  );
+}
+
+function PinSetup({ onDone, notify }) {
+  const [stage, setStage] = useState("enter"),
+    [first, setFirst] = useState(""),
+    [pin, setPinValue] = useState(""),
+    [shake, setShake] = useState(false),
+    [saving, setSaving] = useState(false);
+  function digit(d) {
+    if (saving || pin.length >= 4) return;
+    const next = pin + d;
+    setPinValue(next);
+    if (next.length < 4) return;
+    if (stage === "enter") {
+      setFirst(next);
+      setTimeout(() => {
+        setPinValue("");
+        setStage("confirm");
+      }, 150);
+      return;
+    }
+    if (next === first) {
+      setSaving(true);
+      setPin(next)
+        .then(() => {
+          notify("Backup PIN set.");
+          onDone();
+        })
+        .catch(err => {
+          notify(err.message || "Could not set PIN.");
+          setPinValue("");
+          setStage("enter");
+          setFirst("");
+          setSaving(false);
+        });
+      return;
+    }
+    setShake(true);
+    setTimeout(() => {
+      setPinValue("");
+      setShake(false);
+      setStage("enter");
+      setFirst("");
+      notify("PINs didn't match - try again.");
+    }, 380);
+  }
+  function backspace() {
+    if (!saving) setPinValue(p => p.slice(0, -1));
+  }
+  return (
+    <div className="pinEntry">
+      <p className="muted">{stage === "enter" ? "Choose a 4-digit PIN." : "Confirm your PIN."}</p>
+      <PinDots length={4} filled={pin.length} shake={shake} />
+      <PinKeypad onDigit={digit} onBackspace={backspace} disabled={saving} />
+    </div>
   );
 }
 
@@ -1946,7 +2056,7 @@ function Empty({ text }) {
   );
 }
 function Settings({ user, settings, setSettings, notify }) {
-  const [pin, setPinValue] = useState(""),
+  const [settingPin, setSettingPin] = useState(false),
     [saving, setSaving] = useState(false);
   async function save() {
     const notice = Number(settings.minimumNoticeHours),
@@ -1988,23 +2098,13 @@ function Settings({ user, settings, setSettings, notify }) {
               {hasBiometricLock() ? "Set up Face ID again" : "Enable Face ID unlock"}
             </button>
           )}
-          <label>
-            Backup PIN
-            <input inputMode="numeric" maxLength="6" value={pin} onChange={e => setPinValue(e.target.value.replace(/\D/g, ""))} />
-          </label>
-          <button
-            className="secondary"
-            onClick={async () => {
-              try {
-                await setPin(pin);
-                notify("Backup PIN enabled.");
-              } catch (err) {
-                notify(err.message);
-              }
-            }}
-          >
-            Set backup PIN
-          </button>
+          {settingPin ? (
+            <PinSetup onDone={() => setSettingPin(false)} notify={notify} />
+          ) : (
+            <button className="secondary" onClick={() => setSettingPin(true)}>
+              {hasPinLock() ? "Change backup PIN" : "Set backup PIN"}
+            </button>
+          )}
           <button
             className="danger"
             onClick={() => {
