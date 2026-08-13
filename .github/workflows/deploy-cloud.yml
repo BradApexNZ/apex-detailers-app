@@ -80,7 +80,7 @@ jobs:
       - name: Deploy Calendar gateway first
         if: steps.changes.outputs.functions_changed == 'true'
         run: |
-          npx firebase-tools@latest deploy --only "functions:listGoogleCalendarsV6" --project apex-detailers --non-interactive
+          npx firebase-tools@latest deploy --only "functions:listGoogleCalendarsV6" --project apex-detailers --non-interactive --force
           sleep 8
 
       - name: Deploy remaining launch-critical Functions sequentially
@@ -108,7 +108,10 @@ jobs:
           )
           for fn in "${functions[@]}"; do
             echo "::group::Deploy $fn"
-            npx firebase-tools@latest deploy --only "functions:${fn}" --project apex-detailers --non-interactive
+            # --force: some of these set minInstances, which the CLI otherwise
+            # refuses to deploy non-interactively (it wants an interactive
+            # confirmation for anything that raises the minimum bill).
+            npx firebase-tools@latest deploy --only "functions:${fn}" --project apex-detailers --non-interactive --force
             echo "::endgroup::"
             sleep 8
           done
