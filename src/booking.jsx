@@ -9,6 +9,12 @@ const today = () =>
     timeZone: "Pacific/Auckland"
   });
 
+// A stalled network call otherwise leaves a button stuck on "Checking..." /
+// "Sending..." forever with no error and no way out - this guarantees every
+// booking-flow action either succeeds or fails visibly within 15s.
+const withTimeout = (promise, ms = 15000) =>
+  Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error("Timed out. Please try again.")), ms))]);
+
 const blank = {
   serviceId: "deep",
   vehicleType: "small",
@@ -149,10 +155,38 @@ function Booking() {
 
   const update = (key, value) => setForm(old => ({ ...old, [key]: value }));
 
+  const [loadingSeconds, setLoadingSeconds] = useState(0);
   useEffect(() => {
+    // getPublicBookingConfig() is written to never reject (it falls back to
+    // static service info on any error), which is normally the right call - but
+    // it means a genuinely stuck underlying request has nothing to make it
+    // settle. Without an outer race, that leaves the splash screen up forever
+    // with no error, no retry, and nothing for the customer (or Brad) to act on.
+    let settled = false;
+    const timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setError("This is taking longer than it should. Check your connection and try again.");
+    }, 15000);
+    const tickId = setInterval(() => setLoadingSeconds(s => s + 1), 1000);
     getPublicBookingConfig()
-      .then(setConfig)
-      .catch(() => setError("Online booking is unavailable right now. Please contact Apex directly."));
+      .then(result => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        setConfig(result);
+      })
+      .catch(() => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        setError("Online booking is unavailable right now. Please contact Apex directly.");
+      });
+    return () => {
+      settled = true;
+      clearTimeout(timeoutId);
+      clearInterval(tickId);
+    };
   }, []);
 
   const publicServices = useMemo(
@@ -170,10 +204,12 @@ function Booking() {
     setBusy(true);
     setError("");
     try {
-      const result = await listBookingAvailability({
-        date: form.bookingDate,
-        serviceId: form.serviceId
-      });
+      const result = await withTimeout(
+        listBookingAvailability({
+          date: form.bookingDate,
+          serviceId: form.serviceId
+        })
+      );
       setSlots(result.slots || []);
       if (result.slots?.length) setStep(3);
       else setError("That day is full. Try another date or contact Apex.");
@@ -193,7 +229,7 @@ function Booking() {
     setBusy(true);
     setError("");
     try {
-      setDone(await submitBookingRequest(form));
+      setDone(await withTimeout(submitBookingRequest(form)));
     } catch (err) {
       setError(err.message || "That request could not be sent. Please contact Apex.");
     }
@@ -206,6 +242,23 @@ function Booking() {
         {newVersionAvailable && <VersionBanner />}
         <Mark />
         <span>Loading Apex bookings…</span>
+        {loadingSeconds >= 5 && <span className="splashHint">Still working ({loadingSeconds}s)…</span>}
+      </main>
+    );
+  }
+
+  if (!config && error) {
+    return (
+      <main className="splash">
+        {newVersionAvailable && <VersionBanner />}
+        <Mark />
+        <span>{error}</span>
+        <div className="splashActions">
+          <button type="button" onClick={() => window.location.reload()}>
+            Try again
+          </button>
+          <a href="mailto:bookings@apexdetailers.co.nz">Email Apex directly</a>
+        </div>
       </main>
     );
   }
