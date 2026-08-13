@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { apexCloudEnabled, getPublicBookingConfig, listBookingAvailability, submitBookingRequest } from "./apex-api";
+import { apexCloudEnabled, getPublicBookingConfig, lastConfigError, listBookingAvailability, submitBookingRequest } from "./apex-api";
 import { money, publicServicePackages, serviceById } from "./booking-data";
 import { useNewVersionAvailable } from "./use-new-version-available";
 
@@ -156,6 +156,7 @@ function Booking() {
   const update = (key, value) => setForm(old => ({ ...old, [key]: value }));
 
   const [loadingSeconds, setLoadingSeconds] = useState(0);
+  const [debugInfo, setDebugInfo] = useState(null);
   useEffect(() => {
     // getPublicBookingConfig() is written to never reject (it falls back to
     // static service info on any error), which is normally the right call - but
@@ -163,10 +164,19 @@ function Booking() {
     // settle. Without an outer race, that leaves the splash screen up forever
     // with no error, no retry, and nothing for the customer (or Brad) to act on.
     let settled = false;
+    const startedAt = Date.now();
     const timeoutId = setTimeout(() => {
       if (settled) return;
       settled = true;
       setError("This is taking longer than it should. Check your connection and try again.");
+      setDebugInfo({
+        cause: "client-timeout-15s",
+        underlyingError: lastConfigError,
+        elapsedMs: Date.now() - startedAt,
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+        at: new Date().toISOString()
+      });
     }, 15000);
     const tickId = setInterval(() => setLoadingSeconds(s => s + 1), 1000);
     getPublicBookingConfig()
@@ -181,6 +191,14 @@ function Booking() {
         settled = true;
         clearTimeout(timeoutId);
         setError("Online booking is unavailable right now. Please contact Apex directly.");
+        setDebugInfo({
+          cause: "promise-rejected",
+          underlyingError: lastConfigError,
+          elapsedMs: Date.now() - startedAt,
+          url: window.location.href,
+          userAgent: navigator.userAgent,
+          at: new Date().toISOString()
+        });
       });
     return () => {
       settled = true;
@@ -242,7 +260,7 @@ function Booking() {
         {newVersionAvailable && <VersionBanner />}
         <Mark />
         <span>Loading Apex bookings…</span>
-        {loadingSeconds >= 5 && <span className="splashHint">Still working ({loadingSeconds}s)…</span>}
+        <span className="splashHint">{loadingSeconds}s…</span>
       </main>
     );
   }
@@ -259,6 +277,20 @@ function Booking() {
           </button>
           <a href="mailto:bookings@apexdetailers.co.nz">Email Apex directly</a>
         </div>
+        {debugInfo && (
+          <button
+            type="button"
+            className="splashDebugCopy"
+            onClick={() => {
+              navigator.clipboard
+                .writeText(JSON.stringify(debugInfo, null, 2))
+                .then(() => alert("Debug info copied - paste it to Brad."))
+                .catch(() => alert(JSON.stringify(debugInfo)));
+            }}
+          >
+            Copy debug info
+          </button>
+        )}
       </main>
     );
   }
