@@ -6,6 +6,10 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { google } from "googleapis";
 import { DateTime } from "luxon";
 
+// See functions/index.js for why this matters - an unbounded Google API call can
+// hang a request forever with no error.
+google.options({ timeout: 10000 });
+
 if (!getApps().length) initializeApp();
 const db = getFirestore();
 const REGION = "australia-southeast1";
