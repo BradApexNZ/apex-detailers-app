@@ -36,9 +36,14 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 
 const appCheckSiteKey = import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY;
-if (typeof window !== "undefined" && appCheckSiteKey) {
+const appCheckDebugToken = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN;
+if (typeof window !== "undefined" && (appCheckSiteKey || appCheckDebugToken)) {
+  // PR preview channels get a fresh, unregistered hostname each time, so reCAPTCHA
+  // can't validate them. Setting this before initializeAppCheck makes the SDK use
+  // Firebase's debug provider instead, sending the fixed token registered above.
+  if (appCheckDebugToken) self.FIREBASE_APPCHECK_DEBUG_TOKEN = appCheckDebugToken;
   initializeAppCheck(app, {
-    provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey),
+    provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey || "debug-preview"),
     isTokenAutoRefreshEnabled: true
   });
 }
