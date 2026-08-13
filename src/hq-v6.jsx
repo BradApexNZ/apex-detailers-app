@@ -1980,7 +1980,14 @@ function App() {
           {tab === "quotes" && (
             <>
               <div className="sectionLead">
-                <Intro title="Quotes" text="Create, price and convert quote work into booked jobs." />
+                <Intro
+                  title="Quotes"
+                  text={
+                    quotes.length
+                      ? `${quotes.length} active quote${quotes.length === 1 ? "" : "s"}. Create, price and convert work into booked jobs.`
+                      : "Create, price and convert quote work into booked jobs."
+                  }
+                />
                 <button onClick={() => setQuoteModal(true)}>+ Create quote</button>
               </div>
               <div className="cards">
@@ -1997,7 +2004,7 @@ function App() {
                         </div>
                         <b className="pii">
                           {money(q.total)}
-                          <small>{q.status}</small>
+                          <span className={`statusPill quoteStatus status-${statusClass(q.status)}`}>{q.status || "Lead"}</span>
                         </b>
                       </header>
                       <p>
