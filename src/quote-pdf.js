@@ -4,21 +4,53 @@ import { money, serviceById } from "./booking-data";
 const GOLD = [232, 185, 58];
 const INK = [10, 10, 13];
 const DIM = [110, 105, 95];
+const LOGO_ASPECT = 720 / 650;
 
-export function downloadQuotePdf(quote) {
+let logoDataUrl;
+async function loadLogo() {
+  if (logoDataUrl !== undefined) return logoDataUrl;
+  try {
+    const response = await fetch("/apex-logo-official.svg");
+    const svgText = await response.text();
+    const url = URL.createObjectURL(new Blob([svgText], { type: "image/svg+xml" }));
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = url;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = 240;
+    canvas.height = Math.round(240 / LOGO_ASPECT);
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    logoDataUrl = canvas.toDataURL("image/png");
+  } catch (err) {
+    logoDataUrl = null;
+  }
+  return logoDataUrl;
+}
+
+export async function downloadQuotePdf(quote) {
+  const logo = await loadLogo();
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 56;
   let y = 64;
 
+  const logoHeight = 34;
+  const logoWidth = logoHeight * LOGO_ASPECT;
+  const textX = logo ? margin + logoWidth + 12 : margin;
+  if (logo) doc.addImage(logo, "PNG", margin, y - logoHeight + 6, logoWidth, logoHeight);
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
   doc.setTextColor(...INK);
-  doc.text("APEX DETAILERS", margin, y);
+  doc.text("APEX DETAILERS", textX, y);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(...GOLD);
-  doc.text("HAWKE'S BAY · MOBILE CAR DETAILING", margin, y + 14);
+  doc.text("HAWKE'S BAY · MOBILE CAR DETAILING", textX, y + 14);
 
   doc.setTextColor(...DIM);
   doc.setFontSize(9);
