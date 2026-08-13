@@ -1728,31 +1728,6 @@ article.job,
     display: grid;
     place-items: center;
   }
-  .mobile button i::before {
-    font-size: 15px;
-    line-height: 1;
-  }
-  .mobile button:nth-child(1) i::before {
-    content: "◆";
-  }
-  .mobile button:nth-child(2) i::before {
-    content: "▱";
-  }
-  .mobile button:nth-child(3) i::before {
-    content: "□";
-  }
-  .mobile button:nth-child(4) i::before {
-    content: "▣";
-  }
-  .mobile button:nth-child(5) i::before {
-    content: "●";
-  }
-  .mobile button:last-child i::before,
-  .mobile button:nth-child(7) i::before {
-    content: "•••";
-    font-size: 12px;
-    letter-spacing: 1px;
-  }
   .mobile button small {
     font-size: 8.5px;
     font-weight: 700;
