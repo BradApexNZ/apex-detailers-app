@@ -9,10 +9,18 @@ const cloudCall = name => async payload => {
   if (!apexCloudEnabled) throw new Error("Apex cloud automation is disabled in this build.");
   return (await httpsCallable(functions, name)(payload || {})).data;
 };
+// Exposed so the UI can show *why* it fell back to static data without needing
+// dev tools - configCall always resolves (falls back on any error), which is
+// the right behaviour, but that means the real failure reason would otherwise
+// never reach anyone who isn't watching the console.
+export let lastConfigError = null;
 const configCall = async payload => {
   try {
-    return await cloudCall("getPublicBookingConfig")(payload);
+    const result = await cloudCall("getPublicBookingConfig")(payload);
+    lastConfigError = null;
+    return result;
   } catch (error) {
+    lastConfigError = { message: error?.message || String(error), code: error?.code || "", name: error?.name || "" };
     console.warn("Apex booking config unavailable; using static service information only.", error);
     return fallbackConfig(payload || {});
   }
