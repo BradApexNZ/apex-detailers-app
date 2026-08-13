@@ -136,6 +136,13 @@ if ("serviceWorker" in navigator && window.isSecureContext) {
       .then(async registration => {
         await registration.update();
         if (registration.waiting) registration.waiting.postMessage?.({ type: "SKIP_WAITING" });
+        // A deploy can land at any point while HQ sits open in a background tab for
+        // hours - the initial update() check above only runs once at page load, so
+        // without this a new build never gets picked up until a manual reload.
+        window.setInterval(() => registration.update().catch(() => undefined), 120000);
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden) registration.update().catch(() => undefined);
+        });
       })
       .catch(error => console.warn("Apex HQ offline support could not start.", error));
   });
