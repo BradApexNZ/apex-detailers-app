@@ -170,6 +170,23 @@ const statusClass = value =>
     .filter(Boolean)
     .join("-")
     .toLowerCase();
+const calendarSyncMeta = status => {
+  switch (status) {
+    case "synced":
+    case "imported":
+      return { label: "Synced", cls: "completed" };
+    case "pending-hold-synced":
+      return { label: "Hold synced", cls: "booked" };
+    case "failed":
+      return { label: "Sync failed", cls: "cancelled" };
+    case "cancelled":
+      return { label: "Cancelled", cls: "cancelled" };
+    case "not-connected":
+      return { label: "Not connected", cls: "lead" };
+    default:
+      return { label: "Not synced", cls: "lead" };
+  }
+};
 const todayNZ = () => new Date().toLocaleDateString("en-CA", { timeZone: "Pacific/Auckland" });
 const timeAgo = timestamp => {
   const seconds = timestamp?.seconds || timestamp?._seconds;
@@ -1560,6 +1577,7 @@ function App() {
     completed = jobs.filter(j => ["Completed", "Prepare Hnry Invoice", "Invoice Sent", "Paid", "Review Request Sent"].includes(j.status));
   const activeJobsCount = jobs.filter(j => ["Booked", "In Progress"].includes(j.status)).length,
     jobsNeedingInvoice = jobs.filter(j => j.status === "Completed").length;
+  const needsSyncCount = upcoming.filter(j => !j.calendarSyncStatus || ["failed", "not-connected"].includes(j.calendarSyncStatus)).length;
   const month = today.slice(0, 7),
     monthRevenue = jobs
       .filter(j => ["Paid", "Review Request Sent"].includes(j.status) && String(j.bookingDate || j.serviceDate || "").startsWith(month))
@@ -1818,7 +1836,14 @@ function App() {
           )}
           {tab === "calendar" && (
             <>
-              <Intro title="Schedule" text="Confirmed jobs with exact Google sync status." />
+              <Intro
+                title="Schedule"
+                text={
+                  upcoming.length
+                    ? `${upcoming.length} upcoming, ${needsSyncCount} need${needsSyncCount === 1 ? "s" : ""} calendar sync.`
+                    : "Confirmed jobs with exact Google sync status."
+                }
+              />
               <div className="calendar">
                 {upcoming.map(j => (
                   <Agenda
@@ -2201,6 +2226,7 @@ function Panel({ title, children }) {
   );
 }
 function Agenda({ job, sync, open }) {
+  const syncMeta = calendarSyncMeta(job.calendarSyncStatus);
   return (
     <div className="agenda">
       <time>
@@ -2212,7 +2238,7 @@ function Agenda({ job, sync, open }) {
         <span className="pii">
           {vehicleOf(job)} - {job.packageName}
         </span>
-        <small>{job.calendarSyncStatus || "calendar status unknown"}</small>
+        <span className={`statusPill agendaSync status-${syncMeta.cls}`}>{syncMeta.label}</span>
       </div>
       <em>{job.bookingTime}</em>
       {sync && <button onClick={sync}>Sync</button>}
