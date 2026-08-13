@@ -420,7 +420,7 @@ async function findCustomer(data) {
   return db.collection("customers").doc();
 }
 
-export const getPublicBookingConfig = onCall({ region: REGION, enforceAppCheck: false }, async () => {
+export const getPublicBookingConfig = onCall({ region: REGION, enforceAppCheck: false, minInstances: 1 }, async () => {
   const config = await getSettings();
   return {
     enabled: config.enabled,
@@ -432,139 +432,149 @@ export const getPublicBookingConfig = onCall({ region: REGION, enforceAppCheck: 
   };
 });
 
-export const listBookingAvailability = onCall({ region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: false }, async request => {
-  await rateLimit(request, "availability", 30, 10);
-  const date = text(request.data?.date, 10);
-  const serviceId = text(request.data?.serviceId, 30);
-  if (!publicServiceIds.has(serviceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
-  return { date, slots: await availableSlots(date, serviceId) };
-});
-
-export const submitBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: false }, async request => {
-  await rateLimit(request, "booking", 6, 30);
-  const input = request.data || {};
-  if (input.website) throw new HttpsError("invalid-argument", "Unable to submit.");
-  const requestedServiceId = text(input.serviceId, 30);
-  if (!publicServiceIds.has(requestedServiceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
-  const service = serviceById(requestedServiceId);
-  const bookingConfig = await getSettings();
-  const data = {
-    customerName: text(input.customerName, 160),
-    phone: cleanPhone(input.phone),
-    email: cleanEmail(input.email),
-    address: text(input.address, 220),
-    area: text(input.area, 100),
-    vehicleYear: text(input.vehicleYear, 12),
-    vehicleMake: text(input.vehicleMake, 80),
-    vehicleModel: text(input.vehicleModel, 100),
-    rego: text(input.rego, 20).toUpperCase(),
-    vehicleType: text(input.vehicleType, 30),
-    condition: text(input.condition, 30),
-    petHair: Boolean(input.petHair),
-    heavyStains: Boolean(input.heavyStains),
-    notes: text(input.notes, 1500),
-    bookingDate: text(input.bookingDate, 10),
-    bookingTime: text(input.bookingTime, 5),
-    bookingEndTime: "",
-    serviceId: service.id,
-    serviceName: service.name,
-    estimatedFromPrice: service.price,
-    durationMinutes: service.durationMinutes,
-    status: "pending",
-    source: "public"
-  };
-  if (
-    !data.customerName ||
-    !data.phone ||
-    !data.email ||
-    !data.address ||
-    !data.vehicleMake ||
-    !data.vehicleModel ||
-    !data.bookingDate ||
-    !data.bookingTime
-  ) {
-    throw new HttpsError("invalid-argument", "Complete the required booking details.");
+export const listBookingAvailability = onCall(
+  { region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: false, minInstances: 1 },
+  async request => {
+    await rateLimit(request, "availability", 30, 10);
+    const date = text(request.data?.date, 10);
+    const serviceId = text(request.data?.serviceId, 30);
+    if (!publicServiceIds.has(serviceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
+    return { date, slots: await availableSlots(date, serviceId) };
   }
-  if (!Boolean(input.acceptedTerms))
-    throw new HttpsError("invalid-argument", "Accept the booking and pricing conditions before submitting.");
-  if (!/^\S+@\S+\.\S+$/.test(data.email)) throw new HttpsError("invalid-argument", "Enter a valid email address.");
-  if (data.phone.replace(/\D/g, "").length < 7) throw new HttpsError("invalid-argument", "Enter a valid phone number.");
-  if (!(bookingConfig.serviceAreas || []).map(value => String(value).toLowerCase()).includes(data.area.toLowerCase())) {
-    throw new HttpsError("invalid-argument", "Choose an Apex service area from the booking form.");
-  }
-  const requestedStart = parseLocal(data.bookingDate, data.bookingTime);
-  data.bookingEndTime = requestedStart.plus({ minutes: service.durationMinutes }).toFormat("HH:mm");
+);
 
-  const options = await availableSlots(data.bookingDate, data.serviceId);
-  if (!options.some(slot => slot.start === data.bookingTime)) {
-    throw new HttpsError("already-exists", "That appointment is no longer available.");
-  }
-
-  const requestReference = db.collection("bookingRequests").doc();
-  const lockReference = db.doc(`bookingLocks/${bookingLockId(data.bookingDate, data.bookingTime)}`);
-  await db.runTransaction(async transaction => {
-    if ((await transaction.get(lockReference)).exists) throw new HttpsError("already-exists", "That appointment was just taken.");
-    transaction.create(lockReference, {
-      date: data.bookingDate,
-      startTime: data.bookingTime,
-      endTime: data.bookingEndTime,
-      requestId: requestReference.id,
+export const submitBookingRequest = onCall(
+  { region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: false, minInstances: 1 },
+  async request => {
+    await rateLimit(request, "booking", 6, 30);
+    const input = request.data || {};
+    if (input.website) throw new HttpsError("invalid-argument", "Unable to submit.");
+    const requestedServiceId = text(input.serviceId, 30);
+    if (!publicServiceIds.has(requestedServiceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
+    const service = serviceById(requestedServiceId);
+    const bookingConfig = await getSettings();
+    const data = {
+      customerName: text(input.customerName, 160),
+      phone: cleanPhone(input.phone),
+      email: cleanEmail(input.email),
+      address: text(input.address, 220),
+      area: text(input.area, 100),
+      vehicleYear: text(input.vehicleYear, 12),
+      vehicleMake: text(input.vehicleMake, 80),
+      vehicleModel: text(input.vehicleModel, 100),
+      rego: text(input.rego, 20).toUpperCase(),
+      vehicleType: text(input.vehicleType, 30),
+      condition: text(input.condition, 30),
+      petHair: Boolean(input.petHair),
+      heavyStains: Boolean(input.heavyStains),
+      notes: text(input.notes, 1500),
+      bookingDate: text(input.bookingDate, 10),
+      bookingTime: text(input.bookingTime, 5),
+      bookingEndTime: "",
+      serviceId: service.id,
+      serviceName: service.name,
+      estimatedFromPrice: service.price,
+      durationMinutes: service.durationMinutes,
       status: "pending",
-      serverVerified: true,
-      createdAt: FieldValue.serverTimestamp()
-    });
-    transaction.create(requestReference, {
-      ...data,
-      lockId: lockReference.id,
-      serverVerified: true,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp()
-    });
-  });
+      source: "public"
+    };
+    if (
+      !data.customerName ||
+      !data.phone ||
+      !data.email ||
+      !data.address ||
+      !data.vehicleMake ||
+      !data.vehicleModel ||
+      !data.bookingDate ||
+      !data.bookingTime
+    ) {
+      throw new HttpsError("invalid-argument", "Complete the required booking details.");
+    }
+    if (!Boolean(input.acceptedTerms))
+      throw new HttpsError("invalid-argument", "Accept the booking and pricing conditions before submitting.");
+    if (!/^\S+@\S+\.\S+$/.test(data.email)) throw new HttpsError("invalid-argument", "Enter a valid email address.");
+    if (data.phone.replace(/\D/g, "").length < 7) throw new HttpsError("invalid-argument", "Enter a valid phone number.");
+    if (!(bookingConfig.serviceAreas || []).map(value => String(value).toLowerCase()).includes(data.area.toLowerCase())) {
+      throw new HttpsError("invalid-argument", "Choose an Apex service area from the booking form.");
+    }
+    const requestedStart = parseLocal(data.bookingDate, data.bookingTime);
+    data.bookingEndTime = requestedStart.plus({ minutes: service.durationMinutes }).toFormat("HH:mm");
 
-  let eventId = "";
-  let calendarId = "";
-  let calendarError = "";
-  try {
-    const calendarResult = await createCalendarEvent({ ...data, requestId: requestReference.id, serviceName: `PENDING — ${service.name}` });
-    eventId = calendarResult.eventId;
-    calendarId = calendarResult.calendarId;
-    await requestReference.set(
-      {
-        calendarEventId: eventId,
-        calendarId,
-        calendarSyncStatus: eventId ? "pending-hold-synced" : "not-connected",
-        calendarSyncedAt: eventId ? FieldValue.serverTimestamp() : null,
-        calendarSyncError: FieldValue.delete()
-      },
-      { merge: true }
-    );
-  } catch (error) {
-    console.error("Pending calendar hold failed", error);
-    calendarError = text(error?.message, 500) || "Calendar hold failed.";
-    await requestReference.set(
-      {
-        calendarSyncStatus: "failed",
-        calendarSyncError: calendarError,
-        calendarSyncAttemptedAt: FieldValue.serverTimestamp()
-      },
-      { merge: true }
-    );
+    const options = await availableSlots(data.bookingDate, data.serviceId);
+    if (!options.some(slot => slot.start === data.bookingTime)) {
+      throw new HttpsError("already-exists", "That appointment is no longer available.");
+    }
+
+    const requestReference = db.collection("bookingRequests").doc();
+    const lockReference = db.doc(`bookingLocks/${bookingLockId(data.bookingDate, data.bookingTime)}`);
+    await db.runTransaction(async transaction => {
+      if ((await transaction.get(lockReference)).exists) throw new HttpsError("already-exists", "That appointment was just taken.");
+      transaction.create(lockReference, {
+        date: data.bookingDate,
+        startTime: data.bookingTime,
+        endTime: data.bookingEndTime,
+        requestId: requestReference.id,
+        status: "pending",
+        serverVerified: true,
+        createdAt: FieldValue.serverTimestamp()
+      });
+      transaction.create(requestReference, {
+        ...data,
+        lockId: lockReference.id,
+        serverVerified: true,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
+      });
+    });
+
+    let eventId = "";
+    let calendarId = "";
+    let calendarError = "";
+    try {
+      const calendarResult = await createCalendarEvent({
+        ...data,
+        requestId: requestReference.id,
+        serviceName: `PENDING — ${service.name}`
+      });
+      eventId = calendarResult.eventId;
+      calendarId = calendarResult.calendarId;
+      await requestReference.set(
+        {
+          calendarEventId: eventId,
+          calendarId,
+          calendarSyncStatus: eventId ? "pending-hold-synced" : "not-connected",
+          calendarSyncedAt: eventId ? FieldValue.serverTimestamp() : null,
+          calendarSyncError: FieldValue.delete()
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.error("Pending calendar hold failed", error);
+      calendarError = text(error?.message, 500) || "Calendar hold failed.";
+      await requestReference.set(
+        {
+          calendarSyncStatus: "failed",
+          calendarSyncError: calendarError,
+          calendarSyncAttemptedAt: FieldValue.serverTimestamp()
+        },
+        { merge: true }
+      );
+    }
+    const config = bookingConfig;
+    const emails = await notifyRequest(data, config);
+    await requestReference.set({ emailStatus: emails }, { merge: true });
+    return {
+      reference: requestReference.id.slice(0, 8).toUpperCase(),
+      serviceName: service.name,
+      bookingDate: data.bookingDate,
+      bookingTime: data.bookingTime,
+      emailSent: emails.customer,
+      calendarStatus: calendarError ? "needs-retry" : eventId ? "held" : "not-connected"
+    };
   }
-  const config = bookingConfig;
-  const emails = await notifyRequest(data, config);
-  await requestReference.set({ emailStatus: emails }, { merge: true });
-  return {
-    reference: requestReference.id.slice(0, 8).toUpperCase(),
-    serviceName: service.name,
-    bookingDate: data.bookingDate,
-    bookingTime: data.bookingTime,
-    emailSent: emails.customer,
-    calendarStatus: calendarError ? "needs-retry" : eventId ? "held" : "not-connected"
-  };
-});
+);
 
-export const submitInquiry = onCall({ region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: false }, async request => {
+export const submitInquiry = onCall({ region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: false, minInstances: 1 }, async request => {
   await rateLimit(request, "inquiry", 6, 30);
   const input = request.data || {};
   if (input.website) throw new HttpsError("invalid-argument", "Unable to submit.");
