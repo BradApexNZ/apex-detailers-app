@@ -2326,7 +2326,11 @@ function Settings({ user, settings, setSettings, notify }) {
       <div className="settings">
         <section>
           <h3>Face ID unlock</h3>
-          <p className="muted">Use device biometrics plus a backup PIN for quick private HQ access.</p>
+          <p className="muted">
+            {isDeviceLockEnabled()
+              ? `Device lock is on${hasBiometricLock() ? " (Face ID + backup PIN)" : " (PIN only)"}.`
+              : "Device lock is off. Use device biometrics plus a backup PIN for quick private HQ access."}
+          </p>
           {supportsBiometrics() && (
             <button
               onClick={async () => {
@@ -2368,7 +2372,12 @@ function Settings({ user, settings, setSettings, notify }) {
           </a>
         </section>
         <section>
-          <h3>Online booking</h3>
+          <div className="settingsHead">
+            <h3>Online booking</h3>
+            <span className={`statusPill status-${settings.enabled ? "completed" : "cancelled"}`}>
+              {settings.enabled ? "Enabled" : "Disabled"}
+            </span>
+          </div>
           <label className="check">
             <input type="checkbox" checked={settings.enabled} onChange={e => setSettings({ ...settings, enabled: e.target.checked })} />
             Public booking page enabled
