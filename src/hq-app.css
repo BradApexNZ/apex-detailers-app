@@ -459,6 +459,10 @@ article.job,
   font-size: 10.5px;
   font-weight: 600;
 }
+.request header b .quoteStatus {
+  margin-top: 6px;
+  font-family: var(--mono);
+}
 .request p {
   margin-top: 10px;
   color: var(--paper-dim);
