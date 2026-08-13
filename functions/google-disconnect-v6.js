@@ -5,6 +5,10 @@ import { defineSecret, defineString } from "firebase-functions/params";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { google } from "googleapis";
 
+// See functions/index.js for why this matters - an unbounded Google API call can
+// hang a request forever with no error.
+google.options({ timeout: 10000 });
+
 if (!getApps().length) initializeApp();
 
 const db = getFirestore();

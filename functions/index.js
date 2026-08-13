@@ -6,6 +6,12 @@ import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { google } from "googleapis";
 import { DateTime } from "luxon";
 
+// The googleapis client has no default request timeout - a stalled connection to
+// Google's servers (rare, but it happens) hangs the calling request forever with
+// no error, which for the public booking functions means the customer's page is
+// stuck on "loading" indefinitely. This bounds every Google API call made below.
+google.options({ timeout: 10000 });
+
 initializeApp();
 const db = getFirestore();
 const REGION = "australia-southeast1";
