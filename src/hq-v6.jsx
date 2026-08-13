@@ -2092,7 +2092,14 @@ function App() {
           {tab === "vouchers" && (
             <>
               <div className="sectionLead">
-                <Intro title="Vouchers & referrals" text="Track return vouchers and referral credits through to use." />
+                <Intro
+                  title="Vouchers & referrals"
+                  text={
+                    vouchers.length
+                      ? `${vouchers.filter(v => !v.used).length} active of ${vouchers.length}. Track through to use.`
+                      : "Track return vouchers and referral credits through to use."
+                  }
+                />
                 <button onClick={() => setVoucherModal(true)}>+ Voucher</button>
               </div>
               <div className="voucherGrid">
@@ -2104,7 +2111,12 @@ function App() {
                     </header>
                     <h3 className="pii">{v.customerName || "Unassigned"}</h3>
                     <p className="pii">{v.vehicle || v.phone || ""}</p>
-                    <p>Expiry: {v.expiryDate || "Not set"}</p>
+                    <p>
+                      Expiry: {v.expiryDate || "Not set"}
+                      {!v.used && v.expiryDate && v.expiryDate < today && (
+                        <span className="statusPill status-cancelled voucherExpired">Expired</span>
+                      )}
+                    </p>
                     <footer>
                       <label className="check">
                         <input

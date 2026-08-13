@@ -712,6 +712,9 @@ article.job,
   color: var(--paper-dim);
   font-size: 12px;
 }
+.voucherExpired {
+  margin-left: 8px;
+}
 .voucherGrid > article footer {
   margin-top: 12px;
   padding-top: 12px;
