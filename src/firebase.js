@@ -35,6 +35,15 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 
+// Keep the public booking page's dependency surface as small as possible: it
+// gets one shot at a customer before they give up and call someone else, so
+// anything that can silently stall on a blocked/slow third-party network call
+// (reCAPTCHA, Google Analytics collection, Firebase Installations) comes out
+// entirely on this page rather than being raced against a timeout after the
+// fact. HQ and the owner tools keep the full feature set - they're used by
+// Brad on his own devices, not a first-time customer on an unknown setup.
+const isPublicBookingPage = typeof window !== "undefined" && /^\/(?:book|booking(?:\.html)?)$/.test(window.location.pathname);
+
 const appCheckSiteKey = import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY;
 const appCheckDebugToken = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN;
 // The public booking functions no longer require an App Check token server-side
@@ -42,10 +51,7 @@ const appCheckDebugToken = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN;
 // request on getting one when App Check is initialized at all - if reCAPTCHA is
 // slow or silently blocked (a content blocker, a privacy setting), that stalls
 // a booking that would otherwise succeed immediately with no token attached.
-// Skipping init entirely on the public booking page removes that dependency;
-// HQ and the owner tools keep it since enforcement there is unaffected.
-const skipAppCheck = typeof window !== "undefined" && /^\/(?:book|booking(?:\.html)?)$/.test(window.location.pathname);
-if (typeof window !== "undefined" && !skipAppCheck && (appCheckSiteKey || appCheckDebugToken)) {
+if (typeof window !== "undefined" && !isPublicBookingPage && (appCheckSiteKey || appCheckDebugToken)) {
   // PR preview channels get a fresh, unregistered hostname each time, so reCAPTCHA
   // can't validate them. Setting this before initializeAppCheck makes the SDK use
   // Firebase's debug provider instead, sending the fixed token registered above.
@@ -99,11 +105,12 @@ export async function signOutAndClearCache() {
 }
 
 export const functions = getFunctions(app, "australia-southeast1");
-export const analyticsPromise = firebaseConfig.measurementId
-  ? isSupported()
-      .then(supported => (supported ? getAnalytics(app) : null))
-      .catch(error => {
-        console.warn("Firebase Analytics is not available in this environment.", error);
-        return null;
-      })
-  : Promise.resolve(null);
+export const analyticsPromise =
+  firebaseConfig.measurementId && !isPublicBookingPage
+    ? isSupported()
+        .then(supported => (supported ? getAnalytics(app) : null))
+        .catch(error => {
+          console.warn("Firebase Analytics is not available in this environment.", error);
+          return null;
+        })
+    : Promise.resolve(null);
