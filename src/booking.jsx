@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { apexCloudEnabled, getPublicBookingConfig, listBookingAvailability, submitBookingRequest } from "./apex-api";
 import { money, publicServicePackages, serviceById } from "./booking-data";
+import { useNewVersionAvailable } from "./use-new-version-available";
 
 const today = () =>
   new Date().toLocaleDateString("en-CA", {
@@ -133,40 +134,11 @@ function ShowcaseBooking() {
   );
 }
 
-// booking.html has no service worker (unlike /hq), so nothing here ever picks up a
-// new deploy on its own. A blind auto-reload risks wiping a customer's half-filled
-// form, so this just offers a refresh instead of forcing one.
-function useNewVersionAvailable() {
-  const [available, setAvailable] = useState(false);
-  useEffect(() => {
-    let baseline = null;
-    async function check() {
-      try {
-        const response = await fetch("/booking", { cache: "no-store" });
-        const tag = response.headers.get("etag") || response.headers.get("last-modified");
-        if (!tag) return;
-        if (baseline === null) baseline = tag;
-        else if (tag !== baseline) setAvailable(true);
-      } catch {
-        // Offline or a transient network blip - not worth surfacing to the customer.
-      }
-    }
-    check();
-    const id = window.setInterval(check, 120000);
-    const onVisible = () => {
-      if (!document.hidden) check();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      window.clearInterval(id);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, []);
-  return available;
-}
-
 function Booking() {
-  const newVersionAvailable = useNewVersionAvailable();
+  // booking.html has no service worker (unlike /hq), so nothing here ever picks up a
+  // new deploy on its own. A blind auto-reload risks wiping a customer's half-filled
+  // form, so this just offers a refresh instead of forcing one.
+  const newVersionAvailable = useNewVersionAvailable("/booking");
   const [config, setConfig] = useState(null);
   const [form, setForm] = useState(blank);
   const [step, setStep] = useState(1);

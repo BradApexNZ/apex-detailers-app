@@ -3,6 +3,7 @@ import { addDoc, collection, doc, getDocs, serverTimestamp, writeBatch } from "f
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { createRoot } from "react-dom/client";
 import { auth, db, signOutAndClearCache } from "./firebase";
+import { useNewVersionAvailable } from "./use-new-version-available";
 import "./data-tools.css";
 
 const ownerUids = (
@@ -43,7 +44,22 @@ const serialise = value => {
   return value;
 };
 
+function VersionBanner() {
+  return (
+    <div className="notice fixed">
+      A newer version of this page is available.{" "}
+      <button type="button" onClick={() => window.location.reload()}>
+        Refresh
+      </button>
+    </div>
+  );
+}
+
 function App() {
+  // /tools has no service worker and can have an unsaved file selection or an
+  // import mid-flight, so this offers a refresh rather than forcing a reload
+  // the way /hq does.
+  const newVersionAvailable = useNewVersionAvailable("/tools");
   const [user, setUser] = useState(null),
     [ready, setReady] = useState(false),
     [email, setEmail] = useState(""),
@@ -262,6 +278,7 @@ function App() {
   if (!ready)
     return (
       <main className="page">
+        {newVersionAvailable && <VersionBanner />}
         <section>
           <h1>Apex HQ Data Tools</h1>
           <p>Loading…</p>
@@ -271,6 +288,7 @@ function App() {
   if (!owner)
     return (
       <main className="page">
+        {newVersionAvailable && <VersionBanner />}
         <form onSubmit={login}>
           <span>PRIVATE OWNER TOOL</span>
           <h1>Apex HQ Data Tools</h1>
@@ -291,6 +309,7 @@ function App() {
 
   return (
     <main className="page">
+      {newVersionAvailable && <VersionBanner />}
       <header>
         <div>
           <span>APEX HQ</span>
