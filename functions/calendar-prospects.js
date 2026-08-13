@@ -189,9 +189,6 @@ export const scanGoogleCalendarProspects = onCall({ region: REGION, secrets: GOO
             (name && customerName && customerName === normal(name))
           );
         });
-        // Already a customer - this isn't a new-prospect suggestion, so leave it out
-        // rather than risk the owner adding a duplicate customer record.
-        if (match) continue;
         suggestions.push({
           eventId: event.id,
           calendarId,
@@ -205,6 +202,12 @@ export const scanGoogleCalendarProspects = onCall({ region: REGION, secrets: GOO
           eventTitle: text(event.summary, 200),
           eventStart: eventDate(event),
           htmlLink: event.htmlLink || "",
+          // A confident match means this isn't a new customer - it's an existing one
+          // with a booking that didn't come through the website (in-person, phone,
+          // walk-in). The owner can still turn it into a tracked job, just not a
+          // second customer record.
+          existingCustomerId: match?.id || "",
+          existingCustomerName: match ? match.businessName || `${match.firstName || ""} ${match.lastName || ""}`.trim() : "",
           missing: [!emails[0] ? "email" : "", !phones[0] ? "mobile" : ""].filter(Boolean)
         });
       }
