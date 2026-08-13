@@ -1173,15 +1173,15 @@ function CalendarProspects({ prospects, scanned, busy, onScan, onAdd, onConvert,
   return (
     <section className="calendarProspects">
       <p className="muted">
-        Scans your connected Google Calendar for events that don't look like existing Apex customers or jobs — new enquiries booked straight
-        into Calendar, walk-ins, anything that hasn't made it into Apex yet.
+        Scans your connected Google Calendar for detailing-looking bookings that aren't tracked in Apex yet — new enquiries, walk-ins, and
+        anything you took in person or over the phone. Personal events and non-vehicle bookings are filtered out automatically.
       </p>
       <div className="detailActions">
         <button onClick={onScan} disabled={busy}>
-          {busy ? "Scanning..." : scanned ? "Rescan Calendar" : "Scan Calendar for new customers"}
+          {busy ? "Scanning..." : scanned ? "Rescan Calendar" : "Scan Calendar for bookings"}
         </button>
       </div>
-      {scanned && !prospects.length && <Empty text="No new prospects found." />}
+      {scanned && !prospects.length && <Empty text="No untracked bookings found." />}
       {Boolean(prospects.length) && (
         <div className="cards">
           {prospects.map(p => (
@@ -1198,13 +1198,22 @@ function CalendarProspects({ prospects, scanned, busy, onScan, onAdd, onConvert,
                 {p.rego ? ` · ${p.rego}` : ""}
               </p>
               {p.address && <p>{p.address}</p>}
+              {p.existingCustomerId && <p className="muted">Matches existing customer: {p.existingCustomerName}</p>}
               <footer>
-                <button onClick={() => onAdd(p)} disabled={busy}>
-                  Add as customer
-                </button>
-                <button className="secondary" onClick={() => onConvert(p)} disabled={busy}>
-                  Also create booking
-                </button>
+                {p.existingCustomerId ? (
+                  <button onClick={() => onConvert(p)} disabled={busy}>
+                    Create job
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={() => onAdd(p)} disabled={busy}>
+                      Add as customer
+                    </button>
+                    <button className="secondary" onClick={() => onConvert(p)} disabled={busy}>
+                      Also create booking
+                    </button>
+                  </>
+                )}
                 <button className="danger" onClick={() => onDismiss(p)} disabled={busy}>
                   Dismiss
                 </button>
@@ -1273,7 +1282,7 @@ function ActiveJobPanel({ job, busy, onPause, onResume, onComplete, openTab }) {
     </section>
   );
 }
-function ProspectsWidget({ prospects, busy, onAdd, onDismiss, openTab }) {
+function ProspectsWidget({ prospects, busy, onAdd, onConvert, onDismiss, openTab }) {
   if (!prospects.length) return null;
   return (
     <section className="panel prospectsWidget">
@@ -1287,14 +1296,21 @@ function ProspectsWidget({ prospects, busy, onAdd, onDismiss, openTab }) {
           <div className="prospectInfo">
             <b className="pii">{p.name}</b>
             <span className="pii">
+              {p.existingCustomerId ? "Existing customer - " : ""}
               {p.eventTitle} - {new Date(p.eventStart).toLocaleDateString("en-NZ", { day: "numeric", month: "short" })}
               {p.rego ? ` - ${p.rego}` : ""}
             </span>
           </div>
           <div className="prospectActions">
-            <button className="btnMini primary" onClick={() => onAdd(p)} disabled={busy}>
-              Add
-            </button>
+            {p.existingCustomerId ? (
+              <button className="btnMini primary" onClick={() => onConvert(p)} disabled={busy}>
+                Create job
+              </button>
+            ) : (
+              <button className="btnMini primary" onClick={() => onAdd(p)} disabled={busy}>
+                Add
+              </button>
+            )}
             <button className="btnMini" onClick={() => onDismiss(p)} disabled={busy}>
               Skip
             </button>
@@ -2012,6 +2028,7 @@ function App() {
                     prospects={prospects}
                     busy={prospectsBusy}
                     onAdd={addProspectAsCustomer}
+                    onConvert={convertProspectToBooking}
                     onDismiss={dismissProspect}
                     openTab={setTab}
                   />
