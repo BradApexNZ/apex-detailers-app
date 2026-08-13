@@ -39,6 +39,17 @@ function Mark() {
   );
 }
 
+function VersionBanner() {
+  return (
+    <div className="versionBanner">
+      <span>A newer version of this page is available.</span>
+      <button type="button" onClick={() => window.location.reload()}>
+        Refresh
+      </button>
+    </div>
+  );
+}
+
 function Header() {
   return (
     <header>
@@ -122,7 +133,40 @@ function ShowcaseBooking() {
   );
 }
 
+// booking.html has no service worker (unlike /hq), so nothing here ever picks up a
+// new deploy on its own. A blind auto-reload risks wiping a customer's half-filled
+// form, so this just offers a refresh instead of forcing one.
+function useNewVersionAvailable() {
+  const [available, setAvailable] = useState(false);
+  useEffect(() => {
+    let baseline = null;
+    async function check() {
+      try {
+        const response = await fetch("/booking", { cache: "no-store" });
+        const tag = response.headers.get("etag") || response.headers.get("last-modified");
+        if (!tag) return;
+        if (baseline === null) baseline = tag;
+        else if (tag !== baseline) setAvailable(true);
+      } catch {
+        // Offline or a transient network blip - not worth surfacing to the customer.
+      }
+    }
+    check();
+    const id = window.setInterval(check, 120000);
+    const onVisible = () => {
+      if (!document.hidden) check();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+  return available;
+}
+
 function Booking() {
+  const newVersionAvailable = useNewVersionAvailable();
   const [config, setConfig] = useState(null);
   const [form, setForm] = useState(blank);
   const [step, setStep] = useState(1);
@@ -187,6 +231,7 @@ function Booking() {
   if (!config && !error) {
     return (
       <main className="splash">
+        {newVersionAvailable && <VersionBanner />}
         <Mark />
         <span>Loading Apex bookings…</span>
       </main>
@@ -196,6 +241,7 @@ function Booking() {
   if (done) {
     return (
       <main className="publicPage">
+        {newVersionAvailable && <VersionBanner />}
         <Header />
         <section className="success">
           <div className="tick">✓</div>
@@ -226,6 +272,7 @@ function Booking() {
 
   return (
     <main className="publicPage">
+      {newVersionAvailable && <VersionBanner />}
       <Header />
 
       <section className="hero">
