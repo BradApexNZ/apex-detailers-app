@@ -1199,7 +1199,8 @@ function App() {
     [busy, setBusy] = useState(false),
     [toast, setToast] = useState(""),
     [dataError, setDataError] = useState(""),
-    [customerSearch, setCustomerSearch] = useState("");
+    [customerSearch, setCustomerSearch] = useState(""),
+    [photoFilter, setPhotoFilter] = useState("all");
   const [prospects, setProspects] = useState([]),
     [prospectsScanned, setProspectsScanned] = useState(false),
     [prospectsBusy, setProspectsBusy] = useState(false);
@@ -1599,6 +1600,11 @@ function App() {
   const allPhotos = useMemo(
     () => jobs.flatMap(j => (j.photos || []).map(p => ({ ...p, jobId: j.id, customerName: j.customerName, vehicle: vehicleOf(j) }))),
     [jobs]
+  );
+  const photoCategoriesPresent = useMemo(() => photoCategories.filter(([value]) => allPhotos.some(p => p.category === value)), [allPhotos]);
+  const visiblePhotos = useMemo(
+    () => (photoFilter === "all" ? allPhotos : allPhotos.filter(p => p.category === photoFilter)),
+    [allPhotos, photoFilter]
   );
   const visibleCustomers = useMemo(() => {
     const query = normal(customerSearch);
@@ -2047,9 +2053,28 @@ function App() {
           )}
           {tab === "photos" && (
             <>
-              <Intro title="Photos" text="Before, during, after and concern photos tied to the correct job." />
+              <Intro
+                title="Photos"
+                text={
+                  allPhotos.length
+                    ? `${allPhotos.length} photo${allPhotos.length === 1 ? "" : "s"} across ${jobs.filter(j => j.photos?.length).length} job${jobs.filter(j => j.photos?.length).length === 1 ? "" : "s"}.`
+                    : "Before, during, after and concern photos tied to the correct job."
+                }
+              />
+              {Boolean(photoCategoriesPresent.length) && (
+                <div className="photoFilters">
+                  <button className={photoFilter === "all" ? "active" : ""} onClick={() => setPhotoFilter("all")}>
+                    All
+                  </button>
+                  {photoCategoriesPresent.map(([value, label]) => (
+                    <button key={value} className={photoFilter === value ? "active" : ""} onClick={() => setPhotoFilter(value)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="photoLibrary">
-                {allPhotos.map((p, i) => (
+                {visiblePhotos.map((p, i) => (
                   <a key={`${p.url}-${i}`} href={p.url} target="_blank" rel="noreferrer" className="pii">
                     <img src={p.url} alt={`${p.customerName} ${p.category || "photo"}`} />
                     <div>
@@ -2061,6 +2086,7 @@ function App() {
                 ))}
               </div>
               {!allPhotos.length && <Empty text="Open a job and upload its first photos." />}
+              {Boolean(allPhotos.length) && !visiblePhotos.length && <Empty text="No photos in this category." />}
             </>
           )}
           {tab === "vouchers" && (
