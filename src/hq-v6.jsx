@@ -897,7 +897,7 @@ function VoucherModal({ close, save, busy }) {
   );
 }
 
-function JobModal({ job, close, save, upload, busy, notify }) {
+function JobModal({ job, close, save, upload, busy, notify, onStart, onPause, onResume, onComplete }) {
   const [form, setForm] = useState({
       ...job,
       paidAmount: job.paidAmount || "",
@@ -909,9 +909,45 @@ function JobModal({ job, close, save, upload, busy, notify }) {
     [category, setCategory] = useState("before");
   const update = (k, v) => setForm(o => ({ ...o, [k]: v }));
   const review = `Thanks again for choosing Apex Detailers, ${job.customerName}. If you're happy with the result, a Google review would mean a lot and helps a local business grow.`;
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (job.status !== "In Progress" || !job.timerStartedAt) return;
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [job.status, job.timerStartedAt]);
+  const canStart = ["Booked", "Confirmed"].includes(job.status);
+  const inProgress = job.status === "In Progress";
+  const { running, seconds } = jobTimerSeconds(job);
   return (
     <Modal title={`${job.customerName} - ${vehicleOf(job)}`} close={close} wide>
       <div className="jobDetail">
+        {(canStart || inProgress) && (
+          <section className="jobTimerBar">
+            {inProgress ? (
+              <>
+                <div className="activeJobTimer">{formatTimer(seconds)}</div>
+                <div className="detailActions">
+                  {running ? (
+                    <button className="secondary" onClick={() => onPause(job)} disabled={busy}>
+                      Pause
+                    </button>
+                  ) : (
+                    <button className="secondary" onClick={() => onResume(job)} disabled={busy}>
+                      Resume
+                    </button>
+                  )}
+                  <button onClick={() => onComplete(job)} disabled={busy}>
+                    Complete job
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button onClick={() => onStart(job)} disabled={busy}>
+                Start job
+              </button>
+            )}
+          </section>
+        )}
         <div className="formGrid">
           <label>
             Status
@@ -1181,6 +1217,62 @@ function CalendarProspects({ prospects, scanned, busy, onScan, onAdd, onConvert,
   );
 }
 
+function jobTimerSeconds(job) {
+  const startedSeconds = job?.timerStartedAt ? job.timerStartedAt.seconds || job.timerStartedAt._seconds || 0 : 0;
+  const running = Boolean(startedSeconds);
+  return {
+    running,
+    seconds: (job?.timerElapsedSeconds || 0) + (running ? Math.max(0, Math.floor(Date.now() / 1000 - startedSeconds)) : 0)
+  };
+}
+function formatTimer(totalSeconds) {
+  const hh = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+  const mm = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+  const ss = String(totalSeconds % 60).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+function ActiveJobPanel({ job, busy, onPause, onResume, onComplete, openTab }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!job) return;
+    const { running } = jobTimerSeconds(job);
+    if (!running) return;
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [job]);
+  if (!job) return null;
+  const { running, seconds } = jobTimerSeconds(job);
+  return (
+    <section className="panel activeJobPanel">
+      <div className="panel-head">
+        <h3>Working on now</h3>
+        <span className={`statusPill ${running ? "status-booked" : "status-lead"}`}>{running ? "Running" : "Paused"}</span>
+      </div>
+      <b className="pii">{job.customerName}</b>
+      <span className="muted pii">
+        {vehicleOf(job)} - {job.packageName}
+      </span>
+      <div className="activeJobTimer">{formatTimer(seconds)}</div>
+      <div className="detailActions">
+        {running ? (
+          <button className="secondary" onClick={() => onPause(job)} disabled={busy}>
+            Pause
+          </button>
+        ) : (
+          <button className="secondary" onClick={() => onResume(job)} disabled={busy}>
+            Resume
+          </button>
+        )}
+        <button onClick={() => onComplete(job)} disabled={busy}>
+          Complete job
+        </button>
+        <button className="text" onClick={() => openTab("jobs")}>
+          Open in Jobs
+        </button>
+      </div>
+    </section>
+  );
+}
 function ProspectsWidget({ prospects, busy, onAdd, onDismiss, openTab }) {
   if (!prospects.length) return null;
   return (
@@ -1587,6 +1679,77 @@ function App() {
       setBusy(false);
     }
   }
+  async function startJob(job) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await setDoc(
+        doc(db, "jobs", job.id),
+        {
+          status: "In Progress",
+          timerStartedAt: serverTimestamp(),
+          timerElapsedSeconds: 0,
+          statusHistory: arrayUnion({ status: "In Progress", at: new Date().toISOString() }),
+          updatedAt: serverTimestamp()
+        },
+        { merge: true }
+      );
+      notify("Job started.");
+    } catch (err) {
+      notify(err.message || "Could not start the job.");
+    }
+    setBusy(false);
+  }
+  async function pauseJob(job) {
+    if (busy || !job.timerStartedAt) return;
+    setBusy(true);
+    try {
+      const startedSeconds = job.timerStartedAt.seconds || job.timerStartedAt._seconds || 0;
+      const elapsed = (job.timerElapsedSeconds || 0) + Math.max(0, Math.round(Date.now() / 1000 - startedSeconds));
+      await setDoc(
+        doc(db, "jobs", job.id),
+        { timerStartedAt: null, timerElapsedSeconds: elapsed, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+    } catch (err) {
+      notify(err.message || "Could not pause the job.");
+    }
+    setBusy(false);
+  }
+  async function resumeJob(job) {
+    if (busy || job.timerStartedAt) return;
+    setBusy(true);
+    try {
+      await setDoc(doc(db, "jobs", job.id), { timerStartedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+    } catch (err) {
+      notify(err.message || "Could not resume the job.");
+    }
+    setBusy(false);
+  }
+  async function completeJob(job) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const startedSeconds = job.timerStartedAt ? job.timerStartedAt.seconds || job.timerStartedAt._seconds || 0 : 0;
+      const elapsed = (job.timerElapsedSeconds || 0) + (startedSeconds ? Math.max(0, Math.round(Date.now() / 1000 - startedSeconds)) : 0);
+      await setDoc(
+        doc(db, "jobs", job.id),
+        {
+          status: "Completed",
+          timerStartedAt: null,
+          timerElapsedSeconds: elapsed,
+          actualDurationMinutes: Math.round(elapsed / 60),
+          statusHistory: arrayUnion({ status: "Completed", at: new Date().toISOString() }),
+          updatedAt: serverTimestamp()
+        },
+        { merge: true }
+      );
+      notify("Job marked complete.");
+    } catch (err) {
+      notify(err.message || "Could not complete the job.");
+    }
+    setBusy(false);
+  }
   async function uploadPhotos(job, files, category) {
     setBusy(true);
     try {
@@ -1666,6 +1829,7 @@ function App() {
     completed = jobs.filter(j => ["Completed", "Prepare Hnry Invoice", "Invoice Sent", "Paid", "Review Request Sent"].includes(j.status));
   const activeJobsCount = jobs.filter(j => ["Booked", "In Progress"].includes(j.status)).length,
     jobsNeedingInvoice = jobs.filter(j => j.status === "Completed").length;
+  const activeJob = jobs.find(j => j.status === "In Progress") || null;
   const needsSyncCount = upcoming.filter(j => !j.calendarSyncStatus || ["failed", "not-connected"].includes(j.calendarSyncStatus)).length;
   const month = today.slice(0, 7),
     monthRevenue = jobs
@@ -1815,6 +1979,16 @@ function App() {
                   )}
                 </article>
               </section>
+              {activeJob && (
+                <ActiveJobPanel
+                  job={activeJob}
+                  busy={busy}
+                  onPause={pauseJob}
+                  onResume={resumeJob}
+                  onComplete={completeJob}
+                  openTab={setTab}
+                />
+              )}
               <section className="stats">
                 <Stat label="Today's jobs" value={upcoming.filter(j => j.bookingDate === today).length} />
                 <Stat label="Pending requests" value={pending.length} />
@@ -2286,7 +2460,18 @@ function App() {
       {jobModal && <QuoteModal mode="job" close={() => setJobModal(false)} save={saveQuote} busy={busy} customers={customers} />}{" "}
       {voucherModal && <VoucherModal close={() => setVoucherModal(false)} save={saveVoucher} busy={busy} />}{" "}
       {selectedJob && (
-        <JobModal job={selectedJob} close={() => setSelectedJob(null)} save={saveJob} upload={uploadPhotos} busy={busy} notify={notify} />
+        <JobModal
+          job={selectedJob}
+          close={() => setSelectedJob(null)}
+          save={saveJob}
+          upload={uploadPhotos}
+          busy={busy}
+          notify={notify}
+          onStart={startJob}
+          onPause={pauseJob}
+          onResume={resumeJob}
+          onComplete={completeJob}
+        />
       )}{" "}
       {toast && <div className="toast">{toast}</div>}
     </div>
