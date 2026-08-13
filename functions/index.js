@@ -420,7 +420,7 @@ async function findCustomer(data) {
   return db.collection("customers").doc();
 }
 
-export const getPublicBookingConfig = onCall({ region: REGION, enforceAppCheck: true }, async () => {
+export const getPublicBookingConfig = onCall({ region: REGION, enforceAppCheck: false }, async () => {
   const config = await getSettings();
   return {
     enabled: config.enabled,
@@ -432,7 +432,7 @@ export const getPublicBookingConfig = onCall({ region: REGION, enforceAppCheck: 
   };
 });
 
-export const listBookingAvailability = onCall({ region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: true }, async request => {
+export const listBookingAvailability = onCall({ region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: false }, async request => {
   await rateLimit(request, "availability", 30, 10);
   const date = text(request.data?.date, 10);
   const serviceId = text(request.data?.serviceId, 30);
@@ -440,7 +440,7 @@ export const listBookingAvailability = onCall({ region: REGION, secrets: GOOGLE_
   return { date, slots: await availableSlots(date, serviceId) };
 });
 
-export const submitBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: true }, async request => {
+export const submitBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: false }, async request => {
   await rateLimit(request, "booking", 6, 30);
   const input = request.data || {};
   if (input.website) throw new HttpsError("invalid-argument", "Unable to submit.");
@@ -564,7 +564,7 @@ export const submitBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SEC
   };
 });
 
-export const submitInquiry = onCall({ region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: true }, async request => {
+export const submitInquiry = onCall({ region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: false }, async request => {
   await rateLimit(request, "inquiry", 6, 30);
   const input = request.data || {};
   if (input.website) throw new HttpsError("invalid-argument", "Unable to submit.");
