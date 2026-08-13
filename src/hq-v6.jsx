@@ -43,15 +43,15 @@ const ownerUids = (
   .map(v => v.trim())
   .filter(Boolean);
 const nav = [
-  ["dashboard", "Command", "HQ"],
-  ["inbox", "Inbox", "IN"],
-  ["calendar", "Calendar", "CA"],
-  ["jobs", "Jobs", "JB"],
-  ["customers", "Customers", "CU"],
-  ["quotes", "Quotes", "QT"],
-  ["photos", "Photos", "PH"],
-  ["vouchers", "Vouchers", "VC"],
-  ["settings", "Settings", "ST"]
+  ["dashboard", "Command"],
+  ["inbox", "Inbox"],
+  ["calendar", "Calendar"],
+  ["jobs", "Jobs"],
+  ["customers", "Customers"],
+  ["quotes", "Quotes"],
+  ["photos", "Photos"],
+  ["vouchers", "Vouchers"],
+  ["settings", "Settings"]
 ];
 const statusList = [
   "Lead",
@@ -217,6 +217,95 @@ function Brand() {
         <span>HQ / V6 LAUNCH</span>
       </div>
     </div>
+  );
+}
+const navIconShapes = {
+  dashboard: (
+    <>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </>
+  ),
+  inbox: (
+    <>
+      <rect x="3" y="4" width="18" height="15" rx="2" />
+      <path d="M4 12h4l2 3h4l2-3h4" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <line x1="8" y1="3" x2="8" y2="7" />
+      <line x1="16" y1="3" x2="16" y2="7" />
+    </>
+  ),
+  jobs: (
+    <>
+      <rect x="6" y="3" width="12" height="18" rx="2" />
+      <rect x="9" y="2" width="6" height="3" rx="1" />
+      <line x1="9" y1="11" x2="15" y2="11" />
+      <line x1="9" y1="15" x2="15" y2="15" />
+    </>
+  ),
+  customers: (
+    <>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+      <circle cx="17" cy="9" r="2.3" />
+      <path d="M15.5 14.2a5 5 0 0 1 5.5 5" />
+    </>
+  ),
+  quotes: (
+    <>
+      <path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+      <path d="M15 3v4h4" />
+      <line x1="8" y1="12.5" x2="16" y2="12.5" />
+      <line x1="8" y1="16.5" x2="13" y2="16.5" />
+    </>
+  ),
+  photos: (
+    <>
+      <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+      <circle cx="12" cy="14" r="3.5" />
+    </>
+  ),
+  vouchers: (
+    <>
+      <path d="M13 3 21 11l-8.5 8.5a1.5 1.5 0 0 1-2.1 0L3 12V4a1 1 0 0 1 1-1h9z" />
+      <circle cx="8.5" cy="7.5" r="1.4" />
+    </>
+  ),
+  settings: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </>
+  ),
+  more: (
+    <>
+      <circle cx="5" cy="12" r="1.7" />
+      <circle cx="12" cy="12" r="1.7" />
+      <circle cx="19" cy="12" r="1.7" />
+    </>
+  )
+};
+function NavIcon({ id }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {navIconShapes[id]}
+    </svg>
   );
 }
 function Modal({ title, close, children, wide = false }) {
@@ -1627,7 +1716,7 @@ function App() {
       <aside>
         <Brand />
         <nav>
-          {nav.map(([id, label, icon]) => (
+          {nav.map(([id, label]) => (
             <button
               key={id}
               className={tab === id ? "active" : ""}
@@ -1636,7 +1725,9 @@ function App() {
                 setMobileMenu(false);
               }}
             >
-              <i>{icon}</i>
+              <i>
+                <NavIcon id={id} />
+              </i>
               {label}
               {id === "inbox" && pending.length + newInquiries.length > 0 && <em>{pending.length + newInquiries.length}</em>}
               {id === "dashboard" && prospects.length > 0 && <em>{prospects.length}</em>}
@@ -2154,7 +2245,7 @@ function App() {
         </main>
       </div>
       <nav className="mobile">
-        {nav.slice(0, 6).map(([id, label, icon]) => (
+        {nav.slice(0, 6).map(([id, label]) => (
           <button
             key={id}
             className={tab === id ? "active" : ""}
@@ -2163,12 +2254,16 @@ function App() {
               setMobileMenu(false);
             }}
           >
-            <i>{icon}</i>
+            <i>
+              <NavIcon id={id} />
+            </i>
             <small>{label}</small>
           </button>
         ))}
         <button className={mobileMenu ? "active" : ""} onClick={() => setMobileMenu(true)}>
-          <i>•••</i>
+          <i>
+            <NavIcon id="more" />
+          </i>
           <small>More</small>
         </button>
       </nav>
