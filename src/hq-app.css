@@ -862,15 +862,18 @@ article.job,
   grid-column: 1/-1;
 }
 .calendarChoice {
+  display: grid;
+  gap: 8px;
+}
+.calendarChoice > label {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
-  margin-bottom: 8px;
 }
-.calendarChoice.google {
+.calendarChoice > label.google {
   border-color: var(--sheen-line);
   background: var(--sheen-soft);
 }
