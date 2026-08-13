@@ -42,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VITE_APEX_CLOUD_ENABLED: "true"
+      VITE_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.RECAPTCHA_ENTERPRISE_SITE_KEY }}
 
     steps:
       - name: Checkout repository

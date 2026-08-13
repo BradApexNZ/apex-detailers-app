@@ -27,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VITE_APEX_CLOUD_ENABLED: "true"
+      VITE_APPCHECK_DEBUG_TOKEN: ${{ secrets.APPCHECK_DEBUG_TOKEN }}
 
     steps:
       - name: Checkout repository
