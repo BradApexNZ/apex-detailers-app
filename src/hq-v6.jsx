@@ -1307,9 +1307,14 @@ function ProspectsWidget({ prospects, busy, onAdd, onConvert, onDismiss, openTab
                 Create job
               </button>
             ) : (
-              <button className="btnMini primary" onClick={() => onAdd(p)} disabled={busy}>
-                Add
-              </button>
+              <>
+                <button className="btnMini primary" onClick={() => onAdd(p)} disabled={busy}>
+                  Add
+                </button>
+                <button className="btnMini" onClick={() => onConvert(p)} disabled={busy}>
+                  + Job
+                </button>
+              </>
             )}
             <button className="btnMini" onClick={() => onDismiss(p)} disabled={busy}>
               Skip
