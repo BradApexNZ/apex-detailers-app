@@ -98,7 +98,9 @@ document.addEventListener(
 
 function isCalendarPage() {
   const topTitle = document.querySelector(".top h1");
-  return clean(topTitle?.textContent).toLowerCase() === "calendar" || Boolean(document.querySelector(".calendarSettings"));
+  // .calendarSettings now only renders inside the Settings tab, not here - matching on
+  // it too used to make this widget bleed into Settings alongside the connection card.
+  return clean(topTitle?.textContent).toLowerCase() === "calendar";
 }
 
 function eventLabel(job) {

@@ -1073,7 +1073,6 @@ function CalendarProspects({ prospects, scanned, busy, onScan, onAdd, onConvert,
                 {p.rego ? ` · ${p.rego}` : ""}
               </p>
               {p.address && <p>{p.address}</p>}
-              {p.existingCustomerId && <p className="muted">Might already be an existing customer: {p.existingCustomerName}</p>}
               <footer>
                 <button onClick={() => onAdd(p)} disabled={busy}>
                   Add as customer

@@ -185,6 +185,9 @@ export const scanGoogleCalendarProspects = onCall({ region: REGION, secrets: GOO
             (name && customerName && customerName === normal(name))
           );
         });
+        // Already a customer - this isn't a new-prospect suggestion, so leave it out
+        // rather than risk the owner adding a duplicate customer record.
+        if (match) continue;
         suggestions.push({
           eventId: event.id,
           calendarId,
@@ -198,8 +201,6 @@ export const scanGoogleCalendarProspects = onCall({ region: REGION, secrets: GOO
           eventTitle: text(event.summary, 200),
           eventStart: eventDate(event),
           htmlLink: event.htmlLink || "",
-          existingCustomerId: match?.id || "",
-          existingCustomerName: match ? match.businessName || `${match.firstName || ""} ${match.lastName || ""}`.trim() : "",
           missing: [!emails[0] ? "email" : "", !phones[0] ? "mobile" : ""].filter(Boolean)
         });
       }
@@ -217,6 +218,18 @@ export const saveGoogleCalendarProspect = onCall({ region: REGION, secrets: GOOG
   const phone = text(data.phone, 40);
   if (!name) throw new HttpsError("invalid-argument", "Add the customer name.");
   if (!email && !phone) throw new HttpsError("invalid-argument", "Add an email address or mobile number.");
+  const customerName = normal(name);
+  const existingSnapshot = await db.collection("customers").get();
+  const duplicate = existingSnapshot.docs.find(document => {
+    const customer = document.data();
+    const existingName = normal(customer.businessName || `${customer.firstName || ""} ${customer.lastName || ""}`);
+    return Boolean(
+      (email && normal(customer.email) === email) ||
+      (phone && digits(customer.phone) && digits(customer.phone) === digits(phone)) ||
+      (customerName && existingName && existingName === customerName)
+    );
+  });
+  if (duplicate) throw new HttpsError("already-exists", "This looks like an existing customer already - check the Customers tab.");
   const parts = name.split(/\s+/).filter(Boolean);
   const reference = db.collection("customers").doc();
   await reference.set({

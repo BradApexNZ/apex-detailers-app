@@ -70,12 +70,19 @@ export const storage = getStorage(app);
 // deliberate sign-out must also drop the local cache. Firestore requires the SDK
 // to be terminated before it can be cleared, so we reload afterwards for a clean
 // re-initialised state rather than trying to resurrect `db` mid-session.
+//
+// terminate()/clearIndexedDbPersistence() can hang indefinitely if another tab
+// still holds the multi-tab persistence lock - with no timeout that silently
+// blocks the reload below forever, making Sign out look like a dead button.
+const withTimeout = (promise, ms) =>
+  Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error("timed out")), ms))]);
+
 export async function signOutAndClearCache() {
   await signOut(auth);
   if (offlinePersistenceEnabled) {
     try {
-      await terminate(db);
-      await clearIndexedDbPersistence(db);
+      await withTimeout(terminate(db), 3000);
+      await withTimeout(clearIndexedDbPersistence(db), 3000);
     } catch (error) {
       console.warn("Could not clear cached Apex HQ data on this device.", error);
     }

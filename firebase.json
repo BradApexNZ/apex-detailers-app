@@ -1,11 +1,7 @@
 {
   "hosting": {
     "public": "dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "redirects": [
       {
         "source": "/HQ",
@@ -34,6 +30,10 @@
       },
       {
         "source": "/book",
+        "destination": "/booking.html"
+      },
+      {
+        "source": "/booking",
         "destination": "/booking.html"
       },
       {

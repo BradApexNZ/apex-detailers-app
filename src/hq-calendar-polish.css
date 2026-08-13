@@ -24,18 +24,17 @@ input[type="radio"]:focus {
   box-shadow: 0 0 0 3px var(--gold-soft);
 }
 
-.calendarChoice {
+.calendarChoice > label {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) 24px;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
-.calendarChoice > input {
+.calendarChoice > label > input {
   justify-self: center;
 }
-.calendarChoice > label,
-.calendarChoice > div,
-.calendarChoice > span {
+.calendarChoice > label > span {
   min-width: 0;
 }
 .calendarChoice strong,
@@ -102,7 +101,7 @@ input[type="radio"]:focus {
     grid-column: 1/-1;
   }
 
-  .calendarChoice {
+  .calendarChoice > label {
     grid-template-columns: 22px minmax(0, 1fr) 22px;
     gap: 10px;
     min-height: 76px;
