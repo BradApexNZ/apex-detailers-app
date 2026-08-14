@@ -4,6 +4,34 @@ import { apexCloudEnabled, getPublicBookingConfig, lastConfigError, listBookingA
 import { money, publicServicePackages, serviceById } from "./booking-data";
 import { useNewVersionAvailable } from "./use-new-version-available";
 
+// If React itself crashes or hangs, everything below - state, effects, the
+// 15s timeout guard - stops running with it, so nothing built on React state
+// can ever report that failure. This writes straight to the DOM the instant
+// anything goes globally wrong, bypassing React entirely, so a crash is
+// always visible instead of just leaving the splash screen sitting there.
+if (typeof window !== "undefined") {
+  const showCrash = (label, detail) => {
+    if (document.getElementById("apexCrashNotice")) return;
+    const box = document.createElement("div");
+    box.id = "apexCrashNotice";
+    box.style.cssText =
+      "position:fixed;inset:auto 12px 12px 12px;z-index:99999;background:#1a0a0a;color:#fca5a5;border:1px solid #7f1d1d;border-radius:10px;padding:14px;font:12px/1.5 -apple-system,system-ui,sans-serif;max-height:60vh;overflow:auto;";
+    box.innerHTML =
+      `<strong style="color:#fecaca;">Something crashed (${label})</strong><pre style="white-space:pre-wrap;word-break:break-word;margin:8px 0 0;">${String(detail).slice(0, 800)}</pre>` +
+      `<button type="button" id="apexCrashCopy" style="margin-top:10px;width:100%;padding:10px;border:none;border-radius:8px;background:#fca5a5;color:#1a0a0a;font-weight:600;">Copy this and send to Brad</button>`;
+    document.body.appendChild(box);
+    document.getElementById("apexCrashCopy").addEventListener("click", () => {
+      const text = `${label}\n${detail}\n${navigator.userAgent}\n${window.location.href}\n${new Date().toISOString()}`;
+      navigator.clipboard.writeText(text).then(
+        () => alert("Copied - paste it to Brad."),
+        () => alert(text)
+      );
+    });
+  };
+  window.addEventListener("error", event => showCrash("script error", event.error?.stack || event.message));
+  window.addEventListener("unhandledrejection", event => showCrash("unhandled promise rejection", event.reason?.stack || event.reason));
+}
+
 const today = () =>
   new Date().toLocaleDateString("en-CA", {
     timeZone: "Pacific/Auckland"
