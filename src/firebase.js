@@ -12,46 +12,17 @@ import {
 } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
-
-const productionFirebaseConfig = {
-  apiKey: "AIzaSyDtSvqhxrk9o1k4AeiXMNQs1Ug2QwdXYNs",
-  authDomain: "apex-detailers.firebaseapp.com",
-  projectId: "apex-detailers",
-  storageBucket: "apex-detailers.firebasestorage.app",
-  messagingSenderId: "845997886809",
-  appId: "1:845997886809:web:0f2f2a1ff25b55cdf99048",
-  measurementId: "G-F0B7ENR8RE"
-};
-
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || productionFirebaseConfig.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || productionFirebaseConfig.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || productionFirebaseConfig.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || productionFirebaseConfig.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || productionFirebaseConfig.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || productionFirebaseConfig.appId,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || productionFirebaseConfig.measurementId
-};
+import { firebaseConfig } from "./firebase-config";
 
 export const app = initializeApp(firebaseConfig);
 
-// Keep the public booking page's dependency surface as small as possible: it
-// gets one shot at a customer before they give up and call someone else, so
-// anything that can silently stall on a blocked/slow third-party network call
-// (reCAPTCHA, Google Analytics collection, Firebase Installations) comes out
-// entirely on this page rather than being raced against a timeout after the
-// fact. HQ and the owner tools keep the full feature set - they're used by
-// Brad on his own devices, not a first-time customer on an unknown setup.
-const isPublicBookingPage = typeof window !== "undefined" && /^\/(?:book|booking(?:\.html)?)$/.test(window.location.pathname);
-
+// This module is for the owner surfaces only (/hq, /tools). The public booking
+// page deliberately imports firebase-public.js instead, which initialises
+// Functions and nothing else - see the note there for why Auth in particular
+// must stay off a public page.
 const appCheckSiteKey = import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY;
 const appCheckDebugToken = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN;
-// The public booking functions no longer require an App Check token server-side
-// (see functions/index.js), but the client SDK still blocks the first callable
-// request on getting one when App Check is initialized at all - if reCAPTCHA is
-// slow or silently blocked (a content blocker, a privacy setting), that stalls
-// a booking that would otherwise succeed immediately with no token attached.
-if (typeof window !== "undefined" && !isPublicBookingPage && (appCheckSiteKey || appCheckDebugToken)) {
+if (typeof window !== "undefined" && (appCheckSiteKey || appCheckDebugToken)) {
   // PR preview channels get a fresh, unregistered hostname each time, so reCAPTCHA
   // can't validate them. Setting this before initializeAppCheck makes the SDK use
   // Firebase's debug provider instead, sending the fixed token registered above.
@@ -105,12 +76,11 @@ export async function signOutAndClearCache() {
 }
 
 export const functions = getFunctions(app, "australia-southeast1");
-export const analyticsPromise =
-  firebaseConfig.measurementId && !isPublicBookingPage
-    ? isSupported()
-        .then(supported => (supported ? getAnalytics(app) : null))
-        .catch(error => {
-          console.warn("Firebase Analytics is not available in this environment.", error);
-          return null;
-        })
-    : Promise.resolve(null);
+export const analyticsPromise = firebaseConfig.measurementId
+  ? isSupported()
+      .then(supported => (supported ? getAnalytics(app) : null))
+      .catch(error => {
+        console.warn("Firebase Analytics is not available in this environment.", error);
+        return null;
+      })
+  : Promise.resolve(null);

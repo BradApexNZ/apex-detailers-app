@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { apexCloudEnabled, getPublicBookingConfig, lastConfigError, listBookingAvailability, submitBookingRequest } from "./apex-api";
+import {
+  apexCloudEnabled,
+  getPublicBookingConfig,
+  lastConfigError,
+  listBookingAvailability,
+  submitBookingRequest
+} from "./apex-api-public";
 import { money, publicServicePackages, serviceById } from "./booking-data";
 import { useNewVersionAvailable } from "./use-new-version-available";
 
