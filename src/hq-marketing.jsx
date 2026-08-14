@@ -181,11 +181,11 @@ function App() {
                 <ActiveJobPanel job={activeJob} busy={false} onPause={demoNotice} onResume={demoNotice} onComplete={demoNotice} openTab={setTab} />
               )}
               <section className="stats">
+                <Stat label="This month paid" value={<AnimatedNumber value={monthRevenue} format={money} />} />
+                <Stat label="Completed" value={<AnimatedNumber value={completed.length} />} />
                 <Stat label="Today's jobs" value={<AnimatedNumber value={upcoming.filter(j => j.bookingDate === today).length} />} />
                 <Stat label="Pending requests" value={<AnimatedNumber value={pending.length} />} />
                 <Stat label="Active quotes" value={<AnimatedNumber value={quotes.length} />} />
-                <Stat label="This month paid" value={<AnimatedNumber value={monthRevenue} format={money} />} />
-                <Stat label="Completed" value={<AnimatedNumber value={completed.length} />} />
                 <Stat label="Follow-ups" value={<AnimatedNumber value={followups.length} />} />
               </section>
               <div className="dashboardGrid">
