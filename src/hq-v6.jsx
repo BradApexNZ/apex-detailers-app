@@ -1459,6 +1459,15 @@ function App() {
   useEffect(() => {
     if (!owner) return;
     scanProspects();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") scanProspects();
+    };
+    const id = setInterval(onVisible, 10 * 60 * 1000);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner]);
   async function scanProspects() {
