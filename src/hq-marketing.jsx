@@ -16,7 +16,7 @@ import {
   nameOf,
   statusClass,
   vehicleOf
-} from "./hq-v6";
+} from "./hq-shared-ui";
 import { formatDate, money } from "./booking-data";
 import { demoCustomers, demoInquiries, demoJobs, demoRequests } from "./hq-marketing-data";
 
