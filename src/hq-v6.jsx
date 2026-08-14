@@ -2455,6 +2455,9 @@ function App() {
           >
             <i>
               <NavIcon id={id} />
+              {id === "inbox" && pending.length + newInquiries.length > 0 && (
+                <em>{pending.length + newInquiries.length}</em>
+              )}
             </i>
             <small>{label}</small>
           </button>

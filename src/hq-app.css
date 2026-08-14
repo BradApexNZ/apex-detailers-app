@@ -1773,11 +1773,31 @@ article.job,
     color: var(--paper-faint);
   }
   .mobile button i {
+    position: relative;
     font-style: normal;
     width: 18px;
     height: 18px;
     display: grid;
     place-items: center;
+  }
+  .mobile button i em {
+    position: absolute;
+    top: -4px;
+    right: -8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 4px;
+    border-radius: 99px;
+    background: var(--gold);
+    color: var(--on-gold);
+    font-style: normal;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 0 0 2px rgba(10, 10, 13, 0.92);
   }
   .mobile button small {
     font-size: 8.5px;
