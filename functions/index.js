@@ -5,6 +5,7 @@ import { defineSecret, defineString } from "firebase-functions/params";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { google } from "googleapis";
 import { DateTime } from "luxon";
+import { button, detailPanel, emailShell, noteBlock, p, statusStrip } from "./email-templates.js";
 
 // The googleapis client has no default request timeout - a stalled connection to
 // Google's servers (rare, but it happens) hangs the calling request forever with
@@ -307,57 +308,147 @@ async function sendMail({ to, subject, html }) {
   }
 }
 
-const emailShell = (heading, body) =>
-  `<div style="background:#09090a;padding:28px;font-family:Arial,sans-serif;color:#f7f4ea"><div style="max-width:620px;margin:auto;background:#151518;border:1px solid #3a3a3f;border-radius:22px;padding:28px"><div style="color:#ffd21f;font-weight:900;letter-spacing:2px">APEX DETAILERS</div><h1 style="font-size:32px">${heading}</h1>${body}<p style="color:#99958d;margin-top:28px">Apex Detailers · Hawke's Bay</p></div></div>`;
+// Long-form date for customers ("Friday 22 August"). The stored value is a
+// plain ISO date, which reads like a reference number in an email.
+const prettyDate = value => {
+  const parsed = DateTime.fromISO(String(value || ""), { zone: ZONE.value() });
+  return parsed.isValid ? parsed.toFormat("cccc d LLLL") : String(value || "");
+};
+
+const bookingRows = data => {
+  const vehicle = [data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" ");
+  return [
+    ["Service", escapeHtml(data.packageName || data.serviceName)],
+    [
+      "When",
+      `${escapeHtml(prettyDate(data.bookingDate))}<br>${escapeHtml(data.bookingTime)}${data.bookingEndTime ? ` &ndash; ${escapeHtml(data.bookingEndTime)}` : ""}`
+    ],
+    ["Vehicle", escapeHtml([vehicle, data.rego ? `(${data.rego})` : ""].filter(Boolean).join(" "))],
+    ["Where", `${escapeHtml(data.address)}<br>${escapeHtml(data.area)}`]
+  ];
+};
+
+// Advertised prices are "from" prices. This is the wording customers see
+// before they commit, so there is no surprise on the day about condition
+// based adjustments.
+const PRICING_CAVEAT =
+  "Prices shown are a starting point for that service and vehicle size. If the vehicle needs significantly more work &mdash; heavy soiling, pet hair, sand or mud, stains &mdash; the final price may be higher. Brad will always confirm the final price with you before any work starts.";
 
 async function notifyRequest(data, config) {
-  const vehicle = escapeHtml([data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" "));
-  const details = `<p><b>${escapeHtml(data.serviceName)}</b><br>${escapeHtml(data.bookingDate)} at ${escapeHtml(data.bookingTime)}<br>${vehicle}<br>${escapeHtml(data.address)}, ${escapeHtml(data.area)}</p>`;
   const results = { customer: false, owner: false };
+
   if (config.customerEmails) {
     results.customer = await sendMail({
       to: data.email,
-      subject: "Apex booking request received",
-      html: emailShell(
-        "We’ve received your booking request.",
-        `${details}<p>Your selected time is being held while Brad reviews the vehicle details and final price.</p>`
-      )
+      subject: "We've got your booking request — Apex Detailers",
+      html: emailShell({
+        eyebrow: "BOOKING REQUEST",
+        heading: "Thanks — we've got your request.",
+        preheader: `${data.serviceName} on ${prettyDate(data.bookingDate)} at ${data.bookingTime}. Awaiting confirmation.`,
+        body: [
+          statusStrip(
+            "Awaiting confirmation",
+            "Your time is being held while Brad checks the details. Nothing is locked in until he confirms."
+          ),
+          detailPanel(bookingRows(data)),
+          p('<strong style="color:#f5f1e6;">What happens next</strong>'),
+          p(
+            "Brad reviews the vehicle details and confirms the final price, then you'll get a confirmation email. He may get in touch first if he needs a photo of the vehicle."
+          ),
+          noteBlock(`<strong style="color:#f5f1e6;">A note on pricing.</strong> ${PRICING_CAVEAT}`),
+          p("Need to change something? Just reply to this email.")
+        ].join("")
+      })
     });
   }
+
   if (config.ownerEmails) {
+    const vehicle = [data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" ");
     results.owner = await sendMail({
       to: OWNER_EMAIL.value(),
-      subject: `New Apex booking request — ${data.customerName}`,
-      html: emailShell(
-        "New booking request",
-        `${details}<p><b>Customer:</b> ${escapeHtml(data.customerName)}<br><b>Phone:</b> ${escapeHtml(data.phone)}<br><b>Email:</b> ${escapeHtml(data.email)}</p><p>Open Apex HQ to confirm or decline it.</p>`
-      )
+      subject: `NEW REQUEST — ${data.customerName} — ${prettyDate(data.bookingDate)} ${data.bookingTime}`,
+      html: emailShell({
+        eyebrow: "ACTION NEEDED",
+        heading: "New booking request.",
+        preheader: `${data.customerName} · ${data.serviceName} · ${prettyDate(data.bookingDate)} ${data.bookingTime}`,
+        body: [
+          statusStrip(
+            "Slot held — not confirmed",
+            "This time is blocked so nobody else can take it. It is not a job until you confirm it."
+          ),
+          detailPanel([
+            ["Customer", escapeHtml(data.customerName)],
+            [
+              "Phone",
+              `<a href="tel:${escapeHtml(String(data.phone || "").replace(/\s/g, ""))}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.phone)}</a>`
+            ],
+            [
+              "Email",
+              `<a href="mailto:${escapeHtml(data.email)}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.email)}</a>`
+            ],
+            ...bookingRows(data),
+            ["Type", escapeHtml(data.vehicleType || "")],
+            ["Notes", data.notes ? escapeHtml(data.notes).replace(/\n/g, "<br>") : ""]
+          ]),
+          p("Confirm or decline it in Apex HQ. Declining releases the time slot and lets the customer know."),
+          button(`${APP_BASE_URL.value()}/hq`, "Open Apex HQ"),
+          noteBlock(
+            `Want a photo before you commit? Text ${escapeHtml(data.customerName.split(/\s+/)[0] || "them")} on <a href="tel:${escapeHtml(String(data.phone || "").replace(/\s/g, ""))}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.phone)}</a> &mdash; the slot stays held either way. Vehicle: ${escapeHtml(vehicle) || "not supplied"}.`
+          )
+        ].join("")
+      })
     });
   }
+
   return results;
 }
 
 async function notifyConfirmed(data, config) {
-  const vehicle = escapeHtml(data.vehicle || [data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" "));
-  const details = `<p><b>${escapeHtml(data.packageName || data.serviceName)}</b><br>${escapeHtml(data.bookingDate)} at ${escapeHtml(data.bookingTime)}<br>${vehicle}<br>${escapeHtml(data.address)}, ${escapeHtml(data.area)}</p>`;
   const results = { customer: false, owner: false };
+
   if (config.customerEmails) {
     results.customer = await sendMail({
       to: data.email,
-      subject: "Your Apex Detailers booking is confirmed",
-      html: emailShell(
-        "Your booking is confirmed.",
-        `${details}<p>Please make sure an outside tap is accessible and remove valuables from the vehicle before the appointment.</p>`
-      )
+      subject: "You're confirmed — Apex Detailers",
+      html: emailShell({
+        eyebrow: "BOOKING CONFIRMED",
+        heading: "You're all booked in.",
+        preheader: `Confirmed: ${data.packageName || data.serviceName} on ${prettyDate(data.bookingDate)} at ${data.bookingTime}.`,
+        body: [
+          statusStrip("Confirmed", "Brad has locked this appointment in. No further action needed from you."),
+          detailPanel(bookingRows(data)),
+          p('<strong style="color:#f5f1e6;">Before Brad arrives</strong>'),
+          p("Please make sure an outside tap and power point are accessible, and remove valuables and personal items from the vehicle."),
+          noteBlock(`<strong style="color:#f5f1e6;">A note on pricing.</strong> ${PRICING_CAVEAT}`),
+          p("Need to reschedule? Just reply to this email.")
+        ].join("")
+      })
     });
   }
+
   if (config.ownerEmails) {
     results.owner = await sendMail({
       to: OWNER_EMAIL.value(),
-      subject: `Apex booking confirmed — ${data.customerName}`,
-      html: emailShell("Booking confirmed and synced", `${details}<p>${escapeHtml(data.customerName)} · ${escapeHtml(data.phone)}</p>`)
+      subject: `Confirmed & synced — ${data.customerName}`,
+      html: emailShell({
+        eyebrow: "SYNCED TO CALENDAR",
+        heading: "Booking confirmed.",
+        preheader: `${data.customerName} · ${prettyDate(data.bookingDate)} ${data.bookingTime}`,
+        body: [
+          detailPanel([
+            ["Customer", escapeHtml(data.customerName)],
+            [
+              "Phone",
+              `<a href="tel:${escapeHtml(String(data.phone || "").replace(/\s/g, ""))}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.phone)}</a>`
+            ],
+            ...bookingRows(data)
+          ]),
+          button(`${APP_BASE_URL.value()}/hq`, "Open Apex HQ")
+        ].join("")
+      })
     });
   }
+
   return results;
 }
 
@@ -593,18 +684,39 @@ export const submitInquiry = onCall({ region: REGION, secrets: GOOGLE_SECRETS, e
   if (config.ownerEmails) {
     await sendMail({
       to: OWNER_EMAIL.value(),
-      subject: `New Apex inquiry — ${data.name}`,
-      html: emailShell(
-        "New customer inquiry",
-        `<p><b>${escapeHtml(data.subject) || "Website inquiry"}</b></p><p>${escapeHtml(data.message).replace(/\n/g, "<br>")}</p><p>${escapeHtml(data.name)} · ${escapeHtml(data.phone)} · ${escapeHtml(data.email)}</p>`
-      )
+      subject: `New inquiry — ${data.name}`,
+      html: emailShell({
+        eyebrow: "WEBSITE INQUIRY",
+        heading: escapeHtml(data.subject) || "New customer inquiry",
+        preheader: `${data.name} — ${data.message.slice(0, 100)}`,
+        body: [
+          detailPanel([
+            ["From", escapeHtml(data.name)],
+            [
+              "Phone",
+              `<a href="tel:${escapeHtml(String(data.phone || "").replace(/\s/g, ""))}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.phone)}</a>`
+            ],
+            [
+              "Email",
+              `<a href="mailto:${escapeHtml(data.email)}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.email)}</a>`
+            ]
+          ]),
+          p(escapeHtml(data.message).replace(/\n/g, "<br>")),
+          button(`${APP_BASE_URL.value()}/hq`, "Open Apex HQ")
+        ].join("")
+      })
     });
   }
   if (config.customerEmails) {
     await sendMail({
       to: data.email,
-      subject: "Apex Detailers received your inquiry",
-      html: emailShell("Thanks for getting in touch.", "<p>Brad has received your message and will respond as soon as possible.</p>")
+      subject: "We've got your message — Apex Detailers",
+      html: emailShell({
+        eyebrow: "MESSAGE RECEIVED",
+        heading: "Thanks for getting in touch.",
+        preheader: "Brad has received your message and will respond as soon as possible.",
+        body: [p("Brad has received your message and will respond as soon as possible.")].join("")
+      })
     });
   }
   return { reference: reference.id.slice(0, 8).toUpperCase() };
@@ -758,11 +870,17 @@ export const declineBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SE
   if (config.customerEmails) {
     await sendMail({
       to: item.email,
-      subject: "Apex booking request update",
-      html: emailShell(
-        "That appointment couldn’t be confirmed.",
-        "<p>The requested time has been released. Please choose another time through the Apex booking page or contact Brad directly.</p>"
-      )
+      subject: "About your Apex booking request",
+      html: emailShell({
+        eyebrow: "REQUEST UPDATE",
+        heading: "That time couldn't be confirmed.",
+        preheader: "The requested time has been released — pick another time whenever suits.",
+        body: [
+          p("Brad wasn't able to confirm that appointment. The time slot has been released, so it's no longer held."),
+          button(`${APP_BASE_URL.value()}/book`, "Choose another time"),
+          p("Or reply to this email and Brad will help sort a time directly.")
+        ].join("")
+      })
     });
   }
   return { ok: true };
