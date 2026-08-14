@@ -91,6 +91,7 @@ jobs:
           functions=(
             getPublicBookingConfig
             listBookingAvailability
+            listMonthAvailability
             submitBookingRequest
             approveBookingRequest
             declineBookingRequest
