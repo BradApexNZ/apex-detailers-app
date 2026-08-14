@@ -1,42 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import {
-  apexCloudEnabled,
-  getPublicBookingConfig,
-  lastConfigError,
-  listBookingAvailability,
-  submitBookingRequest
-} from "./apex-api-public";
+import { apexCloudEnabled, getPublicBookingConfig, listBookingAvailability, submitBookingRequest } from "./apex-api-public";
 import { money, publicServicePackages, serviceById } from "./booking-data";
 import { useNewVersionAvailable } from "./use-new-version-available";
-
-// If React itself crashes or hangs, everything below - state, effects, the
-// 15s timeout guard - stops running with it, so nothing built on React state
-// can ever report that failure. This writes straight to the DOM the instant
-// anything goes globally wrong, bypassing React entirely, so a crash is
-// always visible instead of just leaving the splash screen sitting there.
-if (typeof window !== "undefined") {
-  const showCrash = (label, detail) => {
-    if (document.getElementById("apexCrashNotice")) return;
-    const box = document.createElement("div");
-    box.id = "apexCrashNotice";
-    box.style.cssText =
-      "position:fixed;inset:auto 12px 12px 12px;z-index:99999;background:#1a0a0a;color:#fca5a5;border:1px solid #7f1d1d;border-radius:10px;padding:14px;font:12px/1.5 -apple-system,system-ui,sans-serif;max-height:60vh;overflow:auto;";
-    box.innerHTML =
-      `<strong style="color:#fecaca;">Something crashed (${label})</strong><pre style="white-space:pre-wrap;word-break:break-word;margin:8px 0 0;">${String(detail).slice(0, 800)}</pre>` +
-      `<button type="button" id="apexCrashCopy" style="margin-top:10px;width:100%;padding:10px;border:none;border-radius:8px;background:#fca5a5;color:#1a0a0a;font-weight:600;">Copy this and send to Brad</button>`;
-    document.body.appendChild(box);
-    document.getElementById("apexCrashCopy").addEventListener("click", () => {
-      const text = `${label}\n${detail}\n${navigator.userAgent}\n${window.location.href}\n${new Date().toISOString()}`;
-      navigator.clipboard.writeText(text).then(
-        () => alert("Copied - paste it to Brad."),
-        () => alert(text)
-      );
-    });
-  };
-  window.addEventListener("error", event => showCrash("script error", event.error?.stack || event.message));
-  window.addEventListener("unhandledrejection", event => showCrash("unhandled promise rejection", event.reason?.stack || event.reason));
-}
 
 const today = () =>
   new Date().toLocaleDateString("en-CA", {
@@ -206,27 +172,17 @@ function Booking() {
   const update = (key, value) => setForm(old => ({ ...old, [key]: value }));
 
   const [loadingSeconds, setLoadingSeconds] = useState(0);
-  const [debugInfo, setDebugInfo] = useState(null);
   useEffect(() => {
     // getPublicBookingConfig() is written to never reject (it falls back to
     // static service info on any error), which is normally the right call - but
     // it means a genuinely stuck underlying request has nothing to make it
     // settle. Without an outer race, that leaves the splash screen up forever
-    // with no error, no retry, and nothing for the customer (or Brad) to act on.
+    // with no error, no retry, and nothing for the customer to act on.
     let settled = false;
-    const startedAt = Date.now();
     const timeoutId = setTimeout(() => {
       if (settled) return;
       settled = true;
       setError("This is taking longer than it should. Check your connection and try again.");
-      setDebugInfo({
-        cause: "client-timeout-15s",
-        underlyingError: lastConfigError,
-        elapsedMs: Date.now() - startedAt,
-        url: window.location.href,
-        userAgent: navigator.userAgent,
-        at: new Date().toISOString()
-      });
     }, 15000);
     const tickId = setInterval(() => setLoadingSeconds(s => s + 1), 1000);
     getPublicBookingConfig()
@@ -241,14 +197,6 @@ function Booking() {
         settled = true;
         clearTimeout(timeoutId);
         setError("Online booking is unavailable right now. Please contact Apex directly.");
-        setDebugInfo({
-          cause: "promise-rejected",
-          underlyingError: lastConfigError,
-          elapsedMs: Date.now() - startedAt,
-          url: window.location.href,
-          userAgent: navigator.userAgent,
-          at: new Date().toISOString()
-        });
       });
     return () => {
       settled = true;
@@ -327,20 +275,6 @@ function Booking() {
           </button>
           <a href="mailto:bookings@apexdetailers.co.nz">Email Apex directly</a>
         </div>
-        {debugInfo && (
-          <button
-            type="button"
-            className="splashDebugCopy"
-            onClick={() => {
-              navigator.clipboard
-                .writeText(JSON.stringify(debugInfo, null, 2))
-                .then(() => alert("Debug info copied - paste it to Brad."))
-                .catch(() => alert(JSON.stringify(debugInfo)));
-            }}
-          >
-            Copy debug info
-          </button>
-        )}
       </main>
     );
   }
