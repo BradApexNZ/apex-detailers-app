@@ -1496,8 +1496,11 @@ function App() {
   async function dismissProspect(p) {
     setProspectsBusy(true);
     try {
-      await dismissGoogleCalendarProspect({ eventId: p.eventId });
-      setProspects(list => list.filter(x => x.eventId !== p.eventId));
+      // personKey (email/phone/name) is what actually keeps this person from
+      // resurfacing on their next booking - eventId only ever covered this
+      // one calendar entry, which is why declined prospects kept coming back.
+      await dismissGoogleCalendarProspect({ personKey: p.personKey, eventId: p.eventId });
+      setProspects(list => list.filter(x => (p.personKey ? x.personKey !== p.personKey : x.eventId !== p.eventId)));
     } catch (err) {
       notify(err.message || "Could not dismiss.");
     }

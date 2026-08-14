@@ -29,6 +29,16 @@ const text = (value, max = 500) =>
     .slice(0, max);
 const normal = value => text(value).toLowerCase().replace(/\s+/g, " ");
 const digits = value => text(value).replace(/\D/g, "");
+
+// A stable identity for "this person", not "this one calendar entry". A
+// repeat customer gets a brand-new event.id every time they book again, so
+// keying dismissal off event.id meant declining someone once only hid that
+// single booking - the next one from the same person came back as a fresh
+// suggestion. No date component here on purpose: unlike the within-scan
+// seen-dedup below (which needs the date to avoid conflating two unrelated
+// same-named people on the same day), a dismissal is meant to survive across
+// however many future bookings this exact person makes.
+const personKey = (emails, phones, name) => emails[0] || digits(phones[0] || "") || normal(name);
 const owners = () =>
   OWNER_UIDS.value()
     .split(",")
@@ -170,7 +180,7 @@ export const scanGoogleCalendarProspects = onCall({ region: REGION, secrets: GOO
         showDeleted: false
       });
       for (const event of response.data.items || []) {
-        if (!event.id || ignored.has(event.id) || event.status === "cancelled") continue;
+        if (!event.id || event.status === "cancelled") continue;
         if (event.extendedProperties?.private?.apexJobId || event.extendedProperties?.private?.apexRequestId) continue;
         const emails = emailsFromEvent(event);
         const phones = phonesFromEvent(event);
@@ -178,6 +188,8 @@ export const scanGoogleCalendarProspects = onCall({ region: REGION, secrets: GOO
         const rego = regoFromEvent(event);
         if (!name || /holiday|birthday|reminder|focus time|out of office/i.test(event.summary || "")) continue;
         if (!looksLikeVehicleBooking(event, rego)) continue;
+        const person = personKey(emails, phones, name);
+        if (ignored.has(person)) continue;
         const key = emails[0] || digits(phones[0]) || `${normal(name)}|${eventDate(event).slice(0, 10)}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -191,6 +203,7 @@ export const scanGoogleCalendarProspects = onCall({ region: REGION, secrets: GOO
         });
         suggestions.push({
           eventId: event.id,
+          personKey: person,
           calendarId,
           calendarName: calendars.find(row => row.id === calendarId)?.name || calendarId,
           name,
@@ -260,8 +273,13 @@ export const saveGoogleCalendarProspect = onCall({ region: REGION, secrets: GOOG
 
 export const dismissGoogleCalendarProspect = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
   requireOwner(request);
-  const eventId = text(request.data?.eventId, 300);
-  if (!eventId) throw new HttpsError("invalid-argument", "Calendar event is required.");
-  await db.doc(`calendarProspectDismissals/${eventId}`).set({ dismissedBy: request.auth.uid, dismissedAt: FieldValue.serverTimestamp() });
+  // Prefer the stable person key (survives across however many future
+  // bookings this person makes, each with a new calendar event.id). Falls
+  // back to eventId only for stray older clients that haven't picked up the
+  // personKey field yet - that still dismisses today's suggestion, it just
+  // won't stop this same person's *next* booking from resurfacing too.
+  const dismissId = text(request.data?.personKey, 300) || text(request.data?.eventId, 300);
+  if (!dismissId) throw new HttpsError("invalid-argument", "Calendar event is required.");
+  await db.doc(`calendarProspectDismissals/${dismissId}`).set({ dismissedBy: request.auth.uid, dismissedAt: FieldValue.serverTimestamp() });
   return { dismissed: true };
 });
