@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ActiveJobPanel,
@@ -40,6 +40,25 @@ const timeAgo = timestamp => {
   if (diffHours < 24) return `${diffHours}h ago`;
   return `${Math.round(diffHours / 24)}d ago`;
 };
+
+function AnimatedNumber({ value, format }) {
+  const target = Number(value) || 0;
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    const start = performance.now();
+    const duration = 900;
+    let raf;
+    const tick = now => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(Math.round(target * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
+  return format ? format(display) : display;
+}
 
 function App() {
   const [tab, setTab] = useState("dashboard");
@@ -162,12 +181,12 @@ function App() {
                 <ActiveJobPanel job={activeJob} busy={false} onPause={demoNotice} onResume={demoNotice} onComplete={demoNotice} openTab={setTab} />
               )}
               <section className="stats">
-                <Stat label="Today's jobs" value={upcoming.filter(j => j.bookingDate === today).length} />
-                <Stat label="Pending requests" value={pending.length} />
-                <Stat label="Active quotes" value={quotes.length} />
-                <Stat label="This month paid" value={money(monthRevenue)} />
-                <Stat label="Completed" value={completed.length} />
-                <Stat label="Follow-ups" value={followups.length} />
+                <Stat label="Today's jobs" value={<AnimatedNumber value={upcoming.filter(j => j.bookingDate === today).length} />} />
+                <Stat label="Pending requests" value={<AnimatedNumber value={pending.length} />} />
+                <Stat label="Active quotes" value={<AnimatedNumber value={quotes.length} />} />
+                <Stat label="This month paid" value={<AnimatedNumber value={monthRevenue} format={money} />} />
+                <Stat label="Completed" value={<AnimatedNumber value={completed.length} />} />
+                <Stat label="Follow-ups" value={<AnimatedNumber value={followups.length} />} />
               </section>
               <div className="dashboardGrid">
                 <Panel title="Coming up">
@@ -382,6 +401,17 @@ function App() {
           )}
         </main>
       </div>
+      <nav className="mobile">
+        {nav.map(([id, label]) => (
+          <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>
+            <i>
+              <NavIcon id={id} />
+              {id === "inbox" && pending.length + newInquiries.length > 0 && <em>{pending.length + newInquiries.length}</em>}
+            </i>
+            <small>{label}</small>
+          </button>
+        ))}
+      </nav>
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
