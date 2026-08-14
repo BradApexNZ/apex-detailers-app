@@ -309,11 +309,18 @@ async function availableSlots(date, serviceId) {
   return rows;
 }
 
+// Headers must be plain ASCII (RFC 5322) - the Content-Type charset below only
+// governs the body. A subject with an em-dash or any other non-ASCII
+// character has to be RFC 2047 encoded-word wrapped, or receiving clients are
+// free to guess an encoding for the raw bytes and mangle it (e.g. "—"
+// misread as Latin-1 renders as "Ã¢Â€Â”").
+const encodeHeader = value => (/^[\x00-\x7F]*$/.test(value) ? value : `=?UTF-8?B?${Buffer.from(value, "utf8").toString("base64")}?=`);
+
 function rawEmail({ to, subject, html, from }) {
   const message = [
     `From: Apex Detailers <${from}>`,
     `To: ${to}`,
-    `Subject: ${subject}`,
+    `Subject: ${encodeHeader(subject)}`,
     "MIME-Version: 1.0",
     "Content-Type: text/html; charset=UTF-8",
     "",
