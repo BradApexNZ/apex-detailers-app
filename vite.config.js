@@ -13,7 +13,8 @@ export default defineConfig({
         main: resolve(process.cwd(), "index.html"),
         hq: resolve(process.cwd(), "hq.html"),
         booking: resolve(process.cwd(), "booking.html"),
-        dataTools: resolve(process.cwd(), "data-tools.html")
+        dataTools: resolve(process.cwd(), "data-tools.html"),
+        diagSdk: resolve(process.cwd(), "diag-sdk.html")
       }
     }
   }
