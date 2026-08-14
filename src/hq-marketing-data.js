@@ -21,10 +21,53 @@ export const demoCustomers = [
   { id: "c8", firstName: "Chloe", lastName: "Bennett", businessName: "", phone: "021 590 3324", email: "chloe.bennett@example.co.nz", address: "5 Duke Street", area: "Poraiti" }
 ];
 
+// A busier month of paid history so the revenue chart and stats actually
+// look like a thriving business rather than a quiet test account - this is
+// fabricated data built for a marketing showcase, not a realistic booking
+// pace for one detailer.
+const paidJobTemplates = [
+  { customerId: "c1", customerName: "Liam Foster", vehicleYear: "2019", vehicleMake: "Toyota", vehicleModel: "Corolla", rego: "LFR630", packageName: "Deep Interior Detail", packageId: "deep", total: 179 },
+  { customerId: "c2", customerName: "Amelia Ngata", vehicleYear: "2020", vehicleMake: "Jeep", vehicleModel: "Wrangler", rego: "AMN904", packageName: "Full Detail", packageId: "full", total: 249 },
+  { customerId: "c3", customerName: "Ridgeline Builders", vehicleYear: "2020", vehicleMake: "Ford", vehicleModel: "Ranger", rego: "RLB204", packageName: "Tradie Reset", packageId: "tradie", total: 279 },
+  { customerId: "c4", customerName: "Sione Taufa", vehicleYear: "2021", vehicleMake: "Mitsubishi", vehicleModel: "Triton", rego: "STF381", packageName: "Tradie Reset", packageId: "tradie", total: 254 },
+  { customerId: "c5", customerName: "Grace Mitchell", vehicleYear: "2022", vehicleMake: "Mini", vehicleModel: "Cooper", rego: "GMC552", packageName: "Deep Interior Detail", packageId: "deep", total: 199 },
+  { customerId: "c6", customerName: "Hawke's Bay Electrical", vehicleYear: "2023", vehicleMake: "Toyota", vehicleModel: "Hiace", rego: "HBE447", packageName: "Tradie Reset", packageId: "tradie", total: 299 },
+  { customerId: "c7", customerName: "Tom Reid", vehicleYear: "2022", vehicleMake: "Kia", vehicleModel: "Sportage", rego: "TRD906", packageName: "Full Detail", packageId: "full", total: 249 },
+  { customerId: "c8", customerName: "Chloe Bennett", vehicleYear: "2021", vehicleMake: "Subaru", vehicleModel: "Outback", rego: "CBT330", packageName: "Full Detail", packageId: "full", total: 269 },
+  { customerId: "c1", customerName: "Liam Foster", vehicleYear: "2022", vehicleMake: "Ford", vehicleModel: "Ranger", rego: "MQP482", packageName: "Seats Out Reset", packageId: "seats", total: 399 },
+  { customerId: "c3", customerName: "Ridgeline Builders", vehicleYear: "2021", vehicleMake: "Toyota", vehicleModel: "Hilux", rego: "RLB017", packageName: "Tradie Reset", packageId: "tradie", total: 279 },
+  { customerId: "c2", customerName: "Amelia Ngata", vehicleYear: "2023", vehicleMake: "Mazda", vehicleModel: "CX-5", rego: "KTA219", packageName: "Full Detail", packageId: "full", total: 249 },
+  { customerId: "c6", customerName: "Hawke's Bay Electrical", vehicleYear: "2022", vehicleMake: "Isuzu", vehicleModel: "D-Max", rego: "HBE092", packageName: "Tradie Reset", packageId: "tradie", total: 254 },
+  { customerId: "c4", customerName: "Sione Taufa", vehicleYear: "2020", vehicleMake: "Holden", vehicleModel: "Commodore", rego: "SGT553", packageName: "Deep Interior Detail", packageId: "deep", total: 179 },
+  { customerId: "c7", customerName: "Tom Reid", vehicleYear: "2021", vehicleMake: "Nissan", vehicleModel: "Navara", rego: "TRD448", packageName: "Full Detail", packageId: "full", total: 249 },
+  { customerId: "c5", customerName: "Grace Mitchell", vehicleYear: "2023", vehicleMake: "VW", vehicleModel: "Golf", rego: "GMC201", packageName: "Full Detail", packageId: "full", total: 269 },
+  { customerId: "c8", customerName: "Chloe Bennett", vehicleYear: "2024", vehicleMake: "Hyundai", vehicleModel: "Tucson", rego: "CBT775", packageName: "Deep Interior Detail", packageId: "deep", total: 199 },
+  { customerId: "c3", customerName: "Ridgeline Builders", vehicleYear: "2022", vehicleMake: "Toyota", vehicleModel: "Hilux", rego: "RLB558", packageName: "Tradie Reset", packageId: "tradie", total: 279 },
+  { customerId: "c1", customerName: "Liam Foster", vehicleYear: "2019", vehicleMake: "Toyota", vehicleModel: "Corolla", rego: "LFR630", packageName: "Deep Interior Detail", packageId: "deep", total: 179 },
+  { customerId: "c6", customerName: "Hawke's Bay Electrical", vehicleYear: "2021", vehicleMake: "Ford", vehicleModel: "Transit", rego: "HBE118", packageName: "Tradie Reset", packageId: "tradie", total: 299 },
+  { customerId: "c2", customerName: "Amelia Ngata", vehicleYear: "2020", vehicleMake: "Jeep", vehicleModel: "Wrangler", rego: "AMN904", packageName: "Full Detail", packageId: "full", total: 249 }
+];
+const paidTimes = ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30"];
+const extraPaidJobs = paidJobTemplates.map((template, index) => {
+  const dayOffset = -(1 + Math.floor(index * 0.7));
+  return {
+    id: `paid${index}`,
+    ...template,
+    bookingDate: iso(dayOffset),
+    bookingTime: paidTimes[index % paidTimes.length],
+    durationMinutes: 300,
+    status: "Paid",
+    paidAmount: template.total,
+    calendarSyncStatus: "synced",
+    createdAt: { seconds: seconds(dayOffset - 1) }
+  };
+});
+
 // bookingDate/bookingTime/status/total/paidAmount drive Dashboard, Calendar,
 // Jobs, Customers exactly the way real jobs do - same field names, same
 // status vocabulary, so the demo behaves identically to the live app.
 export const demoJobs = [
+  ...extraPaidJobs,
   { id: "j1", customerId: "c1", customerName: "Liam Foster", vehicleYear: "2022", vehicleMake: "Ford", vehicleModel: "Ranger", rego: "MQP482", packageName: "Tradie Reset", packageId: "tradie", bookingDate: iso(0), bookingTime: "09:00", durationMinutes: 360, status: "In Progress", total: 254, paidAmount: 0, calendarSyncStatus: "synced", timerStartedAt: { seconds: seconds(0) - 5400 }, timerElapsedSeconds: 0, createdAt: { seconds: seconds(-2) } },
   { id: "j2", customerId: "c2", customerName: "Amelia Ngata", vehicleYear: "2023", vehicleMake: "Mazda", vehicleModel: "CX-5", rego: "KTA219", packageName: "Full Detail", packageId: "full", bookingDate: iso(1), bookingTime: "08:30", durationMinutes: 360, status: "Confirmed", total: 249, paidAmount: 0, calendarSyncStatus: "synced", createdAt: { seconds: seconds(-3) } },
   { id: "j3", customerId: "c3", customerName: "Ridgeline Builders", vehicleYear: "2021", vehicleMake: "Toyota", vehicleModel: "Hilux", rego: "RLB017", packageName: "Tradie Reset", packageId: "tradie", bookingDate: iso(2), bookingTime: "08:00", durationMinutes: 360, status: "Booked", total: 279, paidAmount: 0, calendarSyncStatus: "pending-hold-synced", createdAt: { seconds: seconds(-1) } },
