@@ -152,7 +152,7 @@ const blank = {
 function Mark() {
   return (
     <div className="mark">
-      <img src="/apex-logo-official.svg" alt="Apex Detailers" />
+      <img src="/apex-icon.svg" alt="Apex Detailers" />
     </div>
   );
 }

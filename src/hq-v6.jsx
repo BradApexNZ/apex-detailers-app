@@ -211,7 +211,7 @@ function quoteTotal(form) {
 function Brand() {
   return (
     <div className="hqBrand">
-      <img src="/apex-logo-official.svg" alt="Apex Detailers" />
+      <img src="/apex-icon.svg" alt="Apex Detailers" />
       <div>
         <strong>APEX DETAILERS</strong>
         <span>HQ / V6 LAUNCH</span>

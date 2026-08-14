@@ -4,9 +4,12 @@ import { money, serviceById } from "./booking-data";
 const GOLD = [232, 185, 58];
 const INK = [10, 10, 13];
 const DIM = [110, 105, 95];
-const LOGO_ASPECT = 720 / 650;
 
+// Aspect ratio comes from the loaded image itself rather than a hardcoded
+// constant, so swapping the logo file never leaves this squished until
+// someone remembers to update a number here too.
 let logoDataUrl;
+let logoAspect;
 async function loadLogo() {
   if (logoDataUrl !== undefined) return logoDataUrl;
   try {
@@ -19,9 +22,10 @@ async function loadLogo() {
       img.onerror = reject;
       img.src = url;
     });
+    logoAspect = img.naturalWidth / img.naturalHeight;
     const canvas = document.createElement("canvas");
     canvas.width = 240;
-    canvas.height = Math.round(240 / LOGO_ASPECT);
+    canvas.height = Math.round(240 / logoAspect);
     canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
     URL.revokeObjectURL(url);
     logoDataUrl = canvas.toDataURL("image/png");
@@ -39,7 +43,7 @@ export async function downloadQuotePdf(quote) {
   let y = 64;
 
   const logoHeight = 34;
-  const logoWidth = logoHeight * LOGO_ASPECT;
+  const logoWidth = logoHeight * (logoAspect || 1);
   const textX = logo ? margin + logoWidth + 12 : margin;
   if (logo) doc.addImage(logo, "PNG", margin, y - logoHeight + 6, logoWidth, logoHeight);
 
