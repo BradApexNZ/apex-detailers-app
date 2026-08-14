@@ -398,6 +398,27 @@
   font-size: 14px;
 }
 
+.apexVehiclePricingNote {
+  display: grid;
+  gap: 4px;
+  margin: -4px 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--gold-line);
+  border-radius: var(--r-sm);
+  background: var(--gold-soft);
+}
+.apexVehiclePricingNote strong {
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.apexVehiclePricingNote span {
+  color: var(--paper-dim);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 /* ---- time slots ---- */
 .slotGrid {
   display: grid;

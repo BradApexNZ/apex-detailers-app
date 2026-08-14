@@ -49,6 +49,22 @@ const today = () =>
 const withTimeout = (promise, ms = 15000) =>
   Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error("Timed out. Please try again.")), ms))]);
 
+// Vehicle-size price adjustments. This used to live in a separate script that
+// watched the whole document with a MutationObserver and rewrote prices in the
+// DOM behind React's back - which infinite-looped, because its callback set
+// textContent, and setting textContent is itself a mutation even when the text
+// is unchanged. Derived state belongs in the render, not in a DOM observer.
+const vehiclePricing = {
+  small: { adjustment: 0, label: "Sedan / hatch pricing applied" },
+  suv: { adjustment: 15, label: "SUV / wagon pricing applied" },
+  singlecab: { adjustment: 0, label: "Single-cab ute pricing applied" },
+  doublecab: { adjustment: 25, label: "Double-cab ute pricing applied" },
+  large: { adjustment: 40, label: "7-seater / large SUV pricing applied" },
+  van: { adjustment: 60, label: "Van / oversized vehicle pricing applied" }
+};
+
+const pricingFor = vehicleType => vehiclePricing[vehicleType] || vehiclePricing.small;
+
 const blank = {
   serviceId: "deep",
   vehicleType: "small",
@@ -404,7 +420,7 @@ function Booking() {
                   <strong>{item.name}</strong>
                   <small>{item.description}</small>
                 </div>
-                <b>from {money(item.price)}</b>
+                <b>from {money(item.price + pricingFor(form.vehicleType).adjustment)}</b>
                 <em>about {Math.round(item.durationMinutes / 30) / 2} hrs</em>
               </button>
             ))}
@@ -420,6 +436,10 @@ function Booking() {
               <option value="van">Van / oversized</option>
             </select>
           </label>
+          <div className="apexVehiclePricingNote">
+            <strong>{pricingFor(form.vehicleType).label}</strong>
+            <span>Final price may vary depending on vehicle condition and the work required.</span>
+          </div>
           <button className="primary" onClick={() => setStep(2)}>
             Choose a date →
           </button>
@@ -439,7 +459,7 @@ function Booking() {
           </label>
           <div className="summary">
             <span>{service.name}</span>
-            <b>from {money(service.price)}</b>
+            <b>from {money(service.price + pricingFor(form.vehicleType).adjustment)}</b>
           </div>
           <button className="primary" onClick={findTimes} disabled={busy}>
             {busy ? "Checking Calendar…" : "Show available times"}
