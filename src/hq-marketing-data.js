@@ -18,7 +18,7 @@ export const demoCustomers = [
   { id: "c5", firstName: "Grace", lastName: "Mitchell", businessName: "", phone: "021 774 2298", email: "grace.mitchell@example.co.nz", address: "56 Ahuriri Esplanade", area: "Ahuriri" },
   { id: "c6", firstName: "", lastName: "", businessName: "Hawke's Bay Electrical", phone: "021 663 1187", email: "bookings@hbelectrical.example.co.nz", address: "11 Karamu Road", area: "Hastings" },
   { id: "c7", firstName: "Tom", lastName: "Reid", businessName: "", phone: "027 318 6602", email: "tom.reid@example.co.nz", address: "40 Kennedy Road", area: "Napier" },
-  { id: "c8", firstName: "Priya", lastName: "Nair", businessName: "", phone: "021 590 3324", email: "priya.nair@example.co.nz", address: "5 Duke Street", area: "Poraiti" }
+  { id: "c8", firstName: "Chloe", lastName: "Bennett", businessName: "", phone: "021 590 3324", email: "chloe.bennett@example.co.nz", address: "5 Duke Street", area: "Poraiti" }
 ];
 
 // bookingDate/bookingTime/status/total/paidAmount drive Dashboard, Calendar,
@@ -32,7 +32,7 @@ export const demoJobs = [
   { id: "j5", customerId: "c5", customerName: "Grace Mitchell", vehicleYear: "2023", vehicleMake: "VW", vehicleModel: "Golf", rego: "GMC201", packageName: "Full Detail", packageId: "full", bookingDate: iso(-2), bookingTime: "09:00", durationMinutes: 360, status: "Paid", total: 269, paidAmount: 269, calendarSyncStatus: "synced", createdAt: { seconds: seconds(-6) } },
   { id: "j6", customerId: "c6", customerName: "Hawke's Bay Electrical", vehicleYear: "2022", vehicleMake: "Isuzu", vehicleModel: "D-Max", rego: "HBE092", packageName: "Tradie Reset", packageId: "tradie", bookingDate: iso(-5), bookingTime: "08:00", durationMinutes: 360, status: "Paid", total: 254, paidAmount: 254, calendarSyncStatus: "synced", createdAt: { seconds: seconds(-9) } },
   { id: "j7", customerId: "c7", customerName: "Tom Reid", vehicleYear: "2021", vehicleMake: "Nissan", vehicleModel: "Navara", rego: "TRD448", packageName: "Full Detail", packageId: "full", bookingDate: iso(-8), bookingTime: "08:30", durationMinutes: 360, status: "Paid", total: 249, paidAmount: 249, calendarSyncStatus: "synced", createdAt: { seconds: seconds(-12) } },
-  { id: "j8", customerId: "c8", customerName: "Priya Nair", vehicleYear: "2024", vehicleMake: "Hyundai", vehicleModel: "Tucson", rego: "PNR775", packageName: "Deep Interior Detail", packageId: "deep", bookingDate: iso(-11), bookingTime: "09:30", durationMinutes: 300, status: "Paid", total: 199, paidAmount: 199, calendarSyncStatus: "synced", createdAt: { seconds: seconds(-15) } },
+  { id: "j8", customerId: "c8", customerName: "Chloe Bennett", vehicleYear: "2024", vehicleMake: "Hyundai", vehicleModel: "Tucson", rego: "CBT775", packageName: "Deep Interior Detail", packageId: "deep", bookingDate: iso(-11), bookingTime: "09:30", durationMinutes: 300, status: "Paid", total: 199, paidAmount: 199, calendarSyncStatus: "synced", createdAt: { seconds: seconds(-15) } },
   { id: "j9", customerId: "c1", customerName: "Liam Foster", vehicleYear: "2019", vehicleMake: "Toyota", vehicleModel: "Corolla", rego: "LFR630", packageName: "Deep Interior Detail", packageId: "deep", bookingDate: iso(-15), bookingTime: "08:00", durationMinutes: 300, status: "Paid", total: 179, paidAmount: 179, calendarSyncStatus: "synced", createdAt: { seconds: seconds(-19) } },
   { id: "j10", customerId: "c2", customerName: "Amelia Ngata", vehicleYear: "2020", vehicleMake: "Jeep", vehicleModel: "Wrangler", rego: "AMN904", packageName: "Full Detail", packageId: "full", bookingDate: iso(-20), bookingTime: "08:30", durationMinutes: 360, status: "Completed", total: 249, paidAmount: 0, calendarSyncStatus: "synced", createdAt: { seconds: seconds(-24) } },
   { id: "j11", customerId: "c5", customerName: "Grace Mitchell", vehicleYear: "", vehicleMake: "", vehicleModel: "", rego: "", packageName: "Full Detail", packageId: "full", status: "Quote Sent", total: 269, paidAmount: 0, createdAt: { seconds: seconds(-1) } },
@@ -40,7 +40,7 @@ export const demoJobs = [
 ];
 
 export const demoRequests = [
-  { id: "r1", customerName: "Priya Nair", email: "priya.nair@example.co.nz", phone: "021 590 3324", vehicleMake: "Hyundai", vehicleModel: "Tucson", address: "5 Duke Street", area: "Poraiti", serviceName: "Deep Interior Detail", bookingDate: iso(6), bookingTime: "09:00", notes: "Bit of dog hair through the back seats.", status: "pending", createdAt: { seconds: seconds(0) - 3600 } }
+  { id: "r1", customerName: "Chloe Bennett", email: "chloe.bennett@example.co.nz", phone: "021 590 3324", vehicleMake: "Hyundai", vehicleModel: "Tucson", address: "5 Duke Street", area: "Poraiti", serviceName: "Deep Interior Detail", bookingDate: iso(6), bookingTime: "09:00", notes: "Bit of dog hair through the back seats.", status: "pending", createdAt: { seconds: seconds(0) - 3600 } }
 ];
 
 export const demoInquiries = [

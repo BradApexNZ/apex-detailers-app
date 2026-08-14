@@ -1779,6 +1779,10 @@ article.job,
     height: 18px;
     display: grid;
     place-items: center;
+    /* hq-mobile-stability.css redefines this same selector with
+       overflow:hidden and loads after this file, so it wins the cascade
+       and clips the badge below unless overridden here. */
+    overflow: visible !important;
   }
   .mobile button i em {
     position: absolute;
