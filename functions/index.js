@@ -64,6 +64,37 @@ const services = [
 ];
 const publicServiceIds = new Set(["deep", "full", "tradie", "seats"]);
 
+// adjustment: null means "no fixed price" - Other is boats/diggers/tractors/
+// caravans/trucks, which can't get a flat quote and go through a manual
+// inquiry instead of the instant-booking flow.
+const vehicleTypes = [
+  { id: "small", label: "Sedan / hatch", adjustment: 0 },
+  { id: "suv", label: "SUV / wagon", adjustment: 15 },
+  { id: "singlecab", label: "Single-cab ute", adjustment: 0 },
+  { id: "doublecab", label: "Double-cab ute", adjustment: 25 },
+  { id: "cargovan", label: "Cargo van (no rear seats)", adjustment: 0 },
+  { id: "passengervan", label: "Passenger van (with seats)", adjustment: 60 },
+  { id: "large", label: "7-seater / large SUV", adjustment: 40 },
+  { id: "americantruck", label: "American-size truck", adjustment: 40 },
+  { id: "other", label: "Other (truck, boat, digger, tractor, caravan)", adjustment: null }
+];
+const vehicleTypeById = id => vehicleTypes.find(item => item.id === id) || vehicleTypes[0];
+
+// Tradie Reset is priced for the cab plus exterior by default. A single-cab
+// ute or a windowless cargo van has no back seat to clean, so both get a
+// flat lower price instead of the usual size adjustment. Anything with a
+// rear passenger area - double-cab and up, or a van with seats - uses the
+// normal base-price-plus-adjustment formula, same as every other service.
+const TRADIE_CAB_ONLY_PRICE = 199;
+const TRADIE_CAB_ONLY_TYPES = new Set(["singlecab", "cargovan"]);
+
+function priceFor(serviceId, vehicleTypeId) {
+  const vehicle = vehicleTypeById(vehicleTypeId);
+  if (vehicle.adjustment == null) return null;
+  if (serviceId === "tradie" && TRADIE_CAB_ONLY_TYPES.has(vehicle.id)) return TRADIE_CAB_ONLY_PRICE;
+  return serviceById(serviceId).price + vehicle.adjustment;
+}
+
 const defaults = {
   enabled: true,
   minimumNoticeHours: 24,
@@ -513,13 +544,25 @@ async function findCustomer(data) {
 
 export const getPublicBookingConfig = onCall({ region: REGION, enforceAppCheck: false, minInstances: 1 }, async () => {
   const config = await getSettings();
+  const publicServices = services.filter(service => publicServiceIds.has(service.id));
+  // Sent as a precomputed grid, not just the vehicleTypes/adjustment table,
+  // so the client never re-implements the pricing rule (Tradie Reset's
+  // cab-only exception in particular) and risks it drifting from what the
+  // server actually charges.
+  const pricing = {};
+  for (const service of publicServices) {
+    pricing[service.id] = {};
+    for (const vehicle of vehicleTypes) pricing[service.id][vehicle.id] = priceFor(service.id, vehicle.id);
+  }
   return {
     enabled: config.enabled,
     minimumNoticeHours: config.minimumNoticeHours,
     bookingWindowDays: config.bookingWindowDays,
     serviceAreas: config.serviceAreas,
     note: config.note,
-    services: services.filter(service => publicServiceIds.has(service.id))
+    services: publicServices,
+    vehicleTypes,
+    pricing
   };
 });
 
@@ -534,6 +577,90 @@ export const listBookingAvailability = onCall(
   }
 );
 
+// Powers the calendar date-picker: which dates in a given month have zero
+// remaining slots, so the UI can grey them out before the customer even
+// picks one. Deliberately does NOT do this by calling availableSlots() once
+// per day (that would be up to 31 Firestore query pairs plus 31 separate
+// Google Calendar API calls for one screen) - instead it fetches the whole
+// month's locks, jobs and Google busy blocks in three calls total, then
+// walks each day in memory.
+async function fullDatesInMonth(month, serviceId) {
+  const config = await getSettings();
+  if (!config.enabled) return [];
+  const service = serviceById(serviceId);
+  const zone = ZONE.value();
+  const monthStart = DateTime.fromISO(`${month}-01`, { zone }).startOf("month");
+  if (!monthStart.isValid) throw new HttpsError("invalid-argument", "Invalid month.");
+  const monthEnd = monthStart.endOf("month");
+  const now = DateTime.now().setZone(zone);
+  const windowEnd = now.plus({ days: Number(config.bookingWindowDays || 60) }).endOf("day");
+  const minimum = now.plus({ hours: Number(config.minimumNoticeHours || 24) });
+
+  const startStr = monthStart.toFormat("yyyy-MM-dd");
+  const endStr = monthEnd.toFormat("yyyy-MM-dd");
+  const [lockSnapshot, jobSnapshot, googleBusy] = await Promise.all([
+    db.collection("bookingLocks").where("date", ">=", startStr).where("date", "<=", endStr).get(),
+    db.collection("jobs").where("bookingDate", ">=", startStr).where("bookingDate", "<=", endStr).get(),
+    calendarBusy(monthStart, monthEnd)
+  ]);
+
+  const byDate = {};
+  lockSnapshot.forEach(document => {
+    const data = document.data();
+    if (data.serverVerified !== true) return;
+    (byDate[data.date] ||= []).push({ start: parseLocal(data.date, data.startTime), end: parseLocal(data.date, data.endTime) });
+  });
+  jobSnapshot.forEach(document => {
+    const data = document.data();
+    if (!data.bookingTime || ["Archived", "Cancelled"].includes(data.status)) return;
+    const start = parseLocal(data.bookingDate, data.bookingTime);
+    const duration = Number(data.durationMinutes || serviceById(data.packageId).durationMinutes);
+    (byDate[data.bookingDate] ||= []).push({ start, end: start.plus({ minutes: duration }) });
+  });
+
+  const fullDates = [];
+  for (let day = monthStart; day <= monthEnd; day = day.plus({ days: 1 })) {
+    if (day < now.startOf("day") || day > windowEnd) continue;
+    const weekday = day.weekday === 7 ? 0 : day.weekday;
+    if (!(config.workDays || []).includes(weekday)) {
+      fullDates.push(day.toFormat("yyyy-MM-dd"));
+      continue;
+    }
+    const dateStr = day.toFormat("yyyy-MM-dd");
+    const open = parseLocal(dateStr, config.openingTime);
+    const close = parseLocal(dateStr, config.closingTime);
+    const dayBlocks = [...(byDate[dateStr] || []), ...googleBusy.filter(block => overlaps(open, close, block.start, block.end))];
+
+    let hasSlot = false;
+    for (
+      let start = open;
+      start.plus({ minutes: service.durationMinutes }) <= close;
+      start = start.plus({ minutes: Number(config.slotIntervalMinutes || 30) })
+    ) {
+      const end = start.plus({ minutes: service.durationMinutes });
+      if (start < minimum) continue;
+      if (!dayBlocks.some(block => overlaps(start, end, block.start, block.end))) {
+        hasSlot = true;
+        break;
+      }
+    }
+    if (!hasSlot) fullDates.push(dateStr);
+  }
+  return fullDates;
+}
+
+export const listMonthAvailability = onCall(
+  { region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: false, minInstances: 1 },
+  async request => {
+    await rateLimit(request, "month-availability", 20, 10);
+    const month = text(request.data?.month, 7);
+    const serviceId = text(request.data?.serviceId, 30);
+    if (!/^\d{4}-\d{2}$/.test(month)) throw new HttpsError("invalid-argument", "Invalid month.");
+    if (!publicServiceIds.has(serviceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
+    return { month, fullDates: await fullDatesInMonth(month, serviceId) };
+  }
+);
+
 export const submitBookingRequest = onCall(
   { region: REGION, secrets: GOOGLE_SECRETS, enforceAppCheck: false, minInstances: 1 },
   async request => {
@@ -543,6 +670,14 @@ export const submitBookingRequest = onCall(
     const requestedServiceId = text(input.serviceId, 30);
     if (!publicServiceIds.has(requestedServiceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
     const service = serviceById(requestedServiceId);
+    const requestedVehicleType = text(input.vehicleType, 30);
+    const estimatedFromPrice = priceFor(requestedServiceId, requestedVehicleType);
+    if (estimatedFromPrice == null) {
+      throw new HttpsError(
+        "invalid-argument",
+        "That vehicle type needs a custom quote - please contact Apex directly instead of booking online."
+      );
+    }
     const bookingConfig = await getSettings();
     const data = {
       customerName: text(input.customerName, 160),
@@ -554,7 +689,7 @@ export const submitBookingRequest = onCall(
       vehicleMake: text(input.vehicleMake, 80),
       vehicleModel: text(input.vehicleModel, 100),
       rego: text(input.rego, 20).toUpperCase(),
-      vehicleType: text(input.vehicleType, 30),
+      vehicleType: requestedVehicleType,
       condition: text(input.condition, 30),
       petHair: Boolean(input.petHair),
       heavyStains: Boolean(input.heavyStains),
@@ -564,7 +699,7 @@ export const submitBookingRequest = onCall(
       bookingEndTime: "",
       serviceId: service.id,
       serviceName: service.name,
-      estimatedFromPrice: service.price,
+      estimatedFromPrice,
       durationMinutes: service.durationMinutes,
       status: "pending",
       source: "public"

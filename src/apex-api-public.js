@@ -37,6 +37,15 @@ export const listBookingAvailability = async payload => {
   }
 };
 
+export const listMonthAvailability = async payload => {
+  try {
+    return await cloudCall("listMonthAvailability")(payload);
+  } catch (error) {
+    console.error("Apex month availability unavailable.", error);
+    throw new Error("Could not check the calendar right now. Please try again.");
+  }
+};
+
 export const submitBookingRequest = async payload => {
   try {
     return await cloudCall("submitBookingRequest")(payload);

@@ -43,13 +43,21 @@ export const servicePackages = [
 
 export const publicServicePackages = servicePackages.filter(item => item.publicBookable !== false);
 
+// Kept as [id, label] tuples for HQ's own job-editing dropdowns (Brad sets
+// price by hand there). The public booking page pulls the authoritative,
+// pricing-aware version of this list (with each vehicle's $ adjustment) live
+// from getPublicBookingConfig instead of from here, so the "from $X" the
+// customer sees can never drift from what the server actually charges.
 export const vehicleTypes = [
   ["small", "Sedan / hatch"],
   ["suv", "SUV / wagon"],
   ["singlecab", "Single-cab ute"],
   ["doublecab", "Double-cab ute"],
+  ["cargovan", "Cargo van (no rear seats)"],
+  ["passengervan", "Passenger van (with seats)"],
   ["large", "7-seater / large SUV"],
-  ["van", "Van / oversized vehicle"]
+  ["americantruck", "American-size truck"],
+  ["other", "Other (truck, boat, digger, tractor, caravan)"]
 ];
 
 export const defaultBookingSettings = {

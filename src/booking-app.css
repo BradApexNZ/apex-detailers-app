@@ -407,6 +407,100 @@
   font-size: 12px;
   line-height: 1.45;
 }
+.apexVehiclePricingNote--quote {
+  border-color: var(--line);
+  background: var(--panel-2);
+}
+.apexVehiclePricingNote--quote strong {
+  color: var(--paper);
+}
+
+/* ---- calendar ---- */
+.apexCalendar {
+  margin: 14px 0 4px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--panel-2);
+}
+.apexCalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.apexCalHeader strong {
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 700;
+}
+.apexCalHeader button {
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  border-radius: var(--r-pill);
+  background: var(--panel-3);
+  color: var(--paper);
+  font-size: 16px;
+  line-height: 1;
+}
+.apexCalHeader button:disabled {
+  opacity: 0.3;
+}
+.apexCalWeekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 4px;
+}
+.apexCalWeekdays span {
+  color: var(--paper-faint);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+.apexCalGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.apexCalBlank {
+  aspect-ratio: 1;
+}
+.apexCalDay {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 0;
+  border-radius: var(--r-sm);
+  background: var(--panel-3);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.apexCalDay.disabled {
+  background: transparent;
+  color: var(--paper-faint);
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+.apexCalDay.selected {
+  background: linear-gradient(135deg, #f6dd8f, var(--gold) 55%, #d9a51f);
+  color: var(--on-gold);
+  font-weight: 800;
+}
+.apexCalStatus {
+  margin-top: 10px;
+  color: var(--paper-faint);
+  font-size: 11.5px;
+  text-align: center;
+}
+.apexCalStatus--error {
+  color: #ffcfcb;
+}
 
 /* ---- time slots ---- */
 .slotGrid {

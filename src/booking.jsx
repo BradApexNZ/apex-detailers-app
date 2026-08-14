@@ -1,13 +1,46 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { apexCloudEnabled, getPublicBookingConfig, listBookingAvailability, submitBookingRequest } from "./apex-api-public";
+import {
+  apexCloudEnabled,
+  getPublicBookingConfig,
+  listBookingAvailability,
+  listMonthAvailability,
+  submitBookingRequest
+} from "./apex-api-public";
 import { money, publicServicePackages, serviceById } from "./booking-data";
 import { useNewVersionAvailable } from "./use-new-version-available";
 
-const today = () =>
-  new Date().toLocaleDateString("en-CA", {
-    timeZone: "Pacific/Auckland"
-  });
+const ZONE = "Pacific/Auckland";
+const today = () => new Date().toLocaleDateString("en-CA", { timeZone: ZONE });
+const monthKey = date => date.slice(0, 7);
+
+// Pure calendar-date arithmetic, deliberately not "real" timezone-aware Date
+// math - these are calendar days, not moments in time, so everything below
+// runs through Date.UTC purely as a Y-M-D calculator to sidestep DST/local
+// timezone edge cases entirely rather than needing to reason about them.
+const pad2 = value => String(value).padStart(2, "0");
+const ymd = (year, month, day) => `${year}-${pad2(month)}-${pad2(day)}`;
+const daysInMonth = (year, month) => new Date(Date.UTC(year, month, 0)).getUTCDate();
+const weekdayOf = dateStr => {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+};
+const addMonths = (key, delta) => {
+  const [y, m] = key.split("-").map(Number);
+  const total = y * 12 + (m - 1) + delta;
+  return `${Math.floor(total / 12)}-${pad2((total % 12) + 1)}`;
+};
+const addDays = (dateStr, days) => {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + days);
+  return ymd(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+};
+const monthLabel = key => {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-NZ", { month: "long", year: "numeric", timeZone: "UTC" });
+};
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 // A stalled network call otherwise leaves a button stuck on "Checking..." /
 // "Sending..." forever with no error and no way out - this guarantees every
@@ -15,21 +48,83 @@ const today = () =>
 const withTimeout = (promise, ms = 15000) =>
   Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error("Timed out. Please try again.")), ms))]);
 
-// Vehicle-size price adjustments. This used to live in a separate script that
-// watched the whole document with a MutationObserver and rewrote prices in the
-// DOM behind React's back - which infinite-looped, because its callback set
-// textContent, and setting textContent is itself a mutation even when the text
-// is unchanged. Derived state belongs in the render, not in a DOM observer.
-const vehiclePricing = {
-  small: { adjustment: 0, label: "Sedan / hatch pricing applied" },
-  suv: { adjustment: 15, label: "SUV / wagon pricing applied" },
-  singlecab: { adjustment: 0, label: "Single-cab ute pricing applied" },
-  doublecab: { adjustment: 25, label: "Double-cab ute pricing applied" },
-  large: { adjustment: 40, label: "7-seater / large SUV pricing applied" },
-  van: { adjustment: 60, label: "Van / oversized vehicle pricing applied" }
-};
+function BookingCalendar({ serviceId, value, bookingWindowDays, onSelect }) {
+  const [viewMonth, setViewMonth] = useState(() => monthKey(value || today()));
+  const [fullDates, setFullDates] = useState(new Set());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-const pricingFor = vehicleType => vehiclePricing[vehicleType] || vehiclePricing.small;
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    withTimeout(listMonthAvailability({ serviceId, month: viewMonth }))
+      .then(result => {
+        if (cancelled) return;
+        setFullDates(new Set(result?.fullDates || []));
+      })
+      .catch(() => {
+        if (!cancelled) setError("Could not check the calendar. Try again.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceId, viewMonth]);
+
+  const todayStr = today();
+  const maxDateStr = addDays(todayStr, Number(bookingWindowDays || 60));
+  const [viewYear, viewMonthNum] = viewMonth.split("-").map(Number);
+  const total = daysInMonth(viewYear, viewMonthNum);
+  const leadingBlanks = (weekdayOf(`${viewMonth}-01`) + 6) % 7;
+
+  const cells = [];
+  for (let i = 0; i < leadingBlanks; i++) cells.push(null);
+  for (let day = 1; day <= total; day++) cells.push(ymd(viewYear, viewMonthNum, day));
+
+  const canGoPrev = viewMonth > monthKey(todayStr);
+  const canGoNext = `${addMonths(viewMonth, 1)}-01` <= maxDateStr;
+
+  return (
+    <div className="apexCalendar">
+      <div className="apexCalHeader">
+        <button type="button" onClick={() => setViewMonth(month => addMonths(month, -1))} disabled={!canGoPrev} aria-label="Previous month">
+          ‹
+        </button>
+        <strong>{monthLabel(viewMonth)}</strong>
+        <button type="button" onClick={() => setViewMonth(month => addMonths(month, 1))} disabled={!canGoNext} aria-label="Next month">
+          ›
+        </button>
+      </div>
+      <div className="apexCalWeekdays">
+        {WEEKDAY_LABELS.map(label => (
+          <span key={label}>{label}</span>
+        ))}
+      </div>
+      <div className="apexCalGrid">
+        {cells.map((dateStr, index) => {
+          if (!dateStr) return <i key={`blank-${index}`} className="apexCalBlank" />;
+          const disabled = dateStr < todayStr || dateStr > maxDateStr || fullDates.has(dateStr) || loading;
+          return (
+            <button
+              type="button"
+              key={dateStr}
+              className={`apexCalDay${dateStr === value ? " selected" : ""}${disabled ? " disabled" : ""}`}
+              disabled={disabled}
+              onClick={() => onSelect(dateStr)}
+            >
+              {Number(dateStr.slice(-2))}
+            </button>
+          );
+        })}
+      </div>
+      {loading && <div className="apexCalStatus">Checking availability…</div>}
+      {error && <div className="apexCalStatus apexCalStatus--error">{error}</div>}
+    </div>
+  );
+}
 
 const blank = {
   serviceId: "deep",
@@ -210,6 +305,12 @@ function Booking() {
     [config]
   );
   const service = useMemo(() => serviceById(form.serviceId), [form.serviceId]);
+  const vehicleTypes = config?.vehicleTypes || [];
+  // Always sourced from the server's precomputed grid, never recalculated
+  // here - the server's priceFor() (Tradie Reset's cab-only exception in
+  // particular) is the only place that logic should live.
+  const priceForSelected = config?.pricing?.[form.serviceId]?.[form.vehicleType];
+  const needsCustomQuote = form.vehicleType === "other";
 
   async function findTimes() {
     if (!form.bookingDate) {
@@ -343,40 +444,58 @@ function Booking() {
           <span className="eyebrow">01 — SERVICE</span>
           <h2>What does the vehicle need?</h2>
           <div className="services">
-            {publicServices.map(item => (
-              <button
-                type="button"
-                key={item.id}
-                className={form.serviceId === item.id ? "selected" : ""}
-                onClick={() => update("serviceId", item.id)}
-              >
-                <div>
-                  <strong>{item.name}</strong>
-                  <small>{item.description}</small>
-                </div>
-                <b>from {money(item.price + pricingFor(form.vehicleType).adjustment)}</b>
-                <em>about {Math.round(item.durationMinutes / 30) / 2} hrs</em>
-              </button>
-            ))}
+            {publicServices.map(item => {
+              const price = config?.pricing?.[item.id]?.[form.vehicleType];
+              return (
+                <button
+                  type="button"
+                  key={item.id}
+                  className={form.serviceId === item.id ? "selected" : ""}
+                  onClick={() => update("serviceId", item.id)}
+                >
+                  <div>
+                    <strong>{item.name}</strong>
+                    <small>{item.description}</small>
+                  </div>
+                  <b>{price == null ? "POA" : `from ${money(price)}`}</b>
+                  <em>about {Math.round(item.durationMinutes / 30) / 2} hrs</em>
+                </button>
+              );
+            })}
           </div>
           <label>
             Vehicle type
             <select value={form.vehicleType} onChange={event => update("vehicleType", event.target.value)}>
-              <option value="small">Sedan / hatch</option>
-              <option value="suv">SUV / wagon</option>
-              <option value="singlecab">Single-cab ute</option>
-              <option value="doublecab">Double-cab ute</option>
-              <option value="large">7-seater / large SUV</option>
-              <option value="van">Van / oversized</option>
+              {vehicleTypes.map(vehicle => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.label}
+                </option>
+              ))}
             </select>
           </label>
-          <div className="apexVehiclePricingNote">
-            <strong>{pricingFor(form.vehicleType).label}</strong>
-            <span>Final price may vary depending on vehicle condition and the work required.</span>
-          </div>
-          <button className="primary" onClick={() => setStep(2)}>
-            Choose a date →
-          </button>
+          {needsCustomQuote ? (
+            <div className="apexVehiclePricingNote apexVehiclePricingNote--quote">
+              <strong>This one needs a custom quote.</strong>
+              <span>
+                Trucks, boats, diggers, tractors and caravans vary too much for a fixed price — email Apex with a few details and photos if
+                you can.
+              </span>
+            </div>
+          ) : (
+            <div className="apexVehiclePricingNote">
+              <strong>{money(priceForSelected)} from, for this vehicle type</strong>
+              <span>Final price may vary depending on vehicle condition and the work required.</span>
+            </div>
+          )}
+          {needsCustomQuote ? (
+            <a className="primary" href="mailto:bookings@apexdetailers.co.nz?subject=Custom%20quote%20request">
+              Email Apex for a quote
+            </a>
+          ) : (
+            <button className="primary" onClick={() => setStep(2)}>
+              Choose a date →
+            </button>
+          )}
         </section>
       )}
 
@@ -387,15 +506,17 @@ function Booking() {
           </button>
           <span className="eyebrow">02 — DATE</span>
           <h2>When suits you?</h2>
-          <label>
-            Preferred date
-            <input type="date" min={today()} value={form.bookingDate} onChange={event => update("bookingDate", event.target.value)} />
-          </label>
+          <BookingCalendar
+            serviceId={form.serviceId}
+            value={form.bookingDate}
+            bookingWindowDays={config?.bookingWindowDays}
+            onSelect={date => update("bookingDate", date)}
+          />
           <div className="summary">
             <span>{service.name}</span>
-            <b>from {money(service.price + pricingFor(form.vehicleType).adjustment)}</b>
+            <b>from {money(priceForSelected)}</b>
           </div>
-          <button className="primary" onClick={findTimes} disabled={busy}>
+          <button className="primary" onClick={findTimes} disabled={busy || !form.bookingDate}>
             {busy ? "Checking Calendar…" : "Show available times"}
           </button>
         </section>
