@@ -41,6 +41,10 @@
         "destination": "/data-tools.html"
       },
       {
+        "source": "/marketing",
+        "destination": "/marketing.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
@@ -84,6 +88,15 @@
       },
       {
         "source": "/tools",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache,no-store,must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/marketing",
         "headers": [
           {
             "key": "Cache-Control",

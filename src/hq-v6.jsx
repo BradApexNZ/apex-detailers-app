@@ -156,21 +156,21 @@ const blankVoucher = {
 };
 const clean = v => String(v ?? "").trim();
 const normal = v => clean(v).toLowerCase().replace(/\s+/g, " ");
-const nameOf = c => c.businessName || [c.firstName, c.lastName].filter(Boolean).join(" ") || c.customerName || "Unnamed";
+export const nameOf = c => c.businessName || [c.firstName, c.lastName].filter(Boolean).join(" ") || c.customerName || "Unnamed";
 const customerKey = c => [normal(c.email), normal(c.phone), normal(c.businessName || `${c.firstName || ""} ${c.lastName || ""}`)].join("|");
-const vehicleOf = j => j.vehicle || [j.vehicleYear, j.vehicleMake, j.vehicleModel].filter(Boolean).join(" ") || "Vehicle not added";
+export const vehicleOf = j => j.vehicle || [j.vehicleYear, j.vehicleMake, j.vehicleModel].filter(Boolean).join(" ") || "Vehicle not added";
 const packageById = id => servicePackages.find(p => p.id === id) || servicePackages[1];
 const safeName = value =>
   String(value || "photo")
     .replace(/[^a-zA-Z0-9._-]+/g, "-")
     .slice(-90);
-const statusClass = value =>
+export const statusClass = value =>
   String(value || "")
     .split(/[^a-zA-Z0-9]+/)
     .filter(Boolean)
     .join("-")
     .toLowerCase();
-const calendarSyncMeta = status => {
+export const calendarSyncMeta = status => {
   switch (status) {
     case "synced":
     case "imported":
@@ -208,7 +208,7 @@ function quoteTotal(form) {
   return form.manualTotal !== "" ? Number(form.manualTotal || 0) : Math.max(0, total);
 }
 
-function Brand() {
+export function Brand() {
   return (
     <div className="hqBrand">
       <img src="/apex-icon.svg" alt="Apex Detailers" />
@@ -292,7 +292,7 @@ const navIconShapes = {
     </>
   )
 };
-function NavIcon({ id }) {
+export function NavIcon({ id }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -1226,7 +1226,7 @@ function CalendarProspects({ prospects, scanned, busy, onScan, onAdd, onConvert,
   );
 }
 
-function jobTimerSeconds(job) {
+export function jobTimerSeconds(job) {
   const startedSeconds = job?.timerStartedAt ? job.timerStartedAt.seconds || job.timerStartedAt._seconds || 0 : 0;
   const running = Boolean(startedSeconds);
   return {
@@ -1234,13 +1234,13 @@ function jobTimerSeconds(job) {
     seconds: (job?.timerElapsedSeconds || 0) + (running ? Math.max(0, Math.floor(Date.now() / 1000 - startedSeconds)) : 0)
   };
 }
-function formatTimer(totalSeconds) {
+export function formatTimer(totalSeconds) {
   const hh = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
   const mm = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
   const ss = String(totalSeconds % 60).padStart(2, "0");
   return `${hh}:${mm}:${ss}`;
 }
-function ActiveJobPanel({ job, busy, onPause, onResume, onComplete, openTab }) {
+export function ActiveJobPanel({ job, busy, onPause, onResume, onComplete, openTab }) {
   const [, setTick] = useState(0);
   useEffect(() => {
     if (!job) return;
@@ -2514,7 +2514,7 @@ function App() {
     </div>
   );
 }
-function Stat({ label, value, sensitive }) {
+export function Stat({ label, value, sensitive }) {
   return (
     <article className={sensitive ? "pii" : ""}>
       <span>{label}</span>
@@ -2522,7 +2522,7 @@ function Stat({ label, value, sensitive }) {
     </article>
   );
 }
-function RevenueChart({ points, total }) {
+export function RevenueChart({ points, total }) {
   const w = 400,
     h = 120,
     pad = 8;
@@ -2569,7 +2569,7 @@ function RevenueChart({ points, total }) {
     </div>
   );
 }
-function Intro({ title, text }) {
+export function Intro({ title, text }) {
   return (
     <header className="intro">
       <span className="eyebrow">APEX OPERATIONS</span>
@@ -2578,7 +2578,7 @@ function Intro({ title, text }) {
     </header>
   );
 }
-function Panel({ title, children }) {
+export function Panel({ title, children }) {
   return (
     <section className="panel">
       <h3>{title}</h3>
@@ -2586,7 +2586,7 @@ function Panel({ title, children }) {
     </section>
   );
 }
-function Agenda({ job, sync, open }) {
+export function Agenda({ job, sync, open }) {
   const syncMeta = calendarSyncMeta(job.calendarSyncStatus);
   return (
     <div className="agenda">
@@ -2606,7 +2606,7 @@ function Agenda({ job, sync, open }) {
     </div>
   );
 }
-function Empty({ text }) {
+export function Empty({ text }) {
   return (
     <div className="empty">
       <b>-</b>
