@@ -13,9 +13,9 @@ const vehicleTypes = [
   { id: "singlecab", label: "Single-cab ute", adjustment: 0 },
   { id: "doublecab", label: "Double-cab ute", adjustment: 25 },
   { id: "cargovan", label: "Cargo van (no rear seats)", adjustment: 0 },
-  { id: "passengervan", label: "Passenger van (with seats)", adjustment: 60 },
-  { id: "large", label: "7-seater / large SUV", adjustment: 40 },
-  { id: "americantruck", label: "American-size truck", adjustment: 40 },
+  { id: "passengervan", label: "Passenger van (with seats)", adjustment: null },
+  { id: "large", label: "7-seater / large SUV", adjustment: null },
+  { id: "americantruck", label: "American-size truck", adjustment: null },
   { id: "other", label: "Other (truck, boat, digger, tractor, caravan)", adjustment: null }
 ];
 const TRADIE_CAB_ONLY_PRICE = 199;

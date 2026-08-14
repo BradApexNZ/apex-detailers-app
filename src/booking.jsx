@@ -310,7 +310,11 @@ function Booking() {
   // here - the server's priceFor() (Tradie Reset's cab-only exception in
   // particular) is the only place that logic should live.
   const priceForSelected = config?.pricing?.[form.serviceId]?.[form.vehicleType];
-  const needsCustomQuote = form.vehicleType === "other";
+  // Derived from whether the server actually has a price for this
+  // combination, not hardcoded to "other" - large/7-seater, American truck
+  // and passenger van also have adjustment: null now, and this way the UI
+  // automatically stays correct if that list changes again later.
+  const needsCustomQuote = priceForSelected == null;
 
   async function findTimes() {
     if (!form.bookingDate) {
@@ -477,13 +481,13 @@ function Booking() {
             <div className="apexVehiclePricingNote apexVehiclePricingNote--quote">
               <strong>This one needs a custom quote.</strong>
               <span>
-                Trucks, boats, diggers, tractors and caravans vary too much for a fixed price — email Apex with a few details and photos if
-                you can.
+                Larger and non-standard vehicles vary too much for a fixed price — email Apex with a few details (and photos if you can) for
+                an accurate quote.
               </span>
             </div>
           ) : (
             <div className="apexVehiclePricingNote">
-              <strong>{money(priceForSelected)} from, for this vehicle type</strong>
+              <strong>From {money(priceForSelected)} for this vehicle type</strong>
               <span>Final price may vary depending on vehicle condition and the work required.</span>
             </div>
           )}
