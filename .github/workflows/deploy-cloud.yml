@@ -67,28 +67,33 @@ jobs:
       - name: Deploy Firestore rules
         run: npx firebase-tools@latest deploy --only firestore:rules --project apex-detailers --non-interactive
 
-      # Launch priority: this existing function now handles Calendar health,
-      # live Google event reads and safe cache sync. Deploy it first so Calendar
-      # fixes are testable immediately without waiting for the rest of the stack.
+      # Skipped when nothing under functions/ actually changed (e.g. a
+      # firebase.json hosting-only tweak) - redeploying all 18 functions
+      # unconditionally on every push meant a long rollout window on totally
+      # unrelated changes.
       #
-      # Both function-deploying steps below are skipped when nothing under
-      # functions/ actually changed (e.g. a firebase.json hosting-only tweak) -
-      # redeploying all 16 functions unconditionally on every push meant a
-      # ~30-minute rollout window on totally unrelated changes, and requests
-      # landing on a container mid-rollout were the repeated cause of the
-      # public booking page hanging tonight.
-      - name: Deploy Calendar gateway first
-        if: steps.changes.outputs.functions_changed == 'true'
-        run: |
-          npx firebase-tools@latest deploy --only "functions:listGoogleCalendarsV6" --project apex-detailers --non-interactive --force
-          sleep 8
-
-      - name: Deploy remaining launch-critical Functions sequentially
+      # Deployed in small batches (4 functions per `firebase deploy` call),
+      # not 18 fully separate CLI invocations with an 8s sleep after every
+      # single one. That one-at-a-time-with-sleep pattern was built on the
+      # theory that a request landing on a function mid-rollout caused the
+      # booking page hang - that theory turned out to be wrong (the real
+      # cause was an infinite render loop in the frontend, unrelated to
+      # deploy timing), so it bought nothing beyond the ~144s of pure sleep
+      # it cost. Still deliberately NOT one giant combined command for all 18
+      # at once, though: Cloud Functions v2 deploys go through Cloud Build,
+      # and this project's regional Cloud Build/CPU quota is sized for a
+      # handful of concurrent builds, not 18 simultaneous ones - batches of 4
+      # stay comfortably inside that regardless of how much internal
+      # concurrency a given firebase-tools version uses for a multi-function
+      # deploy, while cutting the number of process launches (and their
+      # per-invocation startup cost) by more than 4x.
+      - name: Deploy launch-critical Functions
         if: steps.changes.outputs.functions_changed == 'true'
         shell: bash
         run: |
           set -euo pipefail
           functions=(
+            listGoogleCalendarsV6
             getPublicBookingConfig
             listBookingAvailability
             listMonthAvailability
@@ -107,12 +112,15 @@ jobs:
             saveGoogleCalendarProspect
             dismissGoogleCalendarProspect
           )
-          for fn in "${functions[@]}"; do
-            echo "::group::Deploy $fn"
+          batch_size=4
+          for ((i = 0; i < ${#functions[@]}; i += batch_size)); do
+            batch=("${functions[@]:i:batch_size}")
+            targets=$(printf ",functions:%s" "${batch[@]}")
+            targets=${targets:1}
+            echo "::group::Deploy batch: ${batch[*]}"
             # --force: some of these set minInstances, which the CLI otherwise
             # refuses to deploy non-interactively (it wants an interactive
             # confirmation for anything that raises the minimum bill).
-            npx firebase-tools@latest deploy --only "functions:${fn}" --project apex-detailers --non-interactive --force
+            npx firebase-tools@latest deploy --only "$targets" --project apex-detailers --non-interactive --force
             echo "::endgroup::"
-            sleep 8
           done
