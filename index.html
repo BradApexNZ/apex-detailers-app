@@ -9,7 +9,14 @@
     <meta http-equiv="refresh" content="0;url=/hq" />
     <title>Apex HQ</title>
     <link rel="icon" type="image/svg+xml" href="./assets/apex-logo-official.svg" />
-    <script>window.location.replace('/hq');</script>
+    <script>
+      // book.apexdetailers.co.nz exists specifically to be a clean link for
+      // Instagram/Facebook bios and stories - it needs to land straight on
+      // the booking form, not the HQ redirect every other hostname on this
+      // Hosting site gets. The <meta refresh> above is a no-JS fallback and
+      // stays pointed at /hq since that path can't be made hostname-aware.
+      window.location.replace(window.location.hostname === "book.apexdetailers.co.nz" ? "/book" : "/hq");
+    </script>
   </head>
   <body>
     <p>Opening <a href="/hq">Apex HQ</a>…</p>
