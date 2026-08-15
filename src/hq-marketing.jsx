@@ -45,17 +45,25 @@ function AnimatedNumber({ value, format }) {
   const target = Number(value) || 0;
   const [display, setDisplay] = useState(0);
   useEffect(() => {
-    const start = performance.now();
-    const duration = 900;
     let raf;
+    let start = null;
+    const duration = 900;
     const tick = now => {
+      if (start === null) start = now;
       const t = Math.min(1, (now - start) / duration);
       const eased = 1 - Math.pow(1 - t, 3);
       setDisplay(Math.round(target * eased));
       if (t < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    // Safety net: if rAF stalls for any reason (backgrounded tab, capture
+    // tooling, etc.), guarantee the real number is showing within 1.2s
+    // instead of leaving it stuck at 0 indefinitely.
+    const fallback = setTimeout(() => setDisplay(target), 1200);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(fallback);
+    };
   }, [target]);
   return format ? format(display) : display;
 }
