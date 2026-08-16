@@ -608,6 +608,7 @@ article.job,
   font-size: 12px;
 }
 .agenda > div .agendaSync {
+  display: inline-flex;
   margin-top: 6px;
 }
 .agenda em {
@@ -676,13 +677,13 @@ article.job,
 .statusPill {
   display: inline-flex;
   align-items: center;
-  padding: 5px 10px;
+  padding: 5px 11px;
   border-radius: var(--r-pill);
   border: 1px solid var(--line);
   background: var(--panel-2);
   color: var(--paper-dim);
   font-family: var(--mono);
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
