@@ -15,6 +15,7 @@ import {
   jobTimerSeconds,
   nameOf,
   statusClass,
+  statusLabel,
   vehicleOf
 } from "./hq-shared-ui";
 import { formatDate, money } from "./booking-data";
@@ -323,7 +324,7 @@ function App() {
                         <span>{j.bookingDate ? `${formatDate(j.bookingDate)} - ${j.bookingTime || ""}` : "No booking date"}</span>
                       </div>
                       <strong>{money(j.total)}</strong>
-                      <span className={`statusPill status-${statusClass(j.status)}`}>{j.status || "Booked"}</span>
+                      <span className={`statusPill status-${statusClass(j.status)}`}>{statusLabel(j.status)}</span>
                     </div>
                   ))}
               </div>
@@ -394,7 +395,7 @@ function App() {
                       </div>
                       <b>
                         {money(q.total)}
-                        <span className={`statusPill quoteStatus status-${statusClass(q.status)}`}>{q.status || "Lead"}</span>
+                        <span className={`statusPill quoteStatus status-${statusClass(q.status)}`}>{statusLabel(q.status || "Lead")}</span>
                       </b>
                     </header>
                     <p>{q.packageName}</p>

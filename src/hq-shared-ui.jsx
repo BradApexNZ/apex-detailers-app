@@ -15,6 +15,13 @@ export const statusClass = value =>
     .filter(Boolean)
     .join("-")
     .toLowerCase();
+const compactStatusLabels = {
+  "Prepare Hnry Invoice": "Hnry ready",
+  "Review Request Sent": "Review sent",
+  "Quote Requested": "Quote request",
+  "Pending Hold Synced": "Hold synced"
+};
+export const statusLabel = value => compactStatusLabels[value] || value || "Booked";
 export const calendarSyncMeta = status => {
   switch (status) {
     case "synced":

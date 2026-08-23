@@ -640,7 +640,7 @@ article.job,
 
 .job {
   display: grid;
-  grid-template-columns: 34px 1fr auto auto;
+  grid-template-columns: 34px minmax(0, 1.2fr) minmax(0, 0.9fr) auto auto;
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
@@ -684,11 +684,22 @@ article.job,
   color: var(--gold);
   white-space: nowrap;
 }
+.job > .statusPill {
+  justify-self: end;
+  justify-content: center;
+  max-width: 150px;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 
 /* ---- status pills ---- */
 .statusPill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  max-width: 100%;
   padding: 5px 11px;
   border-radius: var(--r-pill);
   border: 1px solid var(--line);
@@ -697,9 +708,13 @@ article.job,
   font-family: var(--mono);
   font-size: 10.5px;
   font-weight: 600;
+  line-height: 1.2;
   letter-spacing: 0.04em;
+  text-align: center;
   text-transform: uppercase;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .status-lead,
 .status-quote-requested,
