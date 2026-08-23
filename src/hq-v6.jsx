@@ -1761,7 +1761,7 @@ function App() {
               <i>
                 <NavIcon id={id} />
               </i>
-              {label}
+              <span className="navLabel">{label}</span>
               {id === "inbox" && pending.length + newInquiries.length > 0 && <em>{pending.length + newInquiries.length}</em>}
               {id === "dashboard" && prospects.length > 0 && <em>{prospects.length}</em>}
             </button>

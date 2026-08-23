@@ -119,7 +119,7 @@ function App() {
               <i>
                 <NavIcon id={id} />
               </i>
-              {label}
+              <span className="navLabel">{label}</span>
               {id === "inbox" && pending.length + newInquiries.length > 0 && <em>{pending.length + newInquiries.length}</em>}
             </button>
           ))}
@@ -409,7 +409,7 @@ function App() {
           )}
         </main>
       </div>
-      <nav className="mobile">
+      <nav className="mobile marketingMobileNav">
         {nav.map(([id, label]) => (
           <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>
             <i>

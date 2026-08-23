@@ -316,6 +316,9 @@
     backdrop-filter: blur(18px) saturate(140%);
     overflow: hidden;
   }
+  .mobile.marketingMobileNav {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
   nav.mobile button,
   .mobile button {
     display: grid;
