@@ -5,6 +5,7 @@ import { defineSecret, defineString } from "firebase-functions/params";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { google } from "googleapis";
 import { DateTime } from "luxon";
+import { hasBookingConflict } from "./booking-guards.js";
 import { button, detailPanel, emailShell, noteBlock, p, statusStrip } from "./email-templates.js";
 
 // The googleapis client has no default request timeout - a stalled connection to
@@ -678,6 +679,9 @@ export const submitBookingRequest = onCall(
     if (!publicServiceIds.has(requestedServiceId)) throw new HttpsError("invalid-argument", "Choose a publicly available Apex service.");
     const service = serviceById(requestedServiceId);
     const requestedVehicleType = text(input.vehicleType, 30);
+    if (!vehicleTypes.some(vehicle => vehicle.id === requestedVehicleType)) {
+      throw new HttpsError("invalid-argument", "Choose a valid vehicle type from the booking form.");
+    }
     const estimatedFromPrice = priceFor(requestedServiceId, requestedVehicleType);
     if (estimatedFromPrice == null) {
       throw new HttpsError(
@@ -740,8 +744,28 @@ export const submitBookingRequest = onCall(
 
     const requestReference = db.collection("bookingRequests").doc();
     const lockReference = db.doc(`bookingLocks/${bookingLockId(data.bookingDate, data.bookingTime)}`);
+    const dayGuardReference = db.doc(`bookingDayGuards/${data.bookingDate}`);
+    const lockQuery = db.collection("bookingLocks").where("date", "==", data.bookingDate);
+    const jobQuery = db.collection("jobs").where("bookingDate", "==", data.bookingDate);
     await db.runTransaction(async transaction => {
-      if ((await transaction.get(lockReference)).exists) throw new HttpsError("already-exists", "That appointment was just taken.");
+      const [, lockSnapshot, jobSnapshot] = await Promise.all([
+        transaction.get(dayGuardReference),
+        transaction.get(lockQuery),
+        transaction.get(jobQuery)
+      ]);
+      const locks = lockSnapshot.docs.map(document => ({ id: document.id, ...document.data() }));
+      const jobs = jobSnapshot.docs.map(document => {
+        const row = document.data();
+        return { id: document.id, ...row, durationMinutes: Number(row.durationMinutes || serviceById(row.packageId).durationMinutes) };
+      });
+      if (hasBookingConflict({ startTime: data.bookingTime, endTime: data.bookingEndTime, locks, jobs })) {
+        throw new HttpsError("already-exists", "That appointment overlaps another Apex booking.");
+      }
+      transaction.set(
+        dayGuardReference,
+        { date: data.bookingDate, revision: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() },
+        { merge: true }
+      );
       transaction.create(lockReference, {
         date: data.bookingDate,
         startTime: data.bookingTime,
@@ -866,94 +890,111 @@ export const submitInquiry = onCall({ region: REGION, secrets: GOOGLE_SECRETS, e
 
 export const approveBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
   requireOwner(request);
-  const reference = db.doc(`bookingRequests/${text(request.data?.requestId, 80)}`);
-  const snapshot = await reference.get();
-  if (!snapshot.exists) throw new HttpsError("not-found", "Booking request not found.");
-  const item = { id: snapshot.id, ...snapshot.data() };
-  if (item.status !== "pending") throw new HttpsError("failed-precondition", "That request has already been reviewed.");
+  const requestId = text(request.data?.requestId, 80);
+  if (!requestId) throw new HttpsError("invalid-argument", "Choose a booking request to approve.");
+  const reference = db.doc(`bookingRequests/${requestId}`);
+  const approval = await db.runTransaction(async transaction => {
+    const snapshot = await transaction.get(reference);
+    if (!snapshot.exists) throw new HttpsError("not-found", "Booking request not found.");
+    const item = { id: snapshot.id, ...snapshot.data() };
+    if (item.status === "accepted" && item.jobId) return { alreadyApproved: true, item, jobId: item.jobId };
+    if (item.status !== "pending") throw new HttpsError("failed-precondition", "That request has already been reviewed.");
 
-  const matches = await db.collection("customers").where("email", "==", item.email).limit(1).get();
-  const customerReference = matches.empty ? db.collection("customers").doc() : matches.docs[0].ref;
-  const jobReference = db.collection("jobs").doc();
-  const vehicle = [item.vehicleYear, item.vehicleMake, item.vehicleModel].filter(Boolean).join(" ");
-  const service = serviceById(item.serviceId);
-  const batch = db.batch();
+    const matches = await transaction.get(db.collection("customers").where("email", "==", item.email).limit(1));
+    const customerReference = matches.empty ? db.collection("customers").doc() : matches.docs[0].ref;
+    const jobReference = db.collection("jobs").doc();
+    const vehicle = [item.vehicleYear, item.vehicleMake, item.vehicleModel].filter(Boolean).join(" ");
+    const service = serviceById(item.serviceId);
 
-  if (matches.empty) {
-    const parts = item.customerName.split(/\s+/);
-    batch.set(customerReference, {
-      firstName: parts.shift() || item.customerName,
-      lastName: parts.join(" "),
+    if (matches.empty) {
+      const parts = item.customerName.split(/\s+/);
+      transaction.set(customerReference, {
+        firstName: parts.shift() || item.customerName,
+        lastName: parts.join(" "),
+        customerName: item.customerName,
+        phone: item.phone,
+        email: item.email,
+        address: item.address,
+        area: item.area,
+        customerType: "standard",
+        preferredContact: "email",
+        lastVehicle: vehicle,
+        lastJobStatus: "Booked",
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
+      });
+    } else {
+      transaction.set(
+        customerReference,
+        {
+          phone: item.phone,
+          address: item.address,
+          area: item.area,
+          lastVehicle: vehicle,
+          lastJobStatus: "Booked",
+          updatedAt: FieldValue.serverTimestamp()
+        },
+        { merge: true }
+      );
+    }
+
+    const job = {
+      customerId: customerReference.id,
       customerName: item.customerName,
       phone: item.phone,
       email: item.email,
       address: item.address,
       area: item.area,
-      customerType: "standard",
-      preferredContact: "email",
-      lastVehicle: vehicle,
-      lastJobStatus: "Booked",
+      vehicleYear: item.vehicleYear,
+      vehicleMake: item.vehicleMake,
+      vehicleModel: item.vehicleModel,
+      vehicle,
+      rego: item.rego,
+      vehicleType: item.vehicleType,
+      condition: item.condition,
+      petHair: item.petHair,
+      heavyStains: item.heavyStains,
+      packageId: item.serviceId,
+      packageName: item.serviceName,
+      total: item.estimatedFromPrice,
+      durationMinutes: service.durationMinutes,
+      bookingDate: item.bookingDate,
+      bookingTime: item.bookingTime,
+      bookingEndTime: item.bookingEndTime,
+      status: "Booked",
+      mode: "booking",
+      notes: item.notes,
+      source: "online-booking",
+      sourceBookingRequestId: item.id,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp()
-    });
-  } else {
-    batch.set(
-      customerReference,
-      {
-        phone: item.phone,
-        address: item.address,
-        area: item.area,
-        lastVehicle: vehicle,
-        lastJobStatus: "Booked",
-        updatedAt: FieldValue.serverTimestamp()
-      },
+    };
+    transaction.set(jobReference, job);
+    transaction.set(
+      reference,
+      { status: "accepted", jobId: jobReference.id, customerId: customerReference.id, reviewedAt: FieldValue.serverTimestamp() },
       { merge: true }
     );
+    transaction.set(
+      db.doc(`bookingLocks/${item.lockId}`),
+      { status: "confirmed", jobId: jobReference.id, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true }
+    );
+    return { alreadyApproved: false, item, job, jobReference };
+  });
+
+  if (approval.alreadyApproved) {
+    return {
+      jobId: approval.jobId,
+      calendarEventId: approval.item.calendarEventId || "",
+      calendarId: approval.item.calendarId || "",
+      calendarError: approval.item.calendarSyncError || "",
+      emails: approval.item.confirmationEmailStatus || { customer: false, owner: false },
+      alreadyApproved: true
+    };
   }
 
-  const job = {
-    customerId: customerReference.id,
-    customerName: item.customerName,
-    phone: item.phone,
-    email: item.email,
-    address: item.address,
-    area: item.area,
-    vehicleYear: item.vehicleYear,
-    vehicleMake: item.vehicleMake,
-    vehicleModel: item.vehicleModel,
-    vehicle,
-    rego: item.rego,
-    vehicleType: item.vehicleType,
-    condition: item.condition,
-    petHair: item.petHair,
-    heavyStains: item.heavyStains,
-    packageId: item.serviceId,
-    packageName: item.serviceName,
-    total: item.estimatedFromPrice,
-    durationMinutes: service.durationMinutes,
-    bookingDate: item.bookingDate,
-    bookingTime: item.bookingTime,
-    bookingEndTime: item.bookingEndTime,
-    status: "Booked",
-    mode: "booking",
-    notes: item.notes,
-    source: "online-booking",
-    sourceBookingRequestId: item.id,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp()
-  };
-  batch.set(jobReference, job);
-  batch.set(
-    reference,
-    { status: "accepted", jobId: jobReference.id, customerId: customerReference.id, reviewedAt: FieldValue.serverTimestamp() },
-    { merge: true }
-  );
-  batch.set(
-    db.doc(`bookingLocks/${item.lockId}`),
-    { status: "confirmed", jobId: jobReference.id, updatedAt: FieldValue.serverTimestamp() },
-    { merge: true }
-  );
-  await batch.commit();
+  const { item, job, jobReference } = approval;
 
   let eventId = "";
   let calendarId = item.calendarId || "";
@@ -999,15 +1040,22 @@ export const approveBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SE
 
 export const declineBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
   requireOwner(request);
-  const reference = db.doc(`bookingRequests/${text(request.data?.requestId, 80)}`);
-  const snapshot = await reference.get();
-  if (!snapshot.exists) throw new HttpsError("not-found", "Booking request not found.");
-  const item = snapshot.data();
+  const requestId = text(request.data?.requestId, 80);
+  if (!requestId) throw new HttpsError("invalid-argument", "Choose a booking request to decline.");
+  const reference = db.doc(`bookingRequests/${requestId}`);
+  const decline = await db.runTransaction(async transaction => {
+    const snapshot = await transaction.get(reference);
+    if (!snapshot.exists) throw new HttpsError("not-found", "Booking request not found.");
+    const item = snapshot.data();
+    if (item.status === "declined") return { item, alreadyDeclined: true };
+    if (item.status !== "pending") throw new HttpsError("failed-precondition", "That request has already been reviewed.");
+    transaction.set(reference, { status: "declined", reviewedAt: FieldValue.serverTimestamp() }, { merge: true });
+    if (item.lockId) transaction.delete(db.doc(`bookingLocks/${item.lockId}`));
+    return { item, alreadyDeclined: false };
+  });
+  if (decline.alreadyDeclined) return { ok: true, alreadyDeclined: true };
+  const { item } = decline;
   await deleteCalendarEvent(item.calendarEventId, item.calendarId);
-  const batch = db.batch();
-  batch.set(reference, { status: "declined", reviewedAt: FieldValue.serverTimestamp() }, { merge: true });
-  if (item.lockId) batch.delete(db.doc(`bookingLocks/${item.lockId}`));
-  await batch.commit();
   const config = await getSettings();
   if (config.customerEmails) {
     await sendMail({
@@ -1110,34 +1158,32 @@ export const createManualBooking = onCall({ region: REGION, secrets: GOOGLE_SECR
   const existingCustomer = await customerReference.get();
   const jobReference = sourceQuoteReference || db.collection("jobs").doc();
   const vehicle = [data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" ");
-  const lockReference = db.doc(`bookingLocks/${bookingLockId(data.bookingDate, data.bookingTime)}`);
+  const baseLockId = bookingLockId(data.bookingDate, data.bookingTime);
+  const lockId = input.overrideConflict ? `${baseLockId}_override_${jobReference.id}` : baseLockId;
+  const lockReference = db.doc(`bookingLocks/${lockId}`);
+  const dayGuardReference = db.doc(`bookingDayGuards/${data.bookingDate}`);
+  const lockQuery = db.collection("bookingLocks").where("date", "==", data.bookingDate);
+  const jobQuery = db.collection("jobs").where("bookingDate", "==", data.bookingDate);
   const parts = data.customerName.split(/\s+/);
-  const batch = db.batch();
-
-  batch.set(
-    customerReference,
-    {
-      ...(existingCustomer.exists
-        ? {}
-        : {
-            firstName: parts.shift() || data.customerName,
-            lastName: parts.join(" "),
-            customerName: data.customerName,
-            customerType: "standard",
-            preferredContact: "email",
-            createdAt: FieldValue.serverTimestamp()
-          }),
-      phone: data.phone,
-      email: data.email,
-      address: data.address,
-      area: data.area,
-      lastVehicle: vehicle,
-      lastJobStatus: "Booked",
-      updatedAt: FieldValue.serverTimestamp()
-    },
-    { merge: true }
-  );
-
+  const customerPayload = {
+    ...(existingCustomer.exists
+      ? {}
+      : {
+          firstName: parts.shift() || data.customerName,
+          lastName: parts.join(" "),
+          customerName: data.customerName,
+          customerType: "standard",
+          preferredContact: "email",
+          createdAt: FieldValue.serverTimestamp()
+        }),
+    phone: data.phone,
+    email: data.email,
+    address: data.address,
+    area: data.area,
+    lastVehicle: vehicle,
+    lastJobStatus: "Booked",
+    updatedAt: FieldValue.serverTimestamp()
+  };
   const jobPayload = {
     ...data,
     customerId: customerReference.id,
@@ -1146,22 +1192,53 @@ export const createManualBooking = onCall({ region: REGION, secrets: GOOGLE_SECR
     ...(sourceQuote ? { convertedFromQuoteAt: FieldValue.serverTimestamp() } : { createdAt: FieldValue.serverTimestamp() }),
     updatedAt: FieldValue.serverTimestamp()
   };
-  batch.set(jobReference, jobPayload, { merge: true });
-  batch.set(
-    lockReference,
-    {
-      date: data.bookingDate,
-      startTime: data.bookingTime,
-      endTime: data.bookingEndTime,
-      status: "confirmed",
-      jobId: jobReference.id,
-      source: data.source,
-      serverVerified: true,
-      createdAt: FieldValue.serverTimestamp()
-    },
-    { merge: true }
-  );
-  await batch.commit();
+  await db.runTransaction(async transaction => {
+    const reads = [transaction.get(dayGuardReference), transaction.get(lockQuery), transaction.get(jobQuery)];
+    if (sourceQuoteReference) reads.push(transaction.get(sourceQuoteReference));
+    const [, lockSnapshot, jobSnapshot, currentQuoteSnapshot] = await Promise.all(reads);
+    if (currentQuoteSnapshot && !currentQuoteSnapshot.exists) throw new HttpsError("not-found", "The source quote could not be found.");
+    if (currentQuoteSnapshot && !["Lead", "Quote Requested", "Quote Sent", "Approved"].includes(currentQuoteSnapshot.data()?.status)) {
+      throw new HttpsError("failed-precondition", "That quote has already been converted or is no longer active.");
+    }
+    const locks = lockSnapshot.docs.map(document => ({ id: document.id, ...document.data() }));
+    const jobs = jobSnapshot.docs.map(document => {
+      const row = document.data();
+      return { id: document.id, ...row, durationMinutes: Number(row.durationMinutes || serviceById(row.packageId).durationMinutes) };
+    });
+    if (
+      !input.overrideConflict &&
+      hasBookingConflict({
+        startTime: data.bookingTime,
+        endTime: data.bookingEndTime,
+        locks,
+        jobs,
+        ignoreJobId: sourceQuoteId
+      })
+    ) {
+      throw new HttpsError("already-exists", "That time conflicts with another Apex booking.");
+    }
+    transaction.set(
+      dayGuardReference,
+      { date: data.bookingDate, revision: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() },
+      { merge: true }
+    );
+    transaction.set(customerReference, customerPayload, { merge: true });
+    transaction.set(jobReference, jobPayload, { merge: true });
+    transaction.set(
+      lockReference,
+      {
+        date: data.bookingDate,
+        startTime: data.bookingTime,
+        endTime: data.bookingEndTime,
+        status: "confirmed",
+        jobId: jobReference.id,
+        source: data.source,
+        serverVerified: true,
+        createdAt: FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
+  });
 
   let eventId = "";
   let calendarId = "";

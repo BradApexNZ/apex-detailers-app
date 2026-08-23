@@ -1,6 +1,7 @@
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 import { getGoogleCalendarEvents } from "./apex-api";
+import { escapeMarkup } from "./html-safety";
 
 const SECONDARY_TABS = ["Quotes", "Photos", "Vouchers", "Settings"];
 let jobs = [];
@@ -150,14 +151,14 @@ function renderSelected(container) {
         ? "Loading Google Calendar…"
         : "No bookings or Google Calendar blocks on this day.";
   list.innerHTML =
-    `<div class="apexDayHead"><strong>${dateLabel}</strong><span>${rows.length ? `${rows.length} item${rows.length === 1 ? "" : "s"}` : googleFeedState === "ready" ? "Clear" : "Checking"}</span></div>` +
+    `<div class="apexDayHead"><strong>${escapeMarkup(dateLabel)}</strong><span>${rows.length ? `${rows.length} item${rows.length === 1 ? "" : "s"}` : googleFeedState === "ready" ? "Clear" : "Checking"}</span></div>` +
     (rows.length
       ? rows
           .map(
             job => `
       <article class="apexCalendarEvent ${sourceLabel(job).toLowerCase()}">
-        <time>${eventTime(job) || "All day"}</time>
-        <div><strong>${eventLabel(job)}</strong><span>${clean(job.address || job.packageName || job.vehicle || job.status || "Booking")}</span></div>
+        <time>${escapeMarkup(eventTime(job) || "All day")}</time>
+        <div><strong>${escapeMarkup(eventLabel(job))}</strong><span>${escapeMarkup(clean(job.address || job.packageName || job.vehicle || job.status || "Booking"))}</span></div>
         <em>${sourceLabel(job)}</em>
       </article>`
           )
@@ -241,10 +242,10 @@ function renderCalendar() {
   container.innerHTML = `
     <section class="apexMonthPanel">
       <header class="apexMonthHead">
-        <div><span>LIVE SCHEDULE</span><h2>${monthName}</h2></div>
+        <div><span>LIVE SCHEDULE</span><h2>${escapeMarkup(monthName)}</h2></div>
         <div><button type="button" data-cal-prev aria-label="Previous month">←</button><button type="button" data-cal-today>Today</button><button type="button" data-cal-next aria-label="Next month">→</button></div>
       </header>
-      <div class="apexCalendarFeed ${googleFeedState}"><span>${feedCopy}</span>${googleFeedState === "error" ? '<button type="button" data-cal-retry>Retry</button>' : ""}</div>
+      <div class="apexCalendarFeed ${googleFeedState}"><span>${escapeMarkup(feedCopy)}</span>${googleFeedState === "error" ? '<button type="button" data-cal-retry>Retry</button>' : ""}</div>
       <div class="apexCalWeek"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
       <div class="apexCalGrid">${cells}</div>
       <div class="apexCalendarLegend"><span><i class="apexDot apex"></i>Apex booking</span><span><i class="apexDot google"></i>Google block</span></div>

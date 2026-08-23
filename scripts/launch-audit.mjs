@@ -14,46 +14,214 @@ const backend = read("functions/index.js");
 const rules = read("firestore.v5.rules");
 const storage = read("storage.rules");
 const deviceLock = read("src/device-lock.js");
+const calendarEnhancements = read("src/hq-launch-enhancements.js");
 const cloudWorkflow = read(".github/workflows/deploy-cloud.yml");
 const hostingWorkflow = read(".github/workflows/deploy-hosting.yml");
 const packageJson = JSON.parse(read("package.json"));
 
-assert("HQ uses consolidated launch UI", hq.includes('/src/hq-v6.jsx'), "hq.html must load hq-v6.jsx");
-assert("HQ theme + app stylesheet load", hq.includes('/src/apex-theme.css') && hq.includes('/src/hq-app.css'), "hq.html must load the consolidated Apex theme and HQ stylesheet");
-assert("Premium auth UI is loaded", hq.includes('/src/hq-app.css') && hqApp.includes('function PinKeypad') && hqApp.includes('function PinDots'), "Login and trusted-device unlock must ship in HQ");
-assert("Trusted-device PIN remains hardened", deviceLock.includes('PIN_LENGTH = 4') && deviceLock.includes('MAX_PIN_FAILURES = 5') && deviceLock.includes('INACTIVITY_LIMIT_MS = 5 * 60 * 1000'), "PIN unlock must retain 4 digits, lockout and inactivity protection");
-assert("PIN setup is reachable in Settings", hqApp.includes('function PinSetup') && hqApp.includes('Set backup PIN'), "Owner must be able to configure quick unlock on-device");
+assert("HQ uses consolidated launch UI", hq.includes("/src/hq-v6.jsx"), "hq.html must load hq-v6.jsx");
+assert(
+  "HQ theme + app stylesheet load",
+  hq.includes("/src/apex-theme.css") && hq.includes("/src/hq-app.css"),
+  "hq.html must load the consolidated Apex theme and HQ stylesheet"
+);
+assert(
+  "Premium auth UI is loaded",
+  hq.includes("/src/hq-app.css") && hqApp.includes("function PinKeypad") && hqApp.includes("function PinDots"),
+  "Login and trusted-device unlock must ship in HQ"
+);
+assert(
+  "Trusted-device PIN remains hardened",
+  deviceLock.includes("PIN_LENGTH = 4") &&
+    deviceLock.includes("MAX_PIN_FAILURES = 5") &&
+    deviceLock.includes("INACTIVITY_LIMIT_MS = 5 * 60 * 1000"),
+  "PIN unlock must retain 4 digits, lockout and inactivity protection"
+);
+assert(
+  "PIN setup is reachable in Settings",
+  hqApp.includes("function PinSetup") && hqApp.includes("Set backup PIN"),
+  "Owner must be able to configure quick unlock on-device"
+);
 assert("Old Google DOM controller is not loaded", !hq.includes("hq-google-calendar.js"), "Calendar must live inside React HQ");
-assert("Old runtime patch stack is not loaded", !hq.includes("hq-production.js") && !hq.includes("hq-final-polish.js") && !hq.includes("hq-booking-controls.js") && !hq.includes("hq-launch-auth-guard.js") && !hq.includes("hq-device-lock-controls.js"), "Do not reintroduce competing runtime controllers");
-assert("Legacy V5 app entry is gone", !fs.existsSync("src/main.jsx") && !fs.existsSync("src/hq-v5.jsx"), "Only the current V6 application entry should remain");
-assert("HQ shell is not precached", !worker.includes('cache.put("/hq"') && !worker.includes('cache.put("/hq.html"'), "A deployed HQ must not resurrect an obsolete HTML shell");
-assert("HQ navigation bypasses browser cache", worker.includes('cache: "no-store"') && pwa.includes('updateViaCache: "none"'), "Service-worker updates and live HQ navigation must fetch fresh code");
-assert("HQ route is no-store at Firebase", firebaseConfig.includes('"source": "/hq"') && firebaseConfig.includes('"value": "no-cache,no-store,must-revalidate"'), "The /hq rewrite itself must not be browser cached");
-assert("Launch API uses proven existing endpoints", api.includes('cloudCall("listBookingAvailability")') && api.includes('privateCall("syncJobToCalendar")') && !api.includes('listBookingAvailabilityV6'), "Launch must not depend on blocked new Cloud Run services");
-assert("Public booking fails closed", !api.includes("fallbackAvailability") && !api.includes("fallbackSubmit"), "Do not accept bookings through a direct Firestore fallback");
-assert("Calendar preferences stay outside OAuth credentials", api.includes('doc(db, "settings", "googleCalendar")') && backend.includes('db.doc("settings/googleCalendar")'), "Selected calendars must not require client access to OAuth secrets");
-assert("Calendar checks all selected calendars", backend.includes('items: config.selectedCalendarIds.map(id => ({ id }))'), "Google FreeBusy must check every selected calendar");
-assert("Calendar requires a writable primary", backend.includes('["owner", "writer"].includes(row.accessRole)') && backend.includes('No writable primary Google Calendar'), "New Apex events must never target a read-only calendar");
-assert("Calendar availability fails closed", backend.includes('Google Calendar availability could not be verified') && !backend.includes('console.error("Calendar freebusy failed", error);\n    return [];'), "Google errors must not look like an empty calendar");
-assert("Calendar records exact event and calendar IDs", backend.includes('calendarId: calendarResult.calendarId') && backend.includes('job.calendarId || job.sourceCalendarId'), "Updates and deletes must target the original event/calendar");
-assert("Public Maintenance Clean is blocked", backend.includes('const publicServiceIds = new Set(["deep", "full", "tradie", "seats"])'), "Maintenance Clean is for existing regular clients");
-assert("Public booking duration is server-owned", backend.includes('data.bookingEndTime = requestedStart.plus({ minutes: service.durationMinutes })'), "Browser-supplied end times must not control availability");
-assert("Booking locks are server verified", backend.includes('serverVerified: true') && backend.includes('if (data.serverVerified !== true) return;'), "Direct Firestore locks must not block real availability");
+assert(
+  "Old runtime patch stack is not loaded",
+  !hq.includes("hq-production.js") &&
+    !hq.includes("hq-final-polish.js") &&
+    !hq.includes("hq-booking-controls.js") &&
+    !hq.includes("hq-launch-auth-guard.js") &&
+    !hq.includes("hq-device-lock-controls.js"),
+  "Do not reintroduce competing runtime controllers"
+);
+assert(
+  "Legacy V5 app entry is gone",
+  !fs.existsSync("src/main.jsx") && !fs.existsSync("src/hq-v5.jsx"),
+  "Only the current V6 application entry should remain"
+);
+assert(
+  "HQ shell is not precached",
+  !worker.includes('cache.put("/hq"') && !worker.includes('cache.put("/hq.html"'),
+  "A deployed HQ must not resurrect an obsolete HTML shell"
+);
+assert(
+  "HQ navigation bypasses browser cache",
+  worker.includes('cache: "no-store"') && pwa.includes('updateViaCache: "none"'),
+  "Service-worker updates and live HQ navigation must fetch fresh code"
+);
+assert(
+  "HQ route is no-store at Firebase",
+  firebaseConfig.includes('"source": "/hq"') && firebaseConfig.includes('"value": "no-cache,no-store,must-revalidate"'),
+  "The /hq rewrite itself must not be browser cached"
+);
+assert(
+  "Launch API uses proven existing endpoints",
+  api.includes('cloudCall("listBookingAvailability")') &&
+    api.includes('privateCall("syncJobToCalendar")') &&
+    !api.includes("listBookingAvailabilityV6"),
+  "Launch must not depend on blocked new Cloud Run services"
+);
+assert(
+  "Public booking fails closed",
+  !api.includes("fallbackAvailability") && !api.includes("fallbackSubmit"),
+  "Do not accept bookings through a direct Firestore fallback"
+);
+assert(
+  "Calendar preferences stay outside OAuth credentials",
+  api.includes('doc(db, "settings", "googleCalendar")') && backend.includes('db.doc("settings/googleCalendar")'),
+  "Selected calendars must not require client access to OAuth secrets"
+);
+assert(
+  "Calendar checks all selected calendars",
+  backend.includes("items: config.selectedCalendarIds.map(id => ({ id }))"),
+  "Google FreeBusy must check every selected calendar"
+);
+assert(
+  "Calendar requires a writable primary",
+  backend.includes('["owner", "writer"].includes(row.accessRole)') && backend.includes("No writable primary Google Calendar"),
+  "New Apex events must never target a read-only calendar"
+);
+assert(
+  "Calendar availability fails closed",
+  backend.includes("Google Calendar availability could not be verified") &&
+    !backend.includes('console.error("Calendar freebusy failed", error);\n    return [];'),
+  "Google errors must not look like an empty calendar"
+);
+assert(
+  "Calendar records exact event and calendar IDs",
+  backend.includes("calendarId: calendarResult.calendarId") && backend.includes("job.calendarId || job.sourceCalendarId"),
+  "Updates and deletes must target the original event/calendar"
+);
+assert(
+  "Public Maintenance Clean is blocked",
+  backend.includes('const publicServiceIds = new Set(["deep", "full", "tradie", "seats"])'),
+  "Maintenance Clean is for existing regular clients"
+);
+assert(
+  "Public booking duration is server-owned",
+  backend.includes("data.bookingEndTime = requestedStart.plus({ minutes: service.durationMinutes })"),
+  "Browser-supplied end times must not control availability"
+);
+assert(
+  "Public vehicle types are server-validated",
+  backend.includes("vehicleTypes.some(vehicle => vehicle.id === requestedVehicleType)"),
+  "Tampered vehicle types must not receive small-car pricing"
+);
+assert(
+  "Booking locks are server verified",
+  backend.includes("serverVerified: true") && backend.includes("if (data.serverVerified !== true) return;"),
+  "Direct Firestore locks must not block real availability"
+);
+assert(
+  "Calendar event text is escaped",
+  calendarEnhancements.includes("escapeMarkup(eventLabel(job))") && calendarEnhancements.includes("escapeMarkup(feedCopy)"),
+  "Customer and Google Calendar text must never enter HQ as executable markup"
+);
+assert(
+  "Overlapping booking races are serialized",
+  backend.includes("bookingDayGuards") && backend.includes("hasBookingConflict({"),
+  "Same-day requests must share a transaction guard and recheck every overlapping range"
+);
+assert(
+  "Booking approval is idempotent",
+  backend.includes('item.status === "accepted" && item.jobId') && backend.includes("alreadyApproved: true"),
+  "A retried approval must return the existing job instead of creating a duplicate"
+);
 assert("Storage rule source is owner-only", !storage.includes("request.auth == null"), "Job photos must remain private");
-assert("Production cloud deploy excludes Storage", cloudWorkflow.includes("firestore:rules") && cloudWorkflow.includes("functions=(") && !cloudWorkflow.includes("--only storage") && !cloudWorkflow.includes("functions,firestore:rules,storage"), "Storage IAM must not block Functions or Firestore deployment");
-assert("Production cloud deploy is quota-safe", cloudWorkflow.includes("batch_size=") && cloudWorkflow.includes("for ((i = 0; i <"), "Launch-critical Gen-2 functions must deploy in small batches, not one unbounded parallel call, so regional Cloud Build/CPU quota cannot be exhausted");
-assert("Production cloud deploy excludes obsolete duplicate endpoints", !cloudWorkflow.includes('functions:getPublicBookingConfigV6') && !cloudWorkflow.includes('functions:listBookingAvailabilityV6') && !cloudWorkflow.includes('functions:submitBookingRequestV6'), "Launch deploy should update only endpoints used by the production client");
-assert("Firestore rule source closes public direct booking writes", !rules.includes("validPublicBooking") && !rules.includes("allow read: if true"), "Branch rules must be ready to close legacy anonymous Firestore access");
-assert("Hosting deploy is independently gated", hostingWorkflow.includes("Deploy Apex Hosting") && hostingWorkflow.includes("npm run build"), "Frontend deployment must remain independently deployable");
-assert("Photos remain available", hqApp.includes('uploadPhotos') && hqApp.includes('photoCategories'), "Launch retains owner job photo storage");
-assert("Hnry/payment workflow is present", hqApp.includes('Prepare Hnry Invoice') && hqApp.includes('Invoice Sent') && hqApp.includes('paidAmount'), "Jobs need the invoicing/payment workflow");
-assert("Mobile has full navigation path", hqApp.includes('mobileMenu') && hqApp.includes('More'), "Photos, vouchers and settings must be reachable on iPhone");
-assert("Customer editing is present", hqApp.includes('selectedCustomer') && hqApp.includes('Customer updated.'), "Existing customers must be editable");
-assert("Follow-up dates are operational", hqApp.includes('followUpDueDate') && hqApp.includes('maintenanceDueDate'), "Follow-up and maintenance reminders need real dates");
-assert("Official PWA logo is published", fs.existsSync("public/apex-logo-official.svg"), "The exact official Apex logo must exist in public output");
-assert("Production cloud automation is enabled", read(".env.production").includes("VITE_APEX_CLOUD_ENABLED=true"), "Production must not silently disable cloud booking");
+assert(
+  "Production cloud deploy excludes Storage",
+  cloudWorkflow.includes("firestore:rules") &&
+    cloudWorkflow.includes("functions=(") &&
+    !cloudWorkflow.includes("--only storage") &&
+    !cloudWorkflow.includes("functions,firestore:rules,storage"),
+  "Storage IAM must not block Functions or Firestore deployment"
+);
+assert(
+  "Production cloud deploy is quota-safe",
+  cloudWorkflow.includes("batch_size=") && cloudWorkflow.includes("for ((i = 0; i <"),
+  "Launch-critical Gen-2 functions must deploy in small batches, not one unbounded parallel call, so regional Cloud Build/CPU quota cannot be exhausted"
+);
+assert(
+  "Production cloud deploy excludes obsolete duplicate endpoints",
+  !cloudWorkflow.includes("functions:getPublicBookingConfigV6") &&
+    !cloudWorkflow.includes("functions:listBookingAvailabilityV6") &&
+    !cloudWorkflow.includes("functions:submitBookingRequestV6"),
+  "Launch deploy should update only endpoints used by the production client"
+);
+assert(
+  "Firestore rule source closes public direct booking writes",
+  !rules.includes("validPublicBooking") && !rules.includes("allow read: if true"),
+  "Branch rules must be ready to close legacy anonymous Firestore access"
+);
+assert(
+  "Hosting deploy is independently gated",
+  hostingWorkflow.includes("Deploy Apex Hosting") && hostingWorkflow.includes("npm run build"),
+  "Frontend deployment must remain independently deployable"
+);
+assert(
+  "Photos remain available",
+  hqApp.includes("uploadPhotos") && hqApp.includes("photoCategories"),
+  "Launch retains owner job photo storage"
+);
+assert(
+  "Hnry/payment workflow is present",
+  hqApp.includes("Prepare Hnry Invoice") && hqApp.includes("Invoice Sent") && hqApp.includes("paidAmount"),
+  "Jobs need the invoicing/payment workflow"
+);
+assert(
+  "Mobile has full navigation path",
+  hqApp.includes("mobileMenu") && hqApp.includes("More"),
+  "Photos, vouchers and settings must be reachable on iPhone"
+);
+assert(
+  "Customer editing is present",
+  hqApp.includes("selectedCustomer") && hqApp.includes("Customer updated."),
+  "Existing customers must be editable"
+);
+assert(
+  "Follow-up dates are operational",
+  hqApp.includes("followUpDueDate") && hqApp.includes("maintenanceDueDate"),
+  "Follow-up and maintenance reminders need real dates"
+);
+assert(
+  "Official PWA logo is published",
+  fs.existsSync("public/apex-logo-official.svg"),
+  "The exact official Apex logo must exist in public output"
+);
+assert(
+  "Production cloud automation is enabled",
+  read(".env.production").includes("VITE_APEX_CLOUD_ENABLED=true"),
+  "Production must not silently disable cloud booking"
+);
 assert("Root check script exists", typeof packageJson.scripts?.check === "string", "CI must have a root verification command");
-assert("Storage deploy is explicit", packageJson.scripts?.["deploy:storage"] === "firebase deploy --only storage", "Storage must be an intentional separate deployment");
+assert(
+  "Booking race regression tests run",
+  packageJson.scripts?.["check:functions"] === "npm --prefix functions run check" && cloudWorkflow.includes("npm run check"),
+  "Local checks and production deploys must run booking concurrency tests"
+);
+assert(
+  "Storage deploy is explicit",
+  packageJson.scripts?.["deploy:storage"] === "firebase deploy --only storage",
+  "Storage must be an intentional separate deployment"
+);
 
 for (const check of checks) console.log(`${check.ok ? "PASS" : "FAIL"}  ${check.name}${check.ok ? "" : ` — ${check.detail}`}`);
 const failures = checks.filter(check => !check.ok);
