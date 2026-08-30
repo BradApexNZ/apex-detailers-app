@@ -402,7 +402,6 @@ async function notifyRequest(data, config) {
   }
 
   if (config.ownerEmails) {
-    const vehicle = [data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" ");
     results.owner = await sendMail({
       to: OWNER_EMAIL.value(),
       subject: `NEW REQUEST — ${data.customerName} — ${prettyDate(data.bookingDate)} ${data.bookingTime}`,
@@ -432,7 +431,7 @@ async function notifyRequest(data, config) {
           p("Confirm or decline it in Apex HQ. Declining releases the time slot and lets the customer know."),
           button(`${APP_BASE_URL.value()}/hq`, "Open Apex HQ"),
           noteBlock(
-            `Want a photo before you commit? Text ${escapeHtml(data.customerName.split(/\s+/)[0] || "them")} on <a href="tel:${escapeHtml(String(data.phone || "").replace(/\s/g, ""))}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.phone)}</a> &mdash; the slot stays held either way. Vehicle: ${escapeHtml(vehicle) || "not supplied"}.`
+            `<strong style="color:#f5f1e6;">Need more information before confirming?</strong><br>Contact the customer on <a href="tel:${escapeHtml(String(data.phone || "").replace(/\s/g, ""))}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.phone)}</a> to request photos or discuss the vehicle. Their requested time slot will remain held while you review the booking.`
           )
         ].join("")
       })

@@ -379,7 +379,7 @@ body,
 }
 .prospectRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 11px;
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
@@ -415,9 +415,7 @@ body,
   margin-top: 1px;
   color: var(--paper-faint);
   font-size: 11.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
 }
 .prospectActions {
   display: flex;
@@ -475,7 +473,7 @@ body,
 /* ---- generic card grid primitives shared across tabs ---- */
 .cards {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
 article.request,
@@ -497,6 +495,10 @@ article.job,
   justify-content: space-between;
   gap: 14px;
 }
+.request header > div,
+.quoteCard header > div {
+  min-width: 0;
+}
 .request h3 {
   font-size: 16px;
 }
@@ -509,6 +511,7 @@ article.job,
 .request header b {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   align-items: flex-end;
   font-family: var(--mono);
   font-size: 13px;
@@ -1751,7 +1754,7 @@ article.job,
   .customerGrid,
   .voucherGrid,
   .addonGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .formGrid,
   .modalForm {
@@ -1857,6 +1860,14 @@ article.job,
   .apexMoreGrid button {
     min-height: 64px;
   }
+}
+
+/* ---- pii: real customer/vehicle/financial data - unlike short demo
+   copy, this can be long enough (emails, joined names) to have no wrap
+   opportunity that actually fits a phone-width card, so it needs its own
+   permission to break mid-word rather than push the card wider. ---- */
+.pii {
+  overflow-wrap: anywhere;
 }
 
 /* ---- privacy mode: masks customer/vehicle/revenue detail for safe recording ---- */

@@ -126,6 +126,12 @@
   .stats b {
     font-size: 28px;
   }
+  /* The money stat ("This month paid") can run to $XX,XXX.XX - the other
+     stats are always short integers, so only this one needs defending. */
+  .stats > article.pii b {
+    font-size: 19px;
+    overflow-wrap: anywhere;
+  }
 
   /* Calendar */
   [data-apex-month-calendar] {
@@ -268,6 +274,22 @@
   .panel {
     max-width: 100%;
     min-width: 0;
+  }
+
+  /* "New from Calendar" rows: on a phone there isn't room for name + actions
+     side by side without squeezing the name into a near-unreadable column,
+     so actions drop to their own full-width line under the text instead. */
+  .prospectRow {
+    flex-wrap: wrap;
+  }
+  .prospectInfo {
+    flex-basis: 200px;
+  }
+  .prospectActions {
+    flex: 1 0 100%;
+    max-width: 100%;
+    justify-content: flex-start;
+    margin: 8px 0 0 43px;
   }
   .agenda {
     grid-template-columns: 40px minmax(0, 1fr) auto;
