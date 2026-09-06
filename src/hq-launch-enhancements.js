@@ -1,6 +1,6 @@
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
-import { getGoogleCalendarEvents } from "./apex-api";
+import { getGoogleCalendarEvents, importGoogleCalendarEvents } from "./apex-api";
 import { escapeMarkup } from "./html-safety";
 
 const SECONDARY_TABS = ["Quotes", "Photos", "Vouchers", "Settings"];
@@ -12,6 +12,16 @@ let liveFetchInFlight = false;
 let lastLiveRange = "";
 let googleFeedState = "idle";
 let googleFeedError = "";
+
+// Manual "Refresh Calendar" control - distinct from the silent auto-fetch
+// above. It does the real reconciliation write (importGoogleCalendarEvents,
+// the same call the Settings tab's "Import Google events now" button uses -
+// no second sync system) and then forces a fresh live read, so the button
+// only ever reports success once both steps actually completed.
+let manualSyncInFlight = false;
+let manualSyncState = "idle"; // idle | syncing | synced | failed
+let manualSyncError = "";
+let lastSyncedAt = Number(localStorage.getItem("apexCalendarLastSynced") || 0) || null;
 
 const clean = value => String(value || "").trim();
 const isoDate = date => {
@@ -201,6 +211,38 @@ async function fetchLiveGoogleEvents({ force = false } = {}) {
   }
 }
 
+function formatSyncedTime(ms) {
+  if (!ms) return "";
+  const diffMinutes = Math.round((Date.now() - ms) / 60000);
+  if (diffMinutes < 1) return "just now";
+  if (diffMinutes === 1) return "1 minute ago";
+  if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+  return new Date(ms).toLocaleTimeString("en-NZ", { hour: "numeric", minute: "2-digit" });
+}
+
+async function manualSync() {
+  if (manualSyncInFlight) return; // repeated taps while running are a no-op, not a queue
+  manualSyncInFlight = true;
+  manualSyncState = "syncing";
+  manualSyncError = "";
+  renderCalendar();
+  try {
+    await importGoogleCalendarEvents({ daysBack: 30, daysForward: 365 });
+    lastLiveRange = "";
+    await fetchLiveGoogleEvents({ force: true });
+    manualSyncState = "synced";
+    lastSyncedAt = Date.now();
+    localStorage.setItem("apexCalendarLastSynced", String(lastSyncedAt));
+  } catch (error) {
+    console.error("Manual Calendar refresh failed", error);
+    manualSyncState = "failed";
+    manualSyncError = clean(error?.message || "Calendar sync failed.");
+  } finally {
+    manualSyncInFlight = false;
+    renderCalendar();
+  }
+}
+
 function renderCalendar() {
   const container = document.querySelector("[data-apex-month-calendar]");
   if (!container) return;
@@ -239,12 +281,33 @@ function renderCalendar() {
           ? googleFeedError || "Google Calendar unavailable"
           : "Checking Google Calendar…";
 
+  const syncPill =
+    manualSyncState === "syncing"
+      ? '<span class="statusPill status-lead">SYNCING</span>'
+      : manualSyncState === "failed"
+        ? '<span class="statusPill status-cancelled">SYNC FAILED</span>'
+        : manualSyncState === "synced" || lastSyncedAt
+          ? '<span class="statusPill status-completed">SYNCED</span>'
+          : "";
+  const syncedLabel = lastSyncedAt ? `Last synced ${escapeMarkup(formatSyncedTime(lastSyncedAt))}` : "";
+
   container.innerHTML = `
     <section class="apexMonthPanel">
       <header class="apexMonthHead">
         <div><span>LIVE SCHEDULE</span><h2>${escapeMarkup(monthName)}</h2></div>
         <div><button type="button" data-cal-prev aria-label="Previous month">←</button><button type="button" data-cal-today>Today</button><button type="button" data-cal-next aria-label="Next month">→</button></div>
       </header>
+      <div class="apexCalendarSync">
+        <div class="apexCalendarSyncStatus">
+          <b>Google Calendar</b>
+          ${syncPill}
+          ${syncedLabel ? `<span>${syncedLabel}</span>` : ""}
+        </div>
+        <button type="button" class="secondary" data-cal-manual-sync${manualSyncInFlight ? " disabled" : ""}>
+          ${manualSyncInFlight ? "Syncing…" : "Refresh Calendar"}
+        </button>
+      </div>
+      ${manualSyncState === "failed" ? `<div class="apexCalendarSyncError">${escapeMarkup(manualSyncError)}</div>` : ""}
       <div class="apexCalendarFeed ${googleFeedState}"><span>${escapeMarkup(feedCopy)}</span>${googleFeedState === "error" ? '<button type="button" data-cal-retry>Retry</button>' : ""}</div>
       <div class="apexCalWeek"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
       <div class="apexCalGrid">${cells}</div>
@@ -252,6 +315,7 @@ function renderCalendar() {
       <div data-calendar-day-list></div>
     </section>`;
 
+  container.querySelector("[data-cal-manual-sync]")?.addEventListener("click", () => manualSync());
   container.querySelector("[data-cal-prev]")?.addEventListener("click", () => {
     monthCursor = new Date(year, month - 1, 1);
     lastLiveRange = "";

@@ -49,6 +49,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
       - name: Enable required Google APIs
         run: |
           gcloud services enable calendar-json.googleapis.com gmail.googleapis.com cloudfunctions.googleapis.com run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com eventarc.googleapis.com pubsub.googleapis.com iamcredentials.googleapis.com --project=apex-detailers

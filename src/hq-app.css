@@ -223,6 +223,28 @@ body,
   border-radius: var(--r-sm);
   font-size: 12px;
 }
+.sectionLead .detailActions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.sectionLead .detailActions button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--panel-2);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.sectionLead .detailActions button:last-child {
+  background: linear-gradient(135deg, #f6dd8f, var(--gold) 55%, #d9a51f);
+  color: var(--on-gold);
+  border-color: transparent;
+}
 
 /* ---- command deck (dashboard) ---- */
 .command {
@@ -695,6 +717,13 @@ article.job,
   text-align: center;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+/* Jobs tab "Coming up": date-group header directly under the panel title
+   doesn't need its own top border repeating the panel's edge. */
+.panel h3 + .comingUpGroup .apexDayHead {
+  border-top: none;
+  padding-top: 0;
 }
 
 /* ---- status pills ---- */

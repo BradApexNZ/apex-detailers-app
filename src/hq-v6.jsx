@@ -1168,6 +1168,39 @@ function ProspectsWidget({ prospects, busy, onAdd, onConvert, onDismiss, openTab
   );
 }
 
+function JobRow({ job, onOpen }) {
+  return (
+    <div className="job" onClick={onOpen}>
+      <i>JB</i>
+      <div>
+        <b className="pii">{job.customerName}</b>
+        <span className="pii">{vehicleOf(job)}</span>
+      </div>
+      <div>
+        <b>{job.packageName}</b>
+        <span>{job.bookingDate ? `${formatDate(job.bookingDate)} - ${job.bookingTime || ""}` : "No booking date"}</span>
+      </div>
+      <strong className="pii">{money(job.total)}</strong>
+      <span className={`statusPill status-${statusClass(job.status)}`}>{statusLabel(job.status)}</span>
+    </div>
+  );
+}
+
+// Groups "Coming up" jobs the same way a person thinks about their week:
+// tomorrow by name, the next few days by weekday, everything past that
+// folded into one "Later" bucket rather than a wall of individual dates.
+// Parsed as local midnight (not UTC) to match every other NZ date string
+// in this file, so a job on the last day of the window doesn't drift into
+// the wrong bucket for someone browsing HQ from outside NZ.
+function comingUpDayLabel(dateStr, todayStr) {
+  const diffDays = Math.round((new Date(`${dateStr}T00:00:00`) - new Date(`${todayStr}T00:00:00`)) / 86400000);
+  if (diffDays === 1) return "Tomorrow";
+  if (diffDays > 1 && diffDays <= 6) {
+    return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long" });
+  }
+  return "Later";
+}
+
 function parseCsv(text) {
   const lines = text
     .replace(/^\uFEFF/, "")
@@ -1242,6 +1275,8 @@ function App() {
   const [prospects, setProspects] = useState([]),
     [prospectsScanned, setProspectsScanned] = useState(false),
     [prospectsBusy, setProspectsBusy] = useState(false);
+  const [jobsRefreshing, setJobsRefreshing] = useState(false),
+    [jobsLastRefreshed, setJobsLastRefreshed] = useState(0);
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem("apexPrivacyMode") === "1");
   const togglePrivacy = () =>
     setPrivacyMode(value => {
@@ -1287,6 +1322,22 @@ function App() {
       )
     ];
     return () => stops.forEach(stop => stop());
+  }, [owner]);
+  // Jobs is installed as a Home Screen app and gets backgrounded for hours
+  // at a time - the onSnapshot listener above generally recovers on its
+  // own, but a quiet, no-toast refresh on resume gives a stronger guarantee
+  // after a genuinely long gap without polling in the background the rest
+  // of the time.
+  useEffect(() => {
+    if (!owner) return;
+    let hiddenAt = 0;
+    const STALE_MS = 60000;
+    const onVisibility = () => {
+      if (document.hidden) hiddenAt = Date.now();
+      else if (hiddenAt && Date.now() - hiddenAt > STALE_MS) refreshJobs({ silent: true });
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [owner]);
   useEffect(() => {
     if (!selectedJob) return;
@@ -1371,6 +1422,24 @@ function App() {
     setToast(message);
     setTimeout(() => setToast(""), 4000);
   };
+  // Jobs already stay live via the onSnapshot listener above, but that
+  // listener can sit on a stale local cache if the socket dropped while the
+  // phone was backgrounded. getDocs() forces a real round trip to Firestore
+  // (falling back to cache only if genuinely offline, which is surfaced
+  // below) rather than just re-rendering whatever is already in state.
+  async function refreshJobs({ silent = false } = {}) {
+    if (jobsRefreshing) return;
+    setJobsRefreshing(true);
+    try {
+      const snapshot = await getDocs(collection(db, "jobs"));
+      setJobs(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      setJobsLastRefreshed(Date.now());
+      if (!silent) notify(snapshot.metadata.fromCache ? "Jobs refreshed from local cache - check your connection." : "Jobs refreshed.");
+    } catch (error) {
+      if (!silent) notify(error.message || "Could not refresh jobs. Check your connection and try again.");
+    }
+    setJobsRefreshing(false);
+  }
   async function emailLogin(email, password) {
     setAuthBusy(true);
     setAuthError("");
@@ -1685,28 +1754,52 @@ function App() {
     }
     setBusy(false);
   }
+  // Google Calendar events imported for scheduling/availability purposes
+  // (mode: "calendar-block", set by importGoogleCalendarEvents) are stored
+  // in the jobs collection so they participate in overlap/availability
+  // checks, but they are not Apex business work - exclude them from every
+  // Jobs-tab/dashboard business computation below. They still show up in
+  // the separate Calendar tab (hq-launch-enhancements.js), and they still
+  // block booking availability server-side, since neither of those reads
+  // through this filtered array.
+  const businessJobs = useMemo(() => jobs.filter(j => j.mode !== "calendar-block"), [jobs]);
   const today = todayNZ(),
     pending = requests.filter(r => r.status === "pending"),
     newInquiries = inquiries.filter(i => i.status === "new"),
-    upcoming = jobs
+    upcoming = businessJobs
       .filter(j => j.bookingDate >= today && !["Archived", "Cancelled"].includes(j.status) && j.status !== "Quote Sent")
       .sort((a, b) => `${a.bookingDate}${a.bookingTime}`.localeCompare(`${b.bookingDate}${b.bookingTime}`)),
-    quotes = jobs.filter(j => ["Lead", "Quote Requested", "Quote Sent", "Approved"].includes(j.status)),
-    followups = jobs.filter(
+    quotes = businessJobs.filter(j => ["Lead", "Quote Requested", "Quote Sent", "Approved"].includes(j.status)),
+    followups = businessJobs.filter(
       j =>
         j.status === "Paid" || (j.followUpDueDate && j.followUpDueDate <= today) || (j.maintenanceDueDate && j.maintenanceDueDate <= today)
     ),
-    completed = jobs.filter(j => ["Completed", "Prepare Hnry Invoice", "Invoice Sent", "Paid", "Review Request Sent"].includes(j.status));
-  const activeJobsCount = jobs.filter(j => ["Booked", "In Progress"].includes(j.status)).length,
-    jobsNeedingInvoice = jobs.filter(j => j.status === "Completed").length;
-  const activeJob = jobs.find(j => j.status === "In Progress") || null;
+    completed = businessJobs.filter(j =>
+      ["Completed", "Prepare Hnry Invoice", "Invoice Sent", "Paid", "Review Request Sent"].includes(j.status)
+    );
+  const activeJobsCount = businessJobs.filter(j => ["Booked", "In Progress"].includes(j.status)).length,
+    jobsNeedingInvoice = businessJobs.filter(j => j.status === "Completed").length;
+  const activeJob = businessJobs.find(j => j.status === "In Progress") || null;
   const needsSyncCount = upcoming.filter(j => !j.calendarSyncStatus || ["failed", "not-connected"].includes(j.calendarSyncStatus)).length;
+  // "Today's jobs" and "Coming up" on the Jobs tab are just two date slices
+  // of `upcoming`, which is already the correct source: real Apex business
+  // jobs only, Archived/Cancelled/Quote Sent already excluded, sorted
+  // chronologically. No separate filtering logic to keep in sync.
+  const todaysJobs = upcoming.filter(j => j.bookingDate === today),
+    comingUpJobs = upcoming.filter(j => j.bookingDate > today);
+  const comingUpGroups = comingUpJobs.reduce((groups, job) => {
+    const label = comingUpDayLabel(job.bookingDate, today);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.jobs.push(job);
+    else groups.push({ label, jobs: [job] });
+    return groups;
+  }, []);
   const month = today.slice(0, 7),
-    monthRevenue = jobs
+    monthRevenue = businessJobs
       .filter(j => ["Paid", "Review Request Sent"].includes(j.status) && String(j.bookingDate || j.serviceDate || "").startsWith(month))
       .reduce((sum, j) => sum + Number(j.paidAmount || j.total || 0), 0);
   const revenueTrend = useMemo(() => {
-    const paidJobs = jobs.filter(j => ["Paid", "Review Request Sent"].includes(j.status));
+    const paidJobs = businessJobs.filter(j => ["Paid", "Review Request Sent"].includes(j.status));
     const points = [];
     for (let i = 29; i >= 0; i--) {
       const d = new Date(`${today}T00:00:00`);
@@ -1718,10 +1811,10 @@ function App() {
       points.push(total);
     }
     return points;
-  }, [jobs, today]);
+  }, [businessJobs, today]);
   const allPhotos = useMemo(
-    () => jobs.flatMap(j => (j.photos || []).map(p => ({ ...p, jobId: j.id, customerName: j.customerName, vehicle: vehicleOf(j) }))),
-    [jobs]
+    () => businessJobs.flatMap(j => (j.photos || []).map(p => ({ ...p, jobId: j.id, customerName: j.customerName, vehicle: vehicleOf(j) }))),
+    [businessJobs]
   );
   const photoCategoriesPresent = useMemo(() => photoCategories.filter(([value]) => allPhotos.some(p => p.category === value)), [allPhotos]);
   const visiblePhotos = useMemo(
@@ -2020,34 +2113,56 @@ function App() {
                 <Intro
                   title="Jobs"
                   text={
-                    activeJobsCount || jobsNeedingInvoice
+                    (activeJobsCount || jobsNeedingInvoice
                       ? `${activeJobsCount} active, ${jobsNeedingInvoice} ready to invoice.`
-                      : "Operational job pipeline, Hnry handoff, payment and review status."
+                      : "Operational job pipeline, Hnry handoff, payment and review status.") +
+                    (jobsLastRefreshed ? ` Last refreshed ${timeAgo({ seconds: jobsLastRefreshed / 1000 })}.` : "")
                   }
                 />
-                <button onClick={() => setJobModal(true)}>+ Add job</button>
+                <div className="detailActions">
+                  <button onClick={refreshJobs} disabled={jobsRefreshing}>
+                    {jobsRefreshing ? "Refreshing…" : "Refresh Jobs"}
+                  </button>
+                  <button onClick={() => setJobModal(true)}>+ Add job</button>
+                </div>
+              </div>
+
+              <Panel title="Today's jobs">
+                {todaysJobs.map(j => (
+                  <JobRow key={j.id} job={j} onOpen={() => setSelectedJob(j)} />
+                ))}
+                {!todaysJobs.length && <Empty text="No jobs booked for today." />}
+              </Panel>
+
+              <Panel title="Coming up">
+                {comingUpGroups.map(group => (
+                  <div key={group.label} className="comingUpGroup">
+                    <div className="apexDayHead">
+                      <strong>{group.label}</strong>
+                      <span>
+                        {group.jobs.length} job{group.jobs.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    {group.jobs.map(j => (
+                      <JobRow key={j.id} job={j} onOpen={() => setSelectedJob(j)} />
+                    ))}
+                  </div>
+                ))}
+                {!comingUpJobs.length && <Empty text="Nothing else scheduled yet." />}
+              </Panel>
+
+              <div className="sectionLead">
+                <h3>All jobs</h3>
               </div>
               <div className="table">
-                {[...jobs]
+                {[...businessJobs]
                   .filter(j => !["Lead", "Quote Requested", "Quote Sent"].includes(j.status))
                   .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
                   .map(j => (
-                    <div className="job" key={j.id} onClick={() => setSelectedJob(j)}>
-                      <i>JB</i>
-                      <div>
-                        <b className="pii">{j.customerName}</b>
-                        <span className="pii">{vehicleOf(j)}</span>
-                      </div>
-                      <div>
-                        <b>{j.packageName}</b>
-                        <span>{j.bookingDate ? `${formatDate(j.bookingDate)} - ${j.bookingTime || ""}` : "No booking date"}</span>
-                      </div>
-                      <strong className="pii">{money(j.total)}</strong>
-                      <span className={`statusPill status-${statusClass(j.status)}`}>{statusLabel(j.status)}</span>
-                    </div>
+                    <JobRow key={j.id} job={j} onOpen={() => setSelectedJob(j)} />
                   ))}
               </div>
-              {!jobs.length && <Empty text="No jobs saved yet." />}
+              {!businessJobs.length && <Empty text="No jobs saved yet." />}
             </>
           )}
           {tab === "customers" && (
@@ -2084,7 +2199,7 @@ function App() {
               )}
               <div className="customerGrid">
                 {visibleCustomers.map(c => {
-                  const history = jobs.filter(j => j.customerId === c.id),
+                  const history = businessJobs.filter(j => j.customerId === c.id),
                     vehicles = [...new Set(history.map(vehicleOf).filter(v => v !== "Vehicle not added"))];
                   return (
                     <article key={c.id} onClick={() => setSelectedCustomer(c)} style={{ cursor: "pointer" }}>
@@ -2192,7 +2307,7 @@ function App() {
                 title="Photos"
                 text={
                   allPhotos.length
-                    ? `${allPhotos.length} photo${allPhotos.length === 1 ? "" : "s"} across ${jobs.filter(j => j.photos?.length).length} job${jobs.filter(j => j.photos?.length).length === 1 ? "" : "s"}.`
+                    ? `${allPhotos.length} photo${allPhotos.length === 1 ? "" : "s"} across ${businessJobs.filter(j => j.photos?.length).length} job${businessJobs.filter(j => j.photos?.length).length === 1 ? "" : "s"}.`
                     : "Before, during, after and concern photos tied to the correct job."
                 }
               />
