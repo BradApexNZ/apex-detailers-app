@@ -89,9 +89,10 @@ const statusList = [
 ];
 const conditions = ["Light", "Average", "Heavy", "Extreme"];
 const addons = [
-  { id: "engine", name: "Engine Bay Detail", price: 79 },
-  { id: "petHair", name: "Pet Hair Removal", price: 39 },
-  { id: "odour", name: "Odour Treatment", price: 49 },
+  { id: "engine", name: "Engine bay clean", price: 50 },
+  { id: "petHair", name: "Pet hair removal", price: 50 },
+  { id: "odour", name: "Odour / ozone treatment", price: 35 },
+  { id: "headlight", name: "Headlight restoration", price: 79 },
   { id: "sand", name: "Heavy Sand Removal", price: 35 },
   { id: "mud", name: "Excessive Mud Removal", price: 35 },
   { id: "stains", name: "Stain Treatment", price: 25 },

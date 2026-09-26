@@ -1,4 +1,4 @@
-import { publicServicePackages } from "./booking-data";
+import { bookingAddons, publicServicePackages } from "./booking-data";
 
 const serviceAreas = ["Napier", "Hastings", "Havelock North", "Taradale", "Ahuriri", "Poraiti"];
 
@@ -9,21 +9,21 @@ const serviceAreas = ["Napier", "Hastings", "Havelock North", "Taradale", "Ahuri
 // priceFor() regardless of what this displays.
 const vehicleTypes = [
   { id: "small", label: "Sedan / hatch", adjustment: 0 },
-  { id: "suv", label: "SUV / wagon", adjustment: 15 },
+  { id: "suv", label: "SUV / wagon", adjustment: 0 },
   { id: "singlecab", label: "Single-cab ute", adjustment: 0 },
-  { id: "doublecab", label: "Double-cab ute", adjustment: 25 },
+  { id: "extracab", label: "Extra-cab ute", adjustment: 0 },
+  { id: "doublecab", label: "Double-cab ute", adjustment: 0 },
   { id: "cargovan", label: "Cargo van (no rear seats)", adjustment: 0 },
   { id: "passengervan", label: "Passenger van (with seats)", adjustment: null },
-  { id: "large", label: "7-seater / large SUV", adjustment: null },
-  { id: "americantruck", label: "American-size truck", adjustment: null },
+  { id: "large", label: "7-seater / large SUV (Land Cruiser, Prado, Everest, Patrol)", adjustment: null },
+  { id: "americantruck", label: "American-size truck (Ram, F-150, Silverado)", adjustment: null },
   { id: "other", label: "Other (truck, boat, digger, tractor, caravan)", adjustment: null }
 ];
-const TRADIE_CAB_ONLY_PRICE = 199;
-const TRADIE_CAB_ONLY_TYPES = new Set(["singlecab", "cargovan"]);
+const TRADIE_TIER_PRICE = { singlecab: 199, cargovan: 199, extracab: 219, doublecab: 269, large: 269, americantruck: 319 };
 
 function priceFor(service, vehicle) {
+  if (service.id === "tradie") return TRADIE_TIER_PRICE[vehicle.id] ?? (vehicle.adjustment == null ? null : service.price + vehicle.adjustment);
   if (vehicle.adjustment == null) return null;
-  if (service.id === "tradie" && TRADIE_CAB_ONLY_TYPES.has(vehicle.id)) return TRADIE_CAB_ONLY_PRICE;
   return service.price + vehicle.adjustment;
 }
 
@@ -41,6 +41,7 @@ export async function fallbackConfig() {
     note: "Your selected time is submitted as a booking request until Apex confirms the vehicle details and final price.",
     services: publicServicePackages,
     vehicleTypes,
+    addons: bookingAddons,
     pricing
   };
 }

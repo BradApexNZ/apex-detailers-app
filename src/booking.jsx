@@ -142,6 +142,7 @@ const blank = {
   vehicleModel: "",
   rego: "",
   condition: "normal",
+  addons: [],
   petHair: false,
   heavyStains: false,
   notes: "",
@@ -315,6 +316,10 @@ function Booking() {
   // and passenger van also have adjustment: null now, and this way the UI
   // automatically stays correct if that list changes again later.
   const needsCustomQuote = priceForSelected == null;
+  const addonList = config?.addons || [];
+  const addonTotal = addonList.filter(item => form.addons.includes(item.id)).reduce((sum, item) => sum + item.price, 0);
+  const totalForSelected = priceForSelected == null ? null : priceForSelected + addonTotal;
+  const toggleAddon = id => update("addons", form.addons.includes(id) ? form.addons.filter(value => value !== id) : [...form.addons, id]);
 
   async function findTimes() {
     if (!form.bookingDate) {
@@ -477,6 +482,18 @@ function Booking() {
               ))}
             </select>
           </label>
+          {addonList.length > 0 && !needsCustomQuote && (
+            <fieldset className="apexAddons">
+              <legend>Add-ons</legend>
+              {addonList.map(item => (
+                <label key={item.id} className="apexAddon">
+                  <input type="checkbox" checked={form.addons.includes(item.id)} onChange={() => toggleAddon(item.id)} />
+                  <span>{item.name}</span>
+                  <b>+{money(item.price)}</b>
+                </label>
+              ))}
+            </fieldset>
+          )}
           {needsCustomQuote ? (
             <div className="apexVehiclePricingNote apexVehiclePricingNote--quote">
               <strong>This one needs a custom quote.</strong>
@@ -487,7 +504,7 @@ function Booking() {
             </div>
           ) : (
             <div className="apexVehiclePricingNote">
-              <strong>From {money(priceForSelected)} for this vehicle type</strong>
+              <strong>From {money(totalForSelected)} for this vehicle{addonTotal ? " with add-ons" : ""}</strong>
               <span>Final price may vary depending on vehicle condition and the work required.</span>
             </div>
           )}
@@ -518,7 +535,7 @@ function Booking() {
           />
           <div className="summary">
             <span>{service.name}</span>
-            <b>from {money(priceForSelected)}</b>
+            <b>from {money(totalForSelected)}</b>
           </div>
           <button className="primary" onClick={findTimes} disabled={busy || !form.bookingDate}>
             {busy ? "Checking Calendar…" : "Show available times"}

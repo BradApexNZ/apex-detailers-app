@@ -2,15 +2,31 @@ export const servicePackages = [
   {
     id: "maintenance",
     name: "Maintenance Clean",
-    price: 150,
+    price: 179,
     durationMinutes: 180,
     publicBookable: false,
-    description: "For existing regular clients whose vehicle has already had a deep detail."
+    description: "Monthly maintenance visit for existing regular clients whose vehicle has already had a deep detail."
+  },
+  {
+    id: "maintenance2",
+    name: "Maintenance Clean (bimonthly)",
+    price: 199,
+    durationMinutes: 210,
+    publicBookable: false,
+    description: "Bimonthly maintenance visit (interior + exterior) for existing regular clients."
+  },
+  {
+    id: "kickoff",
+    name: "Kickoff Detail",
+    price: 279,
+    durationMinutes: 360,
+    publicBookable: false,
+    description: "Plan-only starting detail for Maintenance Clean clients, includes iron decontamination."
   },
   {
     id: "deep",
-    name: "Deep Interior Detail",
-    price: 179,
+    name: "Interior Revive",
+    price: 159,
     durationMinutes: 300,
     publicBookable: true,
     description: "A thorough interior reset with steam cleaning and extraction where required."
@@ -18,18 +34,26 @@ export const servicePackages = [
   {
     id: "full",
     name: "Full Detail",
-    price: 249,
+    price: 229,
     durationMinutes: 360,
     publicBookable: true,
-    description: "Deep interior detail plus exterior wash, wheels, tyres and glass."
+    description: "Deep interior detail plus exterior wash, wheels, tyres and glass. Excludes tar removal and paint decontamination."
+  },
+  {
+    id: "deluxe",
+    name: "Deluxe Full Detail",
+    price: 349,
+    durationMinutes: 420,
+    publicBookable: true,
+    description: "Full Detail plus tar removal, iron decontamination and paint correction."
   },
   {
     id: "tradie",
     name: "Tradie Reset",
-    price: 229,
+    price: 199,
     durationMinutes: 360,
     publicBookable: true,
-    description: "Heavy-duty reset for work utes and vans."
+    description: "Heavy-duty reset for work utes and vans. Priced by vehicle size."
   },
   {
     id: "seats",
@@ -39,6 +63,13 @@ export const servicePackages = [
     publicBookable: true,
     description: "Maximum-access interior reset, subject to suitability confirmation."
   }
+];
+
+export const bookingAddons = [
+  { id: "petHair", name: "Pet hair removal", price: 50 },
+  { id: "odour", name: "Odour / ozone treatment", price: 35 },
+  { id: "headlight", name: "Headlight restoration", price: 79 },
+  { id: "engine", name: "Engine bay clean", price: 50 }
 ];
 
 export const publicServicePackages = servicePackages.filter(item => item.publicBookable !== false);
@@ -52,11 +83,12 @@ export const vehicleTypes = [
   ["small", "Sedan / hatch"],
   ["suv", "SUV / wagon"],
   ["singlecab", "Single-cab ute"],
+  ["extracab", "Extra-cab ute"],
   ["doublecab", "Double-cab ute"],
   ["cargovan", "Cargo van (no rear seats)"],
   ["passengervan", "Passenger van (with seats)"],
-  ["large", "7-seater / large SUV"],
-  ["americantruck", "American-size truck"],
+  ["large", "7-seater / large SUV (Land Cruiser, Prado, Everest, Patrol)"],
+  ["americantruck", "American-size truck (Ram, F-150, Silverado)"],
   ["other", "Other (truck, boat, digger, tractor, caravan)"]
 ];
 

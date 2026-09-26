@@ -721,3 +721,8 @@
     width: 100%;
   }
 }
+
+.apexAddons { display: grid; gap: 8px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; padding: 12px 14px; margin: 0; }
+.apexAddons legend { padding: 0 6px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; }
+.apexAddon { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; cursor: pointer; }
+.apexAddon input { width: 18px; height: 18px; }
