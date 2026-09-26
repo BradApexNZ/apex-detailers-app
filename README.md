@@ -70,10 +70,11 @@ Apex HQ is configured as an installable progressive web app from `/hq`.
 
 ## Launch service catalogue
 
-- Maintenance Clean — $150, existing regular clients only and hidden from public booking
-- Deep Interior Detail — from $179
-- Full Detail — from $249
-- Tradie Reset — from $229
+- Maintenance Clean — $179/visit monthly or $199/visit bimonthly (Kickoff Detail $279, plan-only), existing regular clients only and hidden from public booking
+- Interior Revive — $159
+- Full Detail — $229 (excludes tar removal and paint decontamination)
+- Deluxe Full Detail — $349
+- Tradie Reset — $199 single cab, $219 extra cab, $269 double cab / large SUV, $319 American truck
 - Seats Out Reset — from $399, subject to suitability
 
 Customer-facing prices remain “from” prices until Apex confirms vehicle size and condition.

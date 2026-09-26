@@ -112,7 +112,7 @@ assert(
 );
 assert(
   "Public Maintenance Clean is blocked",
-  backend.includes('const publicServiceIds = new Set(["deep", "full", "tradie", "seats"])'),
+  backend.includes('const publicServiceIds = new Set(["deep", "full", "deluxe", "tradie", "seats"])'),
   "Maintenance Clean is for existing regular clients"
 );
 assert(

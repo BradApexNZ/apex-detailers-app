@@ -36,25 +36,46 @@ const services = [
   {
     id: "maintenance",
     name: "Maintenance Clean",
-    price: 150,
+    price: 179,
     durationMinutes: 180,
-    description: "For regular clients whose vehicle has already had a deep detail."
+    description: "Monthly maintenance visit (interior + exterior) for regular clients whose vehicle has already had a deep detail."
+  },
+  {
+    id: "maintenance2",
+    name: "Maintenance Clean (bimonthly)",
+    price: 199,
+    durationMinutes: 210,
+    description: "Bimonthly maintenance visit (interior + exterior) for regular clients."
+  },
+  {
+    id: "kickoff",
+    name: "Kickoff Detail",
+    price: 279,
+    durationMinutes: 360,
+    description: "Plan-only starting detail for Maintenance Clean clients, includes iron decontamination."
   },
   {
     id: "deep",
-    name: "Deep Interior Detail",
-    price: 179,
+    name: "Interior Revive",
+    price: 159,
     durationMinutes: 300,
     description: "A thorough interior reset with steam cleaning and extraction where required."
   },
   {
     id: "full",
     name: "Full Detail",
-    price: 249,
+    price: 229,
     durationMinutes: 360,
-    description: "Deep interior detail plus exterior wash, wheels, tyres and glass."
+    description: "Deep interior detail plus exterior wash, wheels, tyres and glass. Excludes tar removal and paint decontamination."
   },
-  { id: "tradie", name: "Tradie Reset", price: 229, durationMinutes: 360, description: "Heavy-duty reset for work utes and vans." },
+  {
+    id: "deluxe",
+    name: "Deluxe Full Detail",
+    price: 349,
+    durationMinutes: 420,
+    description: "Full Detail plus tar removal, iron decontamination and paint correction."
+  },
+  { id: "tradie", name: "Tradie Reset", price: 199, durationMinutes: 360, description: "Heavy-duty reset for work utes and vans. Priced by vehicle size." },
   {
     id: "seats",
     name: "Seats Out Reset",
@@ -63,36 +84,51 @@ const services = [
     description: "Maximum-access interior reset, subject to suitability confirmation."
   }
 ];
-const publicServiceIds = new Set(["deep", "full", "tradie", "seats"]);
+const publicServiceIds = new Set(["deep", "full", "deluxe", "tradie", "seats"]);
+
+// Optional extras a customer can tick when booking. Ids are stable; the
+// server always re-prices from this table and ignores any price the client sends.
+const addons = [
+  { id: "petHair", name: "Pet hair removal", price: 50 },
+  { id: "odour", name: "Odour / ozone treatment", price: 35 },
+  { id: "headlight", name: "Headlight restoration", price: 79 },
+  { id: "engine", name: "Engine bay clean", price: 50 }
+];
+const addonById = id => addons.find(item => item.id === id);
 
 // adjustment: null means "no fixed price" - Other is boats/diggers/tractors/
 // caravans/trucks, which can't get a flat quote and go through a manual
-// inquiry instead of the instant-booking flow.
+// inquiry instead of the instant-booking flow. Package prices are flat across
+// vehicle sizes; only Tradie Reset is tiered (see TRADIE_TIER_PRICE).
 const vehicleTypes = [
   { id: "small", label: "Sedan / hatch", adjustment: 0 },
-  { id: "suv", label: "SUV / wagon", adjustment: 15 },
+  { id: "suv", label: "SUV / wagon", adjustment: 0 },
   { id: "singlecab", label: "Single-cab ute", adjustment: 0 },
-  { id: "doublecab", label: "Double-cab ute", adjustment: 25 },
+  { id: "extracab", label: "Extra-cab ute", adjustment: 0 },
+  { id: "doublecab", label: "Double-cab ute", adjustment: 0 },
   { id: "cargovan", label: "Cargo van (no rear seats)", adjustment: 0 },
   { id: "passengervan", label: "Passenger van (with seats)", adjustment: null },
-  { id: "large", label: "7-seater / large SUV", adjustment: null },
-  { id: "americantruck", label: "American-size truck", adjustment: null },
+  { id: "large", label: "7-seater / large SUV (Land Cruiser, Prado, Everest, Patrol)", adjustment: null },
+  { id: "americantruck", label: "American-size truck (Ram, F-150, Silverado)", adjustment: null },
   { id: "other", label: "Other (truck, boat, digger, tractor, caravan)", adjustment: null }
 ];
 const vehicleTypeById = id => vehicleTypes.find(item => item.id === id) || vehicleTypes[0];
 
-// Tradie Reset is priced for the cab plus exterior by default. A single-cab
-// ute or a windowless cargo van has no back seat to clean, so both get a
-// flat lower price instead of the usual size adjustment. Anything with a
-// rear passenger area - double-cab and up, or a van with seats - uses the
-// normal base-price-plus-adjustment formula, same as every other service.
-const TRADIE_CAB_ONLY_PRICE = 199;
-const TRADIE_CAB_ONLY_TYPES = new Set(["singlecab", "cargovan"]);
+// Tradie Reset is tiered by vehicle size. Large SUVs and American trucks have a
+// fixed Tradie Reset price even though other packages still quote them manually.
+const TRADIE_TIER_PRICE = {
+  singlecab: 199,
+  cargovan: 199,
+  extracab: 219,
+  doublecab: 269,
+  large: 269,
+  americantruck: 319
+};
 
 function priceFor(serviceId, vehicleTypeId) {
   const vehicle = vehicleTypeById(vehicleTypeId);
+  if (serviceId === "tradie") return TRADIE_TIER_PRICE[vehicle.id] ?? (vehicle.adjustment == null ? null : serviceById(serviceId).price + vehicle.adjustment);
   if (vehicle.adjustment == null) return null;
-  if (serviceId === "tradie" && TRADIE_CAB_ONLY_TYPES.has(vehicle.id)) return TRADIE_CAB_ONLY_PRICE;
   return serviceById(serviceId).price + vehicle.adjustment;
 }
 
@@ -569,6 +605,7 @@ export const getPublicBookingConfig = onCall({ region: REGION, enforceAppCheck: 
     note: config.note,
     services: publicServices,
     vehicleTypes,
+    addons,
     pricing
   };
 });
@@ -681,7 +718,10 @@ export const submitBookingRequest = onCall(
     if (!vehicleTypes.some(vehicle => vehicle.id === requestedVehicleType)) {
       throw new HttpsError("invalid-argument", "Choose a valid vehicle type from the booking form.");
     }
-    const estimatedFromPrice = priceFor(requestedServiceId, requestedVehicleType);
+    const basePrice = priceFor(requestedServiceId, requestedVehicleType);
+    const requestedAddonIds = [...new Set([...(Array.isArray(input.addons) ? input.addons : []), ...(input.petHair ? ["petHair"] : [])].map(value => text(value, 30)))];
+    const chosenAddons = requestedAddonIds.map(addonById).filter(Boolean);
+    const estimatedFromPrice = basePrice == null ? null : basePrice + chosenAddons.reduce((sum, item) => sum + item.price, 0);
     if (estimatedFromPrice == null) {
       throw new HttpsError(
         "invalid-argument",
@@ -701,8 +741,11 @@ export const submitBookingRequest = onCall(
       rego: text(input.rego, 20).toUpperCase(),
       vehicleType: requestedVehicleType,
       condition: text(input.condition, 30),
-      petHair: Boolean(input.petHair),
+      petHair: chosenAddons.some(item => item.id === "petHair"),
       heavyStains: Boolean(input.heavyStains),
+      addons: chosenAddons.map(item => item.id),
+      addonNames: chosenAddons.map(item => item.name),
+      basePrice,
       notes: text(input.notes, 1500),
       bookingDate: text(input.bookingDate, 10),
       bookingTime: text(input.bookingTime, 5),
@@ -953,6 +996,8 @@ export const approveBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SE
       condition: item.condition,
       petHair: item.petHair,
       heavyStains: item.heavyStains,
+      addons: Array.isArray(item.addons) ? item.addons : [],
+      addonNames: Array.isArray(item.addonNames) ? item.addonNames : [],
       packageId: item.serviceId,
       packageName: item.serviceName,
       total: item.estimatedFromPrice,
