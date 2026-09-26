@@ -1,0 +1,20 @@
+{
+  "id": "/admin",
+  "name": "Apex Admin",
+  "short_name": "Apex Admin",
+  "description": "Approve Apex Detailers bookings and see today's and tomorrow's jobs.",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0d",
+  "theme_color": "#0a0a0d",
+  "lang": "en-NZ",
+  "categories": ["business", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "/apex-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/apex-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/apex-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
