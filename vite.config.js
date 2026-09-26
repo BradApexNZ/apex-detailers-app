@@ -14,7 +14,8 @@ export default defineConfig({
         hq: resolve(process.cwd(), "hq.html"),
         booking: resolve(process.cwd(), "booking.html"),
         dataTools: resolve(process.cwd(), "data-tools.html"),
-        marketing: resolve(process.cwd(), "marketing.html")
+        marketing: resolve(process.cwd(), "marketing.html"),
+        admin: resolve(process.cwd(), "admin.html")
       }
     }
   }
