@@ -40,6 +40,12 @@ const monthLabel = key => {
   const [y, m] = key.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-NZ", { month: "long", year: "numeric", timeZone: "UTC" });
 };
+const prettyDate = dateStr => {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+};
+const STEP_LABELS = ["Service", "Date", "Time", "Details"];
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 // A stalled network call otherwise leaves a button stuck on "Checking..." /
@@ -179,7 +185,9 @@ function Header() {
           <small>HAWKE'S BAY</small>
         </div>
       </div>
-      <a href="mailto:bookings@apexdetailers.co.nz">Contact Apex</a>
+      <a href="mailto:bookings@apexdetailers.co.nz" aria-label="Contact Apex Detailers">
+        Contact
+      </a>
     </header>
   );
 }
@@ -266,6 +274,13 @@ function Booking() {
   const [done, setDone] = useState(null);
 
   const update = (key, value) => setForm(old => ({ ...old, [key]: value }));
+  // An error from one step (e.g. a failed availability check) shouldn't
+  // follow the customer onto the next or previous step.
+  const goTo = next => {
+    setError("");
+    setStep(next);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const [loadingSeconds, setLoadingSeconds] = useState(0);
   useEffect(() => {
@@ -337,7 +352,7 @@ function Booking() {
         })
       );
       setSlots(result.slots || []);
-      if (result.slots?.length) setStep(3);
+      if (result.slots?.length) goTo(3);
       else setError("That day is full. Try another date or contact Apex.");
     } catch (err) {
       setError(err.message || "Could not safely check availability.");
@@ -427,24 +442,26 @@ function Booking() {
       <Header />
 
       <section className="hero">
-        <div>
-          <span className="eyebrow">MOBILE CAR DETAILING</span>
-          <h1>Book your vehicle in.</h1>
-          <p>Choose a public service and an available time. Your request lands inside Apex HQ for final approval.</p>
-        </div>
-        <aside>
-          <b>Napier</b>
-          <span>Hastings · Havelock North</span>
-        </aside>
+        <span className="eyebrow">MOBILE DETAILING · HAWKE'S BAY</span>
+        <h1>
+          Book your <em>detail.</em>
+        </h1>
+        <p>We come to you. Pick a service and a time that suits, and Brad will confirm your booking personally.</p>
+        <ul className="heroAreas" aria-label="Service areas">
+          <li>Napier</li>
+          <li>Hastings</li>
+          <li>Havelock North</li>
+        </ul>
       </section>
 
-      <div className="steps">
-        {[1, 2, 3, 4].map(number => (
-          <i key={number} className={number <= step ? "on" : ""}>
-            {number}
-          </i>
+      <ol className="steps" aria-label="Booking progress">
+        {STEP_LABELS.map((label, index) => (
+          <li key={label} className={index + 1 < step ? "done" : index + 1 === step ? "on" : ""}>
+            <i>{index + 1 < step ? "✓" : index + 1}</i>
+            <span>{label}</span>
+          </li>
         ))}
-      </div>
+      </ol>
 
       {error && <div className="error">{error}</div>}
 
@@ -462,18 +479,19 @@ function Booking() {
                   className={form.serviceId === item.id ? "selected" : ""}
                   onClick={() => update("serviceId", item.id)}
                 >
+                  <span className="radio" aria-hidden="true" />
                   <div>
                     <strong>{item.name}</strong>
                     <small>{item.description}</small>
                   </div>
                   <b>{price == null ? "POA" : `from ${money(price)}`}</b>
-                  <em>about {Math.round(item.durationMinutes / 30) / 2} hrs</em>
+                  <em>About {Math.round(item.durationMinutes / 30) / 2} hours</em>
                 </button>
               );
             })}
           </div>
-          <label>
-            Vehicle type
+          <label className="field">
+            <span>Vehicle type</span>
             <select value={form.vehicleType} onChange={event => update("vehicleType", event.target.value)}>
               {vehicleTypes.map(vehicle => (
                 <option key={vehicle.id} value={vehicle.id}>
@@ -485,13 +503,24 @@ function Booking() {
           {addonList.length > 0 && !needsCustomQuote && (
             <fieldset className="apexAddons">
               <legend>Add-ons</legend>
-              {addonList.map(item => (
-                <label key={item.id} className="apexAddon">
-                  <input type="checkbox" checked={form.addons.includes(item.id)} onChange={() => toggleAddon(item.id)} />
-                  <span>{item.name}</span>
-                  <b>+{money(item.price)}</b>
-                </label>
-              ))}
+              <div className="apexAddonGrid">
+                {addonList.map(item => {
+                  const on = form.addons.includes(item.id);
+                  return (
+                    <button
+                      type="button"
+                      key={item.id}
+                      className={`apexAddon${on ? " on" : ""}`}
+                      aria-pressed={on}
+                      onClick={() => toggleAddon(item.id)}
+                    >
+                      <i aria-hidden="true">{on ? "✓" : "+"}</i>
+                      <span>{item.name}</span>
+                      <b>{money(item.price)}</b>
+                    </button>
+                  );
+                })}
+              </div>
             </fieldset>
           )}
           {needsCustomQuote ? (
@@ -504,8 +533,14 @@ function Booking() {
             </div>
           ) : (
             <div className="apexVehiclePricingNote">
-              <strong>From {money(totalForSelected)} for this vehicle{addonTotal ? " with add-ons" : ""}</strong>
-              <span>Final price may vary depending on vehicle condition and the work required.</span>
+              <div>
+                <span>
+                  {service.name}
+                  {addonTotal ? ` + ${form.addons.length} add-on${form.addons.length > 1 ? "s" : ""}` : ""}
+                </span>
+                <small>Final price confirmed after Brad sees the vehicle.</small>
+              </div>
+              <strong>from {money(totalForSelected)}</strong>
             </div>
           )}
           {needsCustomQuote ? (
@@ -513,7 +548,7 @@ function Booking() {
               Email Apex for a quote
             </a>
           ) : (
-            <button className="primary" onClick={() => setStep(2)}>
+            <button className="primary" onClick={() => goTo(2)}>
               Choose a date →
             </button>
           )}
@@ -522,7 +557,7 @@ function Booking() {
 
       {step === 2 && (
         <section className="card">
-          <button className="back" onClick={() => setStep(1)}>
+          <button className="back" onClick={() => goTo(1)}>
             ← Back
           </button>
           <span className="eyebrow">02 — DATE</span>
@@ -545,11 +580,14 @@ function Booking() {
 
       {step === 3 && (
         <section className="card">
-          <button className="back" onClick={() => setStep(2)}>
+          <button className="back" onClick={() => goTo(2)}>
             ← Change date
           </button>
           <span className="eyebrow">03 — TIME</span>
-          <h2>Pick an available start.</h2>
+          <h2>Pick a start time.</h2>
+          <p className="stepNote">
+            {prettyDate(form.bookingDate)} · {service.name}
+          </p>
           <div className="slotGrid">
             {slots.map(slot => (
               <button
@@ -557,7 +595,7 @@ function Booking() {
                 onClick={() => {
                   update("bookingTime", slot.start);
                   update("bookingEndTime", slot.end);
-                  setStep(4);
+                  goTo(4);
                 }}
               >
                 <b>{slot.start}</b>
@@ -570,25 +608,56 @@ function Booking() {
 
       {step === 4 && (
         <section className="card">
-          <button className="back" onClick={() => setStep(3)}>
+          <button className="back" onClick={() => goTo(3)}>
             ← Change time
           </button>
           <span className="eyebrow">04 — DETAILS</span>
-          <h2>Tell Apex about the job.</h2>
+          <h2>Almost done.</h2>
+          <p className="stepNote">
+            {service.name} · {prettyDate(form.bookingDate)} at {form.bookingTime}
+          </p>
           <form className="form" onSubmit={submit}>
-            <label>
+            <span className="formGroup">Your details</span>
+            <label className="wide">
               Full name
-              <input required value={form.customerName} onChange={event => update("customerName", event.target.value)} />
+              <input
+                required
+                autoComplete="name"
+                value={form.customerName}
+                onChange={event => update("customerName", event.target.value)}
+              />
             </label>
             <label>
               Mobile
-              <input required inputMode="tel" value={form.phone} onChange={event => update("phone", event.target.value)} />
+              <input
+                required
+                type="tel"
+                autoComplete="tel"
+                inputMode="tel"
+                value={form.phone}
+                onChange={event => update("phone", event.target.value)}
+              />
             </label>
             <label>
               Email
-              <input required type="email" value={form.email} onChange={event => update("email", event.target.value)} />
+              <input
+                required
+                type="email"
+                autoComplete="email"
+                value={form.email}
+                onChange={event => update("email", event.target.value)}
+              />
             </label>
-            <label>
+            <label className="wide">
+              Address
+              <input
+                required
+                autoComplete="street-address"
+                value={form.address}
+                onChange={event => update("address", event.target.value)}
+              />
+            </label>
+            <label className="wide">
               Area
               <select value={form.area} onChange={event => update("area", event.target.value)}>
                 {config?.serviceAreas?.map(area => (
@@ -596,30 +665,48 @@ function Booking() {
                 ))}
               </select>
             </label>
-            <label className="wide">
-              Address
-              <input required value={form.address} onChange={event => update("address", event.target.value)} />
-            </label>
-            <label>
-              Year
-              <input value={form.vehicleYear} onChange={event => update("vehicleYear", event.target.value)} />
-            </label>
+            <span className="formGroup">Vehicle</span>
             <label>
               Make
-              <input required value={form.vehicleMake} onChange={event => update("vehicleMake", event.target.value)} />
+              <input required placeholder="Toyota" value={form.vehicleMake} onChange={event => update("vehicleMake", event.target.value)} />
             </label>
             <label>
               Model
-              <input required value={form.vehicleModel} onChange={event => update("vehicleModel", event.target.value)} />
+              <input
+                required
+                placeholder="Hilux"
+                value={form.vehicleModel}
+                onChange={event => update("vehicleModel", event.target.value)}
+              />
+            </label>
+            <label>
+              Year
+              <input
+                inputMode="numeric"
+                placeholder="2019"
+                value={form.vehicleYear}
+                onChange={event => update("vehicleYear", event.target.value)}
+              />
             </label>
             <label>
               Rego
               <input value={form.rego} onChange={event => update("rego", event.target.value.toUpperCase())} />
             </label>
             <label className="wide">
-              Notes
-              <textarea rows="4" value={form.notes} onChange={event => update("notes", event.target.value)} />
+              <span>
+                Notes <small>optional</small>
+              </span>
+              <textarea
+                rows="3"
+                placeholder="Pet hair, stains, access, anything Brad should know"
+                value={form.notes}
+                onChange={event => update("notes", event.target.value)}
+              />
             </label>
+            <div className="summary wide">
+              <span>Estimated total</span>
+              <b>from {money(totalForSelected)}</b>
+            </div>
             <label className="check wide">
               <input
                 required
