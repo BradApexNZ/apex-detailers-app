@@ -32,6 +32,51 @@ const vehicleOf = item => item.vehicle || [item.vehicleYear, item.vehicleMake, i
 const telOf = phone => `tel:${String(phone || "").replace(/\s/g, "")}`;
 const mapsOf = item => `https://maps.google.com/?q=${encodeURIComponent([item.address, item.area].filter(Boolean).join(", "))}`;
 
+const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+const isIos = () => /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+if ("serviceWorker" in navigator && window.isSecureContext) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/apex-admin-sw.js", { scope: "/admin", updateViaCache: "none" })
+      .catch(error => console.warn("Apex Admin install support could not start.", error));
+  });
+}
+
+// Offers "Install app" where the browser supports it (Android/desktop Chrome),
+// and Add to Home Screen instructions on iPhone, which has no install prompt.
+function useInstall(notify) {
+  const [prompt, setPrompt] = useState(null);
+  const [installed, setInstalled] = useState(isStandalone);
+  useEffect(() => {
+    const onPrompt = event => {
+      event.preventDefault();
+      setPrompt(event);
+    };
+    const onInstalled = () => {
+      setPrompt(null);
+      setInstalled(true);
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+  const canOffer = !installed && (Boolean(prompt) || isIos());
+  const install = async () => {
+    if (prompt) {
+      prompt.prompt();
+      await prompt.userChoice.catch(() => undefined);
+      setPrompt(null);
+    } else if (isIos()) {
+      notify("In Safari: tap Share, then Add to Home Screen.");
+    }
+  };
+  return { canOffer, install };
+}
+
 function Login({ error, busy, onGoogle, onEmail }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -176,6 +221,10 @@ function Admin() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
   const owner = Boolean(user && ownerUids.includes(user.uid));
+  const { canOffer: canInstall, install } = useInstall(message => {
+    setToast(message);
+    setTimeout(() => setToast(""), 6000);
+  });
   const today = dayKey(0);
   const tomorrow = dayKey(1);
 
@@ -280,6 +329,11 @@ function Admin() {
           <h1>{new Date().toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", timeZone: ZONE })}</h1>
         </div>
         <nav>
+          {canInstall && (
+            <button type="button" className="adminInstall" onClick={install}>
+              Install app
+            </button>
+          )}
           <a href="/hq">Full HQ</a>
           <button type="button" onClick={() => signOut(auth)}>
             Sign out
