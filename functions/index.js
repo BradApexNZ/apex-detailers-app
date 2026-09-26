@@ -75,7 +75,13 @@ const services = [
     durationMinutes: 420,
     description: "Full Detail plus tar removal, iron decontamination and paint correction."
   },
-  { id: "tradie", name: "Tradie Reset", price: 199, durationMinutes: 360, description: "Heavy-duty reset for work utes and vans. Priced by vehicle size." },
+  {
+    id: "tradie",
+    name: "Tradie Reset",
+    price: 199,
+    durationMinutes: 360,
+    description: "Heavy-duty reset for work utes and vans. Priced by vehicle size."
+  },
   {
     id: "seats",
     name: "Seats Out Reset",
@@ -127,7 +133,8 @@ const TRADIE_TIER_PRICE = {
 
 function priceFor(serviceId, vehicleTypeId) {
   const vehicle = vehicleTypeById(vehicleTypeId);
-  if (serviceId === "tradie") return TRADIE_TIER_PRICE[vehicle.id] ?? (vehicle.adjustment == null ? null : serviceById(serviceId).price + vehicle.adjustment);
+  if (serviceId === "tradie")
+    return TRADIE_TIER_PRICE[vehicle.id] ?? (vehicle.adjustment == null ? null : serviceById(serviceId).price + vehicle.adjustment);
   if (vehicle.adjustment == null) return null;
   return serviceById(serviceId).price + vehicle.adjustment;
 }
@@ -461,11 +468,13 @@ async function notifyRequest(data, config) {
               `<a href="mailto:${escapeHtml(data.email)}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.email)}</a>`
             ],
             ...bookingRows(data),
+            ["Add-ons", escapeHtml((Array.isArray(data.addonNames) ? data.addonNames : []).join(", ") || "None")],
+            ["Estimate", data.estimatedFromPrice != null ? `from $${escapeHtml(String(data.estimatedFromPrice))}` : "POA"],
             ["Type", escapeHtml(data.vehicleType || "")],
             ["Notes", data.notes ? escapeHtml(data.notes).replace(/\n/g, "<br>") : ""]
           ]),
-          p("Confirm or decline it in Apex HQ. Declining releases the time slot and lets the customer know."),
-          button(`${APP_BASE_URL.value()}/hq`, "Open Apex HQ"),
+          p("Approve or decline it in Apex Admin. Declining releases the time slot and lets the customer know."),
+          button(`${APP_BASE_URL.value()}/admin`, "Approve or decline"),
           noteBlock(
             `<strong style="color:#f5f1e6;">Need more information before confirming?</strong><br>Contact the customer on <a href="tel:${escapeHtml(String(data.phone || "").replace(/\s/g, ""))}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.phone)}</a> to request photos or discuss the vehicle. Their requested time slot will remain held while you review the booking.`
           )
@@ -719,7 +728,11 @@ export const submitBookingRequest = onCall(
       throw new HttpsError("invalid-argument", "Choose a valid vehicle type from the booking form.");
     }
     const basePrice = priceFor(requestedServiceId, requestedVehicleType);
-    const requestedAddonIds = [...new Set([...(Array.isArray(input.addons) ? input.addons : []), ...(input.petHair ? ["petHair"] : [])].map(value => text(value, 30)))];
+    const requestedAddonIds = [
+      ...new Set(
+        [...(Array.isArray(input.addons) ? input.addons : []), ...(input.petHair ? ["petHair"] : [])].map(value => text(value, 30))
+      )
+    ];
     const chosenAddons = requestedAddonIds.map(addonById).filter(Boolean);
     const estimatedFromPrice = basePrice == null ? null : basePrice + chosenAddons.reduce((sum, item) => sum + item.price, 0);
     if (estimatedFromPrice == null) {

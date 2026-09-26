@@ -37,6 +37,10 @@
         "destination": "/booking.html"
       },
       {
+        "source": "/admin",
+        "destination": "/admin.html"
+      },
+      {
         "source": "/tools",
         "destination": "/data-tools.html"
       },
@@ -50,6 +54,24 @@
       }
     ],
     "headers": [
+      {
+        "source": "/admin",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache,no-store,must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/admin.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache,no-store,must-revalidate"
+          }
+        ]
+      },
       {
         "source": "/hq",
         "headers": [
