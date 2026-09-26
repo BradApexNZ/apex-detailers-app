@@ -15,7 +15,10 @@
       // the booking form, not the HQ redirect every other hostname on this
       // Hosting site gets. The <meta refresh> above is a no-JS fallback and
       // stays pointed at /hq since that path can't be made hostname-aware.
-      window.location.replace(window.location.hostname === "book.apexdetailers.co.nz" ? "/book" : "/hq");
+      // admin.apexdetailers.co.nz is the same idea for the owner: it opens the
+      // stripped-down /admin approvals app.
+      const landing = { "book.apexdetailers.co.nz": "/book", "admin.apexdetailers.co.nz": "/admin" };
+      window.location.replace(landing[window.location.hostname] || "/hq");
     </script>
   </head>
   <body>
