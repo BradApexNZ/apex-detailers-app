@@ -113,6 +113,13 @@ function Login({ error, busy, onGoogle, onEmail }) {
 
 function RequestCard({ item, busy, onApprove, onDecline }) {
   const addons = Array.isArray(item.addonNames) ? item.addonNames : [];
+  // Two-tap decline instead of window.confirm, which some in-app browsers suppress.
+  const [confirmDecline, setConfirmDecline] = useState(false);
+  useEffect(() => {
+    if (!confirmDecline) return undefined;
+    const timer = setTimeout(() => setConfirmDecline(false), 4000);
+    return () => clearTimeout(timer);
+  }, [confirmDecline]);
   return (
     <article className="adminCard adminCard--pending">
       <header>
@@ -155,8 +162,17 @@ function RequestCard({ item, busy, onApprove, onDecline }) {
         )}
       </dl>
       <div className="adminActions">
-        <button type="button" className="danger" disabled={busy} onClick={() => onDecline(item)}>
-          Decline
+        <button
+          type="button"
+          className="danger"
+          disabled={busy}
+          onClick={() => {
+            if (!confirmDecline) return setConfirmDecline(true);
+            setConfirmDecline(false);
+            onDecline(item);
+          }}
+        >
+          {confirmDecline ? "Tap again to decline" : "Decline"}
         </button>
         <button type="button" className="primary" disabled={busy} onClick={() => onApprove(item)}>
           Approve
@@ -299,7 +315,6 @@ function Admin() {
   }
 
   async function decline(item) {
-    if (!confirm(`Decline ${item.customerName}'s request? The slot is released and they're emailed.`)) return;
     setBusy(true);
     try {
       await declineBookingRequest({ requestId: item.id });
