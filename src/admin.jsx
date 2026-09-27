@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from "firebase/auth";
 import { auth, authPersistenceReady, db } from "./firebase";
-import { approveBookingRequest, cancelBooking, declineBookingRequest } from "./apex-api";
+import { approveBookingRequest, cancelBooking, declineBookingRequest, getCalendarLinkStatus, startGoogleCalendarConnect } from "./apex-api";
 import { money } from "./booking-data";
 
 // Owner app: pending online requests to approve or decline, and upcoming jobs
@@ -233,6 +233,29 @@ function JobRow({ job, busy, onCancel, showDate = false }) {
   );
 }
 
+// Bookings reach Google Calendar and customer emails send through one Google
+// connection (the bookings@ account). This shows whether it's working and lets
+// the owner reconnect without HQ.
+function CalendarLink({ health, busy, onConnect }) {
+  if (!health) return null;
+  const ok = health.connected && health.healthy;
+  return (
+    <section className={`adminCard adminCalendar ${ok ? "is-ok" : "is-bad"}`}>
+      <div>
+        <strong>{ok ? "Google Calendar & email connected" : "Google Calendar & email not connected"}</strong>
+        <span>
+          {ok
+            ? `Bookings sync to ${health.email}. Your calendar events block those times online.`
+            : "New bookings won't reach your calendar and emails won't send. Connect as bookings@apexdetailers.co.nz."}
+        </span>
+      </div>
+      <button type="button" className={ok ? "secondary" : "primary"} disabled={busy} onClick={onConnect}>
+        {ok ? "Reconnect" : "Connect"}
+      </button>
+    </section>
+  );
+}
+
 function Section({ title, count, empty, children }) {
   return (
     <section className="adminSection">
@@ -255,6 +278,7 @@ function Admin() {
   const [dataError, setDataError] = useState("");
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
+  const [calendarHealth, setCalendarHealth] = useState(null);
   const owner = Boolean(user && ownerUids.includes(user.uid));
   const { canOffer: canInstall, install } = useInstall(message => {
     setToast(message);
@@ -298,6 +322,18 @@ function Admin() {
     return () => stops.forEach(stop => stop());
   }, [owner, today, horizon]);
 
+  useEffect(() => {
+    if (!owner) return;
+    if (new URLSearchParams(window.location.search).get("google") === "connected") {
+      window.history.replaceState(null, "", window.location.pathname);
+      setToast("Google Calendar connected.");
+      setTimeout(() => setToast(""), 4000);
+    }
+    getCalendarLinkStatus()
+      .then(setCalendarHealth)
+      .catch(err => setCalendarHealth({ connected: false, healthy: false, error: err.message }));
+  }, [owner]);
+
   const pending = useMemo(() => [...requests].sort(byTime), [requests]);
   const active = useMemo(
     () => jobs.filter(job => job.mode !== "calendar-block" && !INACTIVE.has(String(job.status || "").toLowerCase())).sort(byTime),
@@ -333,6 +369,17 @@ function Admin() {
       notify(err.message || "Could not approve booking.");
     }
     setBusy(false);
+  }
+
+  async function connectCalendar() {
+    setBusy(true);
+    try {
+      const { url } = await startGoogleCalendarConnect();
+      window.location.assign(url);
+    } catch (err) {
+      notify(err.message || "Could not start Google connection.");
+      setBusy(false);
+    }
   }
 
   async function cancel(job) {
@@ -388,6 +435,8 @@ function Admin() {
       </header>
 
       {dataError && <div className="adminError">{dataError}</div>}
+
+      <CalendarLink health={calendarHealth} busy={busy} onConnect={connectCalendar} />
 
       <Section title="Needs approval" count={pending.length} empty="No requests waiting.">
         {pending.map(item => (

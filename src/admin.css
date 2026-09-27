@@ -269,3 +269,40 @@
     align-items: flex-start;
   }
 }
+
+/* ---- Google Calendar link ---- */
+.adminCalendar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+.adminCalendar > div {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+  min-width: 0;
+}
+.adminCalendar strong {
+  font-size: 14px;
+}
+.adminCalendar span {
+  color: var(--paper-dim);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.adminCalendar.is-ok strong {
+  color: var(--good);
+}
+.adminCalendar.is-bad {
+  border-color: rgba(226, 113, 107, 0.4);
+  background: var(--bad-soft);
+}
+.adminCalendar.is-bad strong {
+  color: var(--bad);
+}
+.adminCalendar button {
+  flex: none;
+  width: auto;
+  padding: 9px 14px;
+}
