@@ -70,6 +70,7 @@ export const listBookingAvailability = availabilityCall;
 export const submitBookingRequest = bookingSubmitCall;
 export const approveBookingRequest = privateCall("approveBookingRequest");
 export const declineBookingRequest = privateCall("declineBookingRequest");
+export const cancelBooking = privateCall("cancelBooking");
 export const createManualBooking = privateCall("createManualBooking");
 export const syncJobToCalendar = privateCall("syncJobToCalendar");
 export const submitInquiry = privateCall("submitInquiry");

@@ -24,6 +24,7 @@ const OWNER_UIDS = defineString("APEX_OWNER_UIDS", {
 const OWNER_EMAIL = defineString("APEX_OWNER_EMAIL", { default: "bookings@apexdetailers.co.nz" });
 const APP_BASE_URL = defineString("APP_BASE_URL", { default: "https://apex-detailers.web.app" });
 const ADMIN_URL = defineString("ADMIN_URL", { default: "https://admin.apexdetailers.co.nz" });
+const BOOK_URL = defineString("BOOK_URL", { default: "https://book.apexdetailers.co.nz/book" });
 const GOOGLE_CALLBACK_URL = defineString("GOOGLE_CALLBACK_URL", {
   default: "https://australia-southeast1-apex-detailers.cloudfunctions.net/googleCalendarCallback"
 });
@@ -933,7 +934,7 @@ export const submitInquiry = onCall({ region: REGION, secrets: GOOGLE_SECRETS, e
             ]
           ]),
           p(escapeHtml(data.message).replace(/\n/g, "<br>")),
-          button(`${APP_BASE_URL.value()}/hq`, "Open Apex HQ")
+          button(`mailto:${encodeURIComponent(data.email)}`, `Reply to ${escapeHtml(data.name)}`)
         ].join("")
       })
     });
@@ -1134,13 +1135,59 @@ export const declineBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SE
         preheader: "The requested time has been released — pick another time whenever suits.",
         body: [
           p("Brad wasn't able to confirm that appointment. The time slot has been released, so it's no longer held."),
-          button(`${APP_BASE_URL.value()}/book`, "Choose another time"),
+          button(BOOK_URL.value(), "Choose another time"),
           p("Or reply to this email and Brad will help sort a time directly.")
         ].join("")
       })
     });
   }
   return { ok: true };
+});
+
+// Owner cancels a booked job from Apex Admin: frees the slot, removes the Calendar
+// event and (optionally) lets the customer know.
+export const cancelBooking = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
+  requireOwner(request);
+  const jobId = text(request.data?.jobId, 80);
+  const notifyCustomer = request.data?.notifyCustomer !== false;
+  if (!jobId) throw new HttpsError("invalid-argument", "Choose a job to cancel.");
+  const reference = db.doc(`jobs/${jobId}`);
+  const snapshot = await reference.get();
+  if (!snapshot.exists) throw new HttpsError("not-found", "Job not found.");
+  const job = snapshot.data();
+  if (job.status === "Cancelled") return { ok: true, alreadyCancelled: true };
+  await reference.set(
+    {
+      status: "Cancelled",
+      statusHistory: FieldValue.arrayUnion({ status: "Cancelled", at: new Date().toISOString() }),
+      cancelledAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
+    },
+    { merge: true }
+  );
+  const locks = await db.collection("bookingLocks").where("jobId", "==", jobId).get();
+  await Promise.all(locks.docs.map(document => document.ref.delete()));
+  await deleteCalendarEvent(job.calendarEventId, job.calendarId || job.sourceCalendarId || "");
+  await reference.set({ calendarSyncStatus: "cancelled", calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });
+  const config = await getSettings();
+  let emailed = false;
+  if (notifyCustomer && config.customerEmails && job.email) {
+    emailed = await sendMail({
+      to: job.email,
+      subject: "Your Apex booking has been cancelled",
+      html: emailShell({
+        eyebrow: "BOOKING CANCELLED",
+        heading: "Your booking has been cancelled.",
+        preheader: `${job.packageName || "Your booking"} on ${prettyDate(job.bookingDate)} at ${job.bookingTime} is cancelled.`,
+        body: [
+          detailPanel(bookingRows(job)),
+          p("This appointment is no longer booked. If you'd like another time, you can book online or just reply to this email."),
+          button(BOOK_URL.value(), "Book another time")
+        ].join("")
+      })
+    });
+  }
+  return { ok: true, emailed };
 });
 
 export const createManualBooking = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
@@ -1518,6 +1565,9 @@ export const syncJobToCalendar = onCall({ region: REGION, secrets: GOOGLE_SECRET
   const job = { jobId: snapshot.id, ...snapshot.data() };
   if (["Cancelled", "Archived"].includes(job.status)) {
     await deleteCalendarEvent(job.calendarEventId, job.calendarId || job.sourceCalendarId || "");
+    // Release the slot so the public booking page offers it again.
+    const locks = await db.collection("bookingLocks").where("jobId", "==", snapshot.id).get();
+    await Promise.all(locks.docs.map(document => document.ref.delete()));
     await reference.set({ calendarSyncStatus: "cancelled", calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });
     return { eventId: "", calendarId: job.calendarId || job.sourceCalendarId || "", cancelled: true };
   }

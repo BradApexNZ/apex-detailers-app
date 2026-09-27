@@ -102,6 +102,7 @@ jobs:
             submitBookingRequest
             approveBookingRequest
             declineBookingRequest
+            cancelBooking
             createManualBooking
             syncJobToCalendar
             submitInquiry
