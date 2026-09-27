@@ -64,6 +64,9 @@ const longDate = dateStr => {
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 };
+// Midnight-to-midnight events (e.g. a whole-day block) read as "All day".
+const isAllDay = item => item.allDay || (item.bookingTime === "00:00" && (!item.bookingEndTime || item.bookingEndTime === "00:00"));
+const timeRange = item => (isAllDay(item) ? "All day" : `${item.bookingTime || ""}${item.bookingEndTime ? `–${item.bookingEndTime}` : ""}`);
 const INACTIVE = new Set(["cancelled", "declined", "deleted"]);
 const byTime = (a, b) => `${a.bookingDate} ${a.bookingTime}`.localeCompare(`${b.bookingDate} ${b.bookingTime}`);
 const vehicleOf = item => item.vehicle || [item.vehicleYear, item.vehicleMake, item.vehicleModel].filter(Boolean).join(" ");
@@ -352,7 +355,7 @@ function JobRow({ job, busy, onCancel, onOpen, showDate = false }) {
 function EventRow({ event, onOpen }) {
   return (
     <button type="button" className="adminEvent" onClick={() => onOpen({ kind: "event", ...event })}>
-      <time>{event.allDay ? "All day" : `${event.bookingTime}${event.bookingEndTime ? `–${event.bookingEndTime}` : ""}`}</time>
+      <time>{timeRange(event)}</time>
       <span>{event.title}</span>
     </button>
   );
@@ -480,9 +483,7 @@ function DetailSheet({ item, busy, onClose, onCancel, onApprove, onDecline }) {
   }, [armed]);
   if (!item) return null;
   const addons = Array.isArray(item.addonNames) ? item.addonNames : [];
-  const when = `${longDate(item.bookingDate)}${
-    item.allDay ? " · all day" : item.bookingTime ? ` · ${item.bookingTime}${item.bookingEndTime ? `–${item.bookingEndTime}` : ""}` : ""
-  }`;
+  const when = `${longDate(item.bookingDate)}${item.bookingTime || item.allDay ? ` · ${timeRange(item)}` : ""}`;
   const price = item.kind === "job" ? item.total : item.estimatedFromPrice;
   const twoTap = (key, run) => () => {
     if (armed !== key) return setArmed(key);
@@ -493,7 +494,7 @@ function DetailSheet({ item, busy, onClose, onCancel, onApprove, onDecline }) {
     <div className="adminSheetBackdrop" onClick={onClose}>
       <section className="adminSheet" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
         <span className="eyebrow">
-          {item.kind === "event" ? item.calendarName || "Your calendar" : item.kind === "request" ? "Booking request" : "Booking"}
+          {item.kind === "event" ? "Your calendar" : item.kind === "request" ? "Booking request" : "Booking"}
         </span>
         <h2>{item.kind === "event" ? item.title : item.customerName || "Customer"}</h2>
         <p className="adminSheetWhen">{when}</p>
@@ -827,7 +828,10 @@ function Admin() {
     const byId = new Map([...monthActive, ...active].map(job => [job.id, job]));
     return [...byId.values()].sort(byTime);
   }, [monthActive, active]);
-  const sortedEvents = useMemo(() => [...events].sort((a, b) => `${a.bookingDate} ${a.allDay ? "" : a.bookingTime}`.localeCompare(`${b.bookingDate} ${b.allDay ? "" : b.bookingTime}`)), [events]);
+  const sortedEvents = useMemo(
+    () => [...events].sort((a, b) => `${a.bookingDate} ${isAllDay(a) ? "" : a.bookingTime}`.localeCompare(`${b.bookingDate} ${isAllDay(b) ? "" : b.bookingTime}`)),
+    [events]
+  );
   const markers = useMemo(() => {
     const out = {};
     const bump = (day, key) => {
