@@ -11,6 +11,7 @@ import {
   getCalendarLinkStatus,
   getGoogleCalendarEvents,
   registerOwnerDevice,
+  reportPinLockout,
   startGoogleCalendarConnect
 } from "./apex-api";
 import { money } from "./booking-data";
@@ -818,7 +819,12 @@ function PinScreen({ mode, user, onDone, onSignOut }) {
     }
     const result = await checkPin(user.uid, value);
     if (result.ok) return onDone();
-    if (result.remaining <= 0) return onSignOut("Too many wrong PINs. Sign in again to continue.");
+    if (result.remaining <= 0) {
+      setMessage("Too many wrong PINs. Signing out…");
+      // Email the owner while still signed in, then sign out.
+      await reportPinLockout({ userAgent: navigator.userAgent }).catch(() => undefined);
+      return onSignOut("Too many wrong PINs, so Apex Admin signed out. We've emailed you — sign in again to set a new PIN.");
+    }
     fail(`Wrong PIN. ${result.remaining} ${result.remaining === 1 ? "try" : "tries"} left.`);
   }
 

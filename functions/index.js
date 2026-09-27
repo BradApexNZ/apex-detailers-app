@@ -1229,6 +1229,64 @@ async function pushToOwners({ title, body, url }) {
   }
 }
 
+// Five wrong PINs in Apex Admin: the app signs itself out and calls this first
+// (while still signed in) so the owner gets a security email with a way back in.
+function describeDevice(userAgent = "") {
+  const os = /iPhone|iPad/.test(userAgent)
+    ? "iPhone"
+    : /Android/.test(userAgent)
+      ? "Android phone"
+      : /Mac OS X/.test(userAgent)
+        ? "Mac"
+        : /Windows/.test(userAgent)
+          ? "Windows PC"
+          : "Unknown device";
+  const browser = /EdgA?\//.test(userAgent)
+    ? "Edge"
+    : /CriOS|Chrome\//.test(userAgent)
+      ? "Chrome"
+      : /FxiOS|Firefox\//.test(userAgent)
+        ? "Firefox"
+        : /Safari\//.test(userAgent)
+          ? "Safari"
+          : "";
+  return browser ? `${os} (${browser})` : os;
+}
+
+export const reportPinLockout = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {
+  requireOwner(request);
+  const to = request.auth.token?.email || OWNER_EMAIL.value();
+  const marker = db.doc(`securityAlerts/${request.auth.uid}`);
+  const last = (await marker.get()).data()?.lastLockoutAt?.toMillis?.() || 0;
+  if (Date.now() - last < 10 * 60000) return { ok: true, throttled: true };
+  await marker.set({ lastLockoutAt: FieldValue.serverTimestamp() }, { merge: true });
+  const when = DateTime.now().setZone(ZONE.value()).toFormat("cccc d LLLL, h:mm a");
+  const device = describeDevice(text(request.data?.userAgent, 400));
+  const sent = await sendMail({
+    to,
+    subject: "Security alert — 5 wrong PINs on Apex Admin",
+    html: emailShell({
+      eyebrow: "SECURITY ALERT",
+      heading: "Someone tried to get into Apex Admin.",
+      preheader: `5 wrong PINs on ${device} at ${when}. Apex Admin has been signed out.`,
+      body: [
+        statusStrip("Signed out for safety", "After 5 wrong PINs, Apex Admin signed out on that device and cleared its PIN."),
+        detailPanel([
+          ["When", escapeHtml(when)],
+          ["Device", escapeHtml(device)],
+          ["Account", escapeHtml(to)]
+        ]),
+        p('<strong style="color:#f5f1e6;">If this was you</strong> — no stress. Tap below, sign in with Google and set a new PIN.'),
+        button(`${ADMIN_URL.value()}/admin`, "Sign back in"),
+        noteBlock(
+          '<strong style="color:#f5f1e6;">If it wasn\'t you</strong>, your bookings are still safe: nobody can get in without your Google sign-in too. To be extra careful, change your Google password.'
+        )
+      ].join("")
+    })
+  });
+  return { ok: true, emailed: sent };
+});
+
 export const registerOwnerDevice = onCall({ region: REGION }, async request => {
   requireOwner(request);
   const token = text(request.data?.token, 4096);
