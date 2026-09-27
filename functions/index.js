@@ -23,6 +23,7 @@ const OWNER_UIDS = defineString("APEX_OWNER_UIDS", {
 });
 const OWNER_EMAIL = defineString("APEX_OWNER_EMAIL", { default: "bookings@apexdetailers.co.nz" });
 const APP_BASE_URL = defineString("APP_BASE_URL", { default: "https://apex-detailers.web.app" });
+const ADMIN_URL = defineString("ADMIN_URL", { default: "https://admin.apexdetailers.co.nz" });
 const GOOGLE_CALLBACK_URL = defineString("GOOGLE_CALLBACK_URL", {
   default: "https://australia-southeast1-apex-detailers.cloudfunctions.net/googleCalendarCallback"
 });
@@ -474,7 +475,7 @@ async function notifyRequest(data, config) {
             ["Notes", data.notes ? escapeHtml(data.notes).replace(/\n/g, "<br>") : ""]
           ]),
           p("Log in to Apex Admin to approve or decline it. Declining releases the time slot and lets the customer know."),
-          button(`${APP_BASE_URL.value()}/admin`, "Log in to Admin"),
+          button(ADMIN_URL.value(), "Log in to Admin"),
           noteBlock(
             `<strong style="color:#f5f1e6;">Need more information before confirming?</strong><br>Contact the customer on <a href="tel:${escapeHtml(String(data.phone || "").replace(/\s/g, ""))}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.phone)}</a> to request photos or discuss the vehicle. Their requested time slot will remain held while you review the booking.`
           )
@@ -526,7 +527,7 @@ async function notifyConfirmed(data, config) {
             ],
             ...bookingRows(data)
           ]),
-          button(`${APP_BASE_URL.value()}/admin`, "Log in to Admin")
+          button(ADMIN_URL.value(), "Log in to Admin")
         ].join("")
       })
     });
