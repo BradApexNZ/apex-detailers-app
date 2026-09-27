@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { initializeApp } from "firebase-admin/app";
 import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
+import { getMessaging } from "firebase-admin/messaging";
 import { defineSecret, defineString } from "firebase-functions/params";
 import { HttpsError, onCall, onRequest } from "firebase-functions/v2/https";
 import { google } from "googleapis";
@@ -884,6 +885,13 @@ export const submitBookingRequest = onCall(
       );
     }
     const config = bookingConfig;
+    await pushToOwners({
+      title: `New booking request — ${data.customerName}`,
+      body: `${service.name} · ${prettyDate(data.bookingDate)} ${data.bookingTime}${
+        data.estimatedFromPrice != null ? ` · from $${data.estimatedFromPrice}` : ""
+      }`,
+      url: `${ADMIN_URL.value()}/admin`
+    });
     const emails = await notifyRequest(data, config);
     await requestReference.set({ emailStatus: emails }, { merge: true });
     return {
@@ -1188,6 +1196,47 @@ export const cancelBooking = onCall({ region: REGION, secrets: GOOGLE_SECRETS },
     });
   }
   return { ok: true, emailed };
+});
+
+// Phone notifications for the owner app. Each installed Apex Admin registers an
+// FCM token; new booking requests push to all of them. Never throws - a push
+// failure must not break a customer's booking.
+async function pushToOwners({ title, body, url }) {
+  try {
+    const devices = await db.collection("ownerDevices").get();
+    if (devices.empty) return;
+    await Promise.all(
+      devices.docs.map(async document => {
+        try {
+          await getMessaging().send({
+            token: document.data().token,
+            webpush: { data: { title, body, url }, headers: { Urgency: "high", TTL: "86400" } }
+          });
+        } catch (error) {
+          const code = error?.errorInfo?.code || error?.code || "";
+          if (/registration-token-not-registered|invalid-argument|invalid-registration-token/.test(code)) await document.ref.delete();
+          else console.error("Owner push failed", code, error?.message);
+        }
+      })
+    );
+  } catch (error) {
+    console.error("Owner push lookup failed", error);
+  }
+}
+
+export const registerOwnerDevice = onCall({ region: REGION }, async request => {
+  requireOwner(request);
+  const token = text(request.data?.token, 4096);
+  if (!token) throw new HttpsError("invalid-argument", "Missing notification token.");
+  const id = crypto.createHash("sha256").update(token).digest("hex").slice(0, 40);
+  await db.doc(`ownerDevices/${id}`).set(
+    { token, uid: request.auth.uid, userAgent: text(request.data?.userAgent, 300), updatedAt: FieldValue.serverTimestamp() },
+    { merge: true }
+  );
+  if (request.data?.test) {
+    await pushToOwners({ title: "Apex Admin notifications are on", body: "You'll get a buzz here for every new booking request.", url: `${ADMIN_URL.value()}/admin` });
+  }
+  return { ok: true };
 });
 
 export const createManualBooking = onCall({ region: REGION, secrets: GOOGLE_SECRETS }, async request => {

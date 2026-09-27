@@ -103,6 +103,7 @@ jobs:
             approveBookingRequest
             declineBookingRequest
             cancelBooking
+            registerOwnerDevice
             createManualBooking
             syncJobToCalendar
             submitInquiry
