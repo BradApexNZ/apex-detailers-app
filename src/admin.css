@@ -245,6 +245,18 @@
   font-size: 12.5px;
   font-weight: 700;
 }
+.adminJobLinks .adminJobCancel {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--paper-faint);
+  font: inherit;
+  cursor: pointer;
+}
+.adminJobLinks .adminJobCancel:disabled {
+  opacity: 0.5;
+}
 
 .adminTop nav .adminInstall {
   border-color: var(--gold-line);

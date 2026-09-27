@@ -3,11 +3,11 @@ import { createRoot } from "react-dom/client";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from "firebase/auth";
 import { auth, authPersistenceReady, db } from "./firebase";
-import { approveBookingRequest, declineBookingRequest } from "./apex-api";
+import { approveBookingRequest, cancelBooking, declineBookingRequest } from "./apex-api";
 import { money } from "./booking-data";
 
-// Stripped-down owner view: pending online requests to approve or decline, and
-// what's on today and tomorrow. Everything else lives in the full HQ at /hq.
+// Owner app: pending online requests to approve or decline, and upcoming jobs
+// (today, tomorrow, the next fortnight) with cancel. Runs independently of HQ.
 const ownerUids = (
   import.meta.env.VITE_APEX_OWNER_UIDS || "fnc4G85CtmQVy0OooOzfOoSC9u22,FqDrn1aPFHXUB5ogb2rN9D7mRG42,maefd5cQ9qcIKSeU4b3yZKUL8UW2"
 )
@@ -182,11 +182,18 @@ function RequestCard({ item, busy, onApprove, onDecline }) {
   );
 }
 
-function JobRow({ job }) {
+function JobRow({ job, busy, onCancel, showDate = false }) {
   const addons = Array.isArray(job.addonNames) ? job.addonNames : [];
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  useEffect(() => {
+    if (!confirmCancel) return undefined;
+    const timer = setTimeout(() => setConfirmCancel(false), 4000);
+    return () => clearTimeout(timer);
+  }, [confirmCancel]);
   return (
     <article className="adminCard adminJob">
       <time>
+        {showDate && <small>{prettyDate(job.bookingDate)}</small>}
         {job.bookingTime || "—"}
         {job.bookingEndTime && <small>{job.bookingEndTime}</small>}
       </time>
@@ -207,6 +214,18 @@ function JobRow({ job }) {
             </a>
           )}
           {job.phone && <a href={telOf(job.phone)}>Call</a>}
+          <button
+            type="button"
+            className="adminJobCancel"
+            disabled={busy}
+            onClick={() => {
+              if (!confirmCancel) return setConfirmCancel(true);
+              setConfirmCancel(false);
+              onCancel(job);
+            }}
+          >
+            {confirmCancel ? "Tap again to cancel" : "Cancel"}
+          </button>
         </div>
       </div>
       {job.total != null && <b>{money(job.total)}</b>}
@@ -243,6 +262,7 @@ function Admin() {
   });
   const today = dayKey(0);
   const tomorrow = dayKey(1);
+  const horizon = dayKey(14);
 
   useEffect(
     () =>
@@ -270,13 +290,13 @@ function Admin() {
         fail("booking requests")
       ),
       onSnapshot(
-        query(collection(db, "jobs"), where("bookingDate", "in", [today, tomorrow])),
+        query(collection(db, "jobs"), where("bookingDate", ">=", today), where("bookingDate", "<=", horizon)),
         s => setJobs(s.docs.map(d => ({ id: d.id, ...d.data() }))),
         fail("jobs")
       )
     ];
     return () => stops.forEach(stop => stop());
-  }, [owner, today, tomorrow]);
+  }, [owner, today, horizon]);
 
   const pending = useMemo(() => [...requests].sort(byTime), [requests]);
   const active = useMemo(
@@ -285,6 +305,7 @@ function Admin() {
   );
   const todayJobs = active.filter(job => job.bookingDate === today);
   const tomorrowJobs = active.filter(job => job.bookingDate === tomorrow);
+  const laterJobs = active.filter(job => job.bookingDate > tomorrow);
 
   const notify = message => {
     setToast(message);
@@ -310,6 +331,17 @@ function Admin() {
       notify(`${item.customerName} confirmed. Calendar updated and email sent.`);
     } catch (err) {
       notify(err.message || "Could not approve booking.");
+    }
+    setBusy(false);
+  }
+
+  async function cancel(job) {
+    setBusy(true);
+    try {
+      const result = await cancelBooking({ jobId: job.id });
+      notify(result?.emailed ? `${job.customerName} cancelled and emailed. Slot released.` : `${job.customerName} cancelled. Slot released.`);
+    } catch (err) {
+      notify(err.message || "Could not cancel booking.");
     }
     setBusy(false);
   }
@@ -349,7 +381,6 @@ function Admin() {
               Install app
             </button>
           )}
-          <a href="/hq">Full HQ</a>
           <button type="button" onClick={() => signOut(auth)}>
             Sign out
           </button>
@@ -366,13 +397,19 @@ function Admin() {
 
       <Section title="Today" count={todayJobs.length} empty="Nothing booked today.">
         {todayJobs.map(job => (
-          <JobRow key={job.id} job={job} />
+          <JobRow key={job.id} job={job} busy={busy} onCancel={cancel} />
         ))}
       </Section>
 
       <Section title="Tomorrow" count={tomorrowJobs.length} empty="Nothing booked tomorrow.">
         {tomorrowJobs.map(job => (
-          <JobRow key={job.id} job={job} />
+          <JobRow key={job.id} job={job} busy={busy} onCancel={cancel} />
+        ))}
+      </Section>
+
+      <Section title="Coming up" count={laterJobs.length} empty="Nothing else booked in the next two weeks.">
+        {laterJobs.map(job => (
+          <JobRow key={job.id} job={job} busy={busy} onCancel={cancel} showDate />
         ))}
       </Section>
 
