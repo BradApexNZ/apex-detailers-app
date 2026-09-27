@@ -1518,6 +1518,9 @@ export const syncJobToCalendar = onCall({ region: REGION, secrets: GOOGLE_SECRET
   const job = { jobId: snapshot.id, ...snapshot.data() };
   if (["Cancelled", "Archived"].includes(job.status)) {
     await deleteCalendarEvent(job.calendarEventId, job.calendarId || job.sourceCalendarId || "");
+    // Release the slot so the public booking page offers it again.
+    const locks = await db.collection("bookingLocks").where("jobId", "==", snapshot.id).get();
+    await Promise.all(locks.docs.map(document => document.ref.delete()));
     await reference.set({ calendarSyncStatus: "cancelled", calendarSyncedAt: FieldValue.serverTimestamp() }, { merge: true });
     return { eventId: "", calendarId: job.calendarId || job.sourceCalendarId || "", cancelled: true };
   }
