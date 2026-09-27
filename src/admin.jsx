@@ -2,8 +2,16 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from "firebase/auth";
-import { auth, authPersistenceReady, db } from "./firebase";
-import { approveBookingRequest, cancelBooking, declineBookingRequest, getCalendarLinkStatus, startGoogleCalendarConnect } from "./apex-api";
+import { getMessaging, getToken, isSupported as messagingSupported } from "firebase/messaging";
+import { app, auth, authPersistenceReady, db } from "./firebase";
+import {
+  approveBookingRequest,
+  cancelBooking,
+  declineBookingRequest,
+  getCalendarLinkStatus,
+  registerOwnerDevice,
+  startGoogleCalendarConnect
+} from "./apex-api";
 import { money } from "./booking-data";
 
 // Owner app: pending online requests to approve or decline, and upcoming jobs
@@ -75,6 +83,72 @@ function useInstall(notify) {
     }
   };
   return { canOffer, install };
+}
+
+// Web push public key (Firebase console > Project settings > Cloud Messaging >
+// Web Push certificates). Public by design; the private half stays with Firebase.
+const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || "BJMkP2xQs1EQywETeYkzY8Po_uzW5MmgZGUUGHMybI82y0jQSS6QMTHOG5AckzUMi35__CDztdPFwbzr3w_ZWFs";
+
+// Booking-request notifications. iPhone only allows web push from the installed
+// home-screen app, and permission must be asked from a tap.
+function useNotifications(owner, notify) {
+  const [status, setStatus] = useState("checking");
+  const register = async test => {
+    const registration =
+      (await navigator.serviceWorker.getRegistration("/admin")) ||
+      (await navigator.serviceWorker.register("/apex-admin-sw.js", { scope: "/admin", updateViaCache: "none" }));
+    await navigator.serviceWorker.ready;
+    const token = await getToken(getMessaging(app), { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
+    if (!token) throw new Error("No notification token.");
+    await registerOwnerDevice({ token, userAgent: navigator.userAgent, test });
+  };
+  useEffect(() => {
+    if (!owner) return;
+    (async () => {
+      const supported = "Notification" in window && "serviceWorker" in navigator && (await messagingSupported().catch(() => false));
+      if (!supported) return setStatus(isIos() && !isStandalone() ? "install-first" : "unsupported");
+      if (Notification.permission === "granted") {
+        setStatus("on");
+        // Refresh the token quietly each launch so it never goes stale.
+        register(false).catch(err => console.warn("Notification token refresh failed", err));
+      } else setStatus(Notification.permission === "denied" ? "blocked" : "off");
+    })();
+  }, [owner]);
+  const enable = async () => {
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") return setStatus(permission === "denied" ? "blocked" : "off");
+      await register(true);
+      setStatus("on");
+      notify("Notifications on. A test one is on its way.");
+    } catch (err) {
+      console.error("Enable notifications failed", err);
+      notify(err.message || "Could not turn on notifications.");
+    }
+  };
+  return { status, enable };
+}
+
+function NotifyCard({ status, onEnable }) {
+  if (status === "on" || status === "checking" || status === "unsupported") return null;
+  const copy = {
+    off: ["Turn on booking notifications", "Get a buzz on this phone the moment someone requests a booking."],
+    blocked: ["Notifications are blocked", "Turn them on in your phone's Settings > Notifications > Apex Admin."],
+    "install-first": ["Want booking notifications?", "Add Apex Admin to your Home Screen first (Share > Add to Home Screen), then open it from there."]
+  }[status];
+  return (
+    <section className="adminCard adminCalendar is-bad">
+      <div>
+        <strong>{copy[0]}</strong>
+        <span>{copy[1]}</span>
+      </div>
+      {status === "off" && (
+        <button type="button" className="primary" onClick={onEnable}>
+          Turn on
+        </button>
+      )}
+    </section>
+  );
 }
 
 function Login({ error, busy, onGoogle, onEmail }) {
@@ -347,6 +421,7 @@ function Admin() {
     setToast(message);
     setTimeout(() => setToast(""), 4000);
   };
+  const notifications = useNotifications(owner, notify);
 
   async function withAuth(run) {
     setAuthBusy(true);
@@ -436,6 +511,7 @@ function Admin() {
 
       {dataError && <div className="adminError">{dataError}</div>}
 
+      <NotifyCard status={notifications.status} onEnable={notifications.enable} />
       <CalendarLink health={calendarHealth} busy={busy} onConnect={connectCalendar} />
 
       <Section title="Needs approval" count={pending.length} empty="No requests waiting.">
