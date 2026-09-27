@@ -139,6 +139,7 @@ const blank = {
   bookingTime: "",
   bookingEndTime: "",
   customerName: "",
+  companyName: "",
   phone: "",
   email: "",
   address: "",
@@ -625,6 +626,14 @@ function Booking() {
                 autoComplete="name"
                 value={form.customerName}
                 onChange={event => update("customerName", event.target.value)}
+              />
+            </label>
+            <label className="wide">
+              Company name <small>(optional — for business invoices)</small>
+              <input
+                autoComplete="organization"
+                value={form.companyName}
+                onChange={event => update("companyName", event.target.value)}
               />
             </label>
             <label>

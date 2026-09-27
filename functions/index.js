@@ -462,6 +462,7 @@ async function notifyRequest(data, config) {
           ),
           detailPanel([
             ["Customer", escapeHtml(data.customerName)],
+            ["Company", escapeHtml(data.companyName || "")],
             [
               "Phone",
               `<a href="tel:${escapeHtml(String(data.phone || "").replace(/\s/g, ""))}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.phone)}</a>`
@@ -527,6 +528,7 @@ async function notifyConfirmed(data, config) {
         body: [
           detailPanel([
             ["Customer", escapeHtml(data.customerName)],
+            ["Company", escapeHtml(data.companyName || "")],
             [
               "Phone",
               `<a href="tel:${escapeHtml(String(data.phone || "").replace(/\s/g, ""))}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.phone)}</a>`
@@ -563,6 +565,7 @@ async function createCalendarEvent(data, eventId = "", existingCalendarId = "") 
     description: [
       `Vehicle: ${data.vehicle || [data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" ")}`,
       `Rego: ${data.rego || ""}`,
+      ...(data.companyName ? [`Company: ${data.companyName}`] : []),
       `Add-ons: ${addonList(data).join(", ") || "None"}`,
       `Phone: ${data.phone || ""}`,
       `Email: ${data.email || ""}`,
@@ -756,6 +759,7 @@ export const submitBookingRequest = onCall(
     const bookingConfig = await getSettings();
     const data = {
       customerName: text(input.customerName, 160),
+      companyName: text(input.companyName, 160),
       phone: cleanPhone(input.phone),
       email: cleanEmail(input.email),
       address: text(input.address, 220),
@@ -890,7 +894,7 @@ export const submitBookingRequest = onCall(
       body: `${service.name} · ${prettyDate(data.bookingDate)} ${data.bookingTime}${
         data.estimatedFromPrice != null ? ` · from $${data.estimatedFromPrice}` : ""
       }`,
-      url: `${ADMIN_URL.value()}/admin`
+      url: `${ADMIN_URL.value()}/admin#requests`
     });
     const emails = await notifyRequest(data, config);
     await requestReference.set({ emailStatus: emails }, { merge: true });
@@ -1015,6 +1019,7 @@ export const approveBookingRequest = onCall({ region: REGION, secrets: GOOGLE_SE
     const job = {
       customerId: customerReference.id,
       customerName: item.customerName,
+      companyName: item.companyName || "",
       phone: item.phone,
       email: item.email,
       address: item.address,
