@@ -487,6 +487,10 @@ async function notifyRequest(data, config) {
   return results;
 }
 
+function addonList(data) {
+  return Array.isArray(data.addonNames) ? data.addonNames.filter(Boolean) : [];
+}
+
 async function notifyConfirmed(data, config) {
   const results = { customer: false, owner: false };
 
@@ -525,7 +529,9 @@ async function notifyConfirmed(data, config) {
               "Phone",
               `<a href="tel:${escapeHtml(String(data.phone || "").replace(/\s/g, ""))}" style="color:#e8b93a;text-decoration:none;">${escapeHtml(data.phone)}</a>`
             ],
-            ...bookingRows(data)
+            ...bookingRows(data),
+            ["Add-ons", escapeHtml(addonList(data).join(", ") || "None")],
+            ["Estimate", data.total != null ? `from $${escapeHtml(String(data.total))}` : "POA"]
           ]),
           button(ADMIN_URL.value(), "Log in to Admin")
         ].join("")
@@ -548,11 +554,14 @@ async function createCalendarEvent(data, eventId = "", existingCalendarId = "") 
     ? parseLocal(data.bookingDate, data.bookingEndTime)
     : start.plus({ minutes: Number(data.durationMinutes || serviceById(data.packageId || data.serviceId).durationMinutes) });
   const requestBody = {
-    summary: `Apex — ${data.customerName} — ${data.packageName || data.serviceName}`,
+    summary: `Apex — ${data.customerName} — ${data.packageName || data.serviceName}${
+      addonList(data).length ? ` + ${addonList(data).join(", ")}` : ""
+    }`,
     location: [data.address, data.area].filter(Boolean).join(", "),
     description: [
       `Vehicle: ${data.vehicle || [data.vehicleYear, data.vehicleMake, data.vehicleModel].filter(Boolean).join(" ")}`,
       `Rego: ${data.rego || ""}`,
+      `Add-ons: ${addonList(data).join(", ") || "None"}`,
       `Phone: ${data.phone || ""}`,
       `Email: ${data.email || ""}`,
       `Notes: ${data.notes || ""}`
