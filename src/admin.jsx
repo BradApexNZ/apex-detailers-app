@@ -14,6 +14,7 @@ import {
   startGoogleCalendarConnect
 } from "./apex-api";
 import { money } from "./booking-data";
+import { RELOCK_AFTER_MS, checkPin, clearPin, hasPin, savePin } from "./admin-lock";
 
 // Owner app, three tabs: Home (today, tomorrow, the week ahead), Requests
 // (approve/decline) and Calendar (month view of bookings, requests and the
@@ -187,33 +188,46 @@ function NotifyCard({ status, onEnable }) {
 function Login({ error, busy, onGoogle, onEmail }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [useEmail, setUseEmail] = useState(false);
   return (
-    <main className="adminLogin">
-      <img src="/apex-icon.svg" alt="" className="adminMark" />
+    <main className="adminLock adminSignIn">
+      <img src="/apex-icon-192.png" alt="" className="adminLockMark" />
       <h1>Apex Admin</h1>
-      <p>Approve bookings and see what's on.</p>
-      <button type="button" className="primary" disabled={busy} onClick={onGoogle}>
-        Sign in with Google
-      </button>
-      <form
-        onSubmit={event => {
-          event.preventDefault();
-          onEmail(email, password);
-        }}
-      >
-        <input type="email" autoComplete="username" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-        <input
-          type="password"
-          autoComplete="current-password"
-          placeholder="Password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-        />
-        <button type="submit" className="secondary" disabled={busy || !email || !password}>
-          Sign in with email
-        </button>
-      </form>
+      <p>Sign in to manage your bookings.</p>
+      {!useEmail ? (
+        <>
+          <button type="button" className="primary" disabled={busy} onClick={onGoogle}>
+            Continue with Google
+          </button>
+          <button type="button" className="adminLockLink" onClick={() => setUseEmail(true)}>
+            Sign in with email instead
+          </button>
+        </>
+      ) : (
+        <form
+          onSubmit={event => {
+            event.preventDefault();
+            onEmail(email, password);
+          }}
+        >
+          <input type="email" autoComplete="username" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+          <input
+            type="password"
+            autoComplete="current-password"
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
+          <button type="submit" className="primary" disabled={busy || !email || !password}>
+            Sign in
+          </button>
+          <button type="button" className="adminLockLink" onClick={() => setUseEmail(false)}>
+            Back
+          </button>
+        </form>
+      )}
       {error && <div className="adminError">{error}</div>}
+      <small className="adminSignInNote">After signing in you'll set a 4-digit PIN for this phone.</small>
     </main>
   );
 }
@@ -658,25 +672,187 @@ function TabBar({ tab, onTab, requestCount }) {
 }
 
 // Bookings reach Google Calendar and customer emails send through one Google
-// connection (the bookings@ account). This shows whether it's working and lets
-// the owner reconnect without HQ.
-function CalendarLink({ health, busy, onConnect }) {
-  if (!health) return null;
-  const ok = health.connected && health.healthy;
+// connection (the bookings@ account). A small pill shows it's healthy; tapping it
+// opens the account sheet (reconnect, change PIN, sign out).
+function SyncPill({ health, onOpen }) {
+  const state = !health ? "checking" : health.connected && health.healthy ? "ok" : "bad";
   return (
-    <section className={`adminCard adminCalendar ${ok ? "is-ok" : "is-bad"}`}>
-      <div>
-        <strong>{ok ? "Google Calendar & email connected" : "Google Calendar & email not connected"}</strong>
-        <span>
-          {ok
-            ? `Bookings sync to ${health.email}. Your calendar events block those times online.`
-            : "New bookings won't reach your calendar and emails won't send. Connect as bookings@apexdetailers.co.nz."}
-        </span>
-      </div>
-      <button type="button" className={ok ? "secondary" : "primary"} disabled={busy} onClick={onConnect}>
-        {ok ? "Reconnect" : "Connect"}
+    <button type="button" className={`adminPill is-${state}`} onClick={onOpen}>
+      <i />
+      {state === "ok" ? "Synced" : state === "bad" ? "Reconnect" : "Checking"}
+    </button>
+  );
+}
+
+function AccountSheet({ user, health, notifyStatus, onEnableNotify, busy, onConnect, onChangePin, onSignOut, onClose, canInstall, onInstall }) {
+  const ok = health && health.connected && health.healthy;
+  return (
+    <div className="adminSheetBackdrop" onClick={onClose}>
+      <section className="adminSheet" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+        <span className="eyebrow">Account</span>
+        <h2>{user?.displayName || "Apex Admin"}</h2>
+        <p className="adminSheetWhen">{user?.email}</p>
+        <dl>
+          <dt>Calendar</dt>
+          <dd>
+            {!health
+              ? "Checking…"
+              : ok
+                ? `Synced with ${health.email}. Bookings go into your Google Calendar and your events block those times online.`
+                : "Not connected — bookings won't reach your calendar and emails won't send. Reconnect as bookings@apexdetailers.co.nz."}
+          </dd>
+          <dt>Alerts</dt>
+          <dd>
+            {notifyStatus === "on"
+              ? "On — this phone buzzes for new booking requests."
+              : notifyStatus === "blocked"
+                ? "Blocked — turn on in Settings > Notifications > Apex Admin."
+                : notifyStatus === "install-first"
+                  ? "Add Apex Admin to your Home Screen first."
+                  : "Off."}
+          </dd>
+        </dl>
+        <div className="adminSheetActions">
+          <button type="button" className={ok ? "secondary" : "primary"} disabled={busy} onClick={onConnect}>
+            {ok ? "Reconnect Google" : "Connect Google"}
+          </button>
+          {notifyStatus === "off" && (
+            <button type="button" className="primary" onClick={onEnableNotify}>
+              Turn on alerts
+            </button>
+          )}
+          {canInstall && (
+            <button type="button" className="secondary" onClick={onInstall}>
+              Install app
+            </button>
+          )}
+          <button type="button" className="secondary" onClick={onChangePin}>
+            Change PIN
+          </button>
+          <button type="button" className="danger" onClick={onSignOut}>
+            Sign out
+          </button>
+        </div>
+        <button type="button" className="adminSheetClose" onClick={onClose}>
+          Close
+        </button>
+      </section>
+    </div>
+  );
+}
+
+function PinDots({ filled, shake }) {
+  return (
+    <div className={`adminPinDots ${shake ? "is-shake" : ""}`} aria-hidden="true">
+      {[0, 1, 2, 3].map(i => (
+        <i key={i} className={i < filled ? "is-on" : ""} />
+      ))}
+    </div>
+  );
+}
+
+function PinPad({ onDigit, onBack, disabled }) {
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"];
+  return (
+    <div className="adminPinPad">
+      {keys.map((key, i) =>
+        key === "" ? (
+          <span key={i} />
+        ) : key === "back" ? (
+          <button key={i} type="button" className="is-back" onClick={onBack} disabled={disabled} aria-label="Delete">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 4H8l-6 8 6 8h13a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z" strokeLinejoin="round" />
+              <path d="M18 9l-6 6M12 9l6 6" strokeLinecap="round" />
+            </svg>
+          </button>
+        ) : (
+          <button key={i} type="button" onClick={() => onDigit(key)} disabled={disabled}>
+            {key}
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
+// mode "setup": choose + confirm a PIN. mode "unlock": enter it.
+function PinScreen({ mode, user, onDone, onSignOut }) {
+  const [pin, setPin] = useState("");
+  const [first, setFirst] = useState("");
+  const [message, setMessage] = useState("");
+  const [shake, setShake] = useState(false);
+  const [working, setWorking] = useState(false);
+  const firstName = (user?.displayName || "").split(" ")[0];
+  const stage = mode === "setup" ? (first ? "confirm" : "choose") : "unlock";
+  const title = stage === "choose" ? "Create your PIN" : stage === "confirm" ? "Confirm your PIN" : `Welcome back${firstName ? `, ${firstName}` : ""}`;
+  const hint =
+    stage === "choose" ? "You'll use these 4 digits to open Apex Admin." : stage === "confirm" ? "Enter it once more." : "Enter your PIN";
+
+  const fail = text => {
+    setMessage(text);
+    setShake(true);
+    setTimeout(() => {
+      setShake(false);
+      setPin("");
+      setWorking(false);
+    }, 420);
+  };
+
+  async function complete(value) {
+    setWorking(true);
+    if (stage === "choose") {
+      setTimeout(() => {
+        setFirst(value);
+        setPin("");
+        setWorking(false);
+      }, 160);
+      return;
+    }
+    if (stage === "confirm") {
+      if (value !== first) {
+        setFirst("");
+        return fail("Those didn't match. Start again.");
+      }
+      await savePin(user.uid, value);
+      return onDone();
+    }
+    const result = await checkPin(user.uid, value);
+    if (result.ok) return onDone();
+    if (result.remaining <= 0) return onSignOut("Too many wrong PINs. Sign in again to continue.");
+    fail(`Wrong PIN. ${result.remaining} ${result.remaining === 1 ? "try" : "tries"} left.`);
+  }
+
+  const digit = d => {
+    if (working || pin.length >= 4) return;
+    setMessage("");
+    const next = pin + d;
+    setPin(next);
+    if (next.length === 4) complete(next);
+  };
+
+  useEffect(() => {
+    const onKey = event => {
+      if (/^\d$/.test(event.key)) digit(event.key);
+      else if (event.key === "Backspace") setPin(p => p.slice(0, -1));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  return (
+    <main className="adminLock">
+      <img src="/apex-icon-192.png" alt="" className="adminLockMark" />
+      <h1>{title}</h1>
+      <p>{hint}</p>
+      <PinDots filled={pin.length} shake={shake} />
+      <p className="adminLockMessage" role="status">
+        {message}
+      </p>
+      <PinPad onDigit={digit} onBack={() => !working && setPin(p => p.slice(0, -1))} disabled={working} />
+      <button type="button" className="adminLockLink" onClick={() => onSignOut("")}>
+        {mode === "setup" ? "Use a different account" : "Forgot PIN? Sign in again"}
       </button>
-    </section>
+    </main>
   );
 }
 
@@ -710,7 +886,13 @@ function Admin() {
   const [events, setEvents] = useState([]);
   const [eventsNote, setEventsNote] = useState("");
   const [sheet, setSheet] = useState(null);
-  const owner = Boolean(user && ownerUids.includes(user.uid));
+  const signedIn = Boolean(user && ownerUids.includes(user.uid));
+  const [unlocked, setUnlocked] = useState(false);
+  const [lockNotice, setLockNotice] = useState("");
+  const [accountOpen, setAccountOpen] = useState(false);
+  // Everything below the PIN screen (listeners, calendar, notifications) only
+  // runs once the app is unlocked.
+  const owner = signedIn && unlocked;
   const { canOffer: canInstall, install } = useInstall(message => {
     setToast(message);
     setTimeout(() => setToast(""), 6000);
@@ -745,10 +927,27 @@ function Admin() {
           setAuthError("That account is not authorised for Apex Admin.");
           setUser(null);
         } else setUser(next);
+        if (!next) setUnlocked(false);
+        else setLockNotice("");
         setReady(true);
       }),
     []
   );
+
+  // Like a banking app: leave for more than a minute and it asks for the PIN again.
+  useEffect(() => {
+    let hiddenAt = 0;
+    const onVisibility = () => {
+      if (document.hidden) hiddenAt = Date.now();
+      else if (hiddenAt && Date.now() - hiddenAt > RELOCK_AFTER_MS) {
+        setUnlocked(false);
+        setAccountOpen(false);
+        setSheet(null);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
 
   useEffect(() => {
     if (!owner) return;
@@ -861,6 +1060,14 @@ function Admin() {
   };
   const notifications = useNotifications(owner, notify);
 
+  function fullSignOut(reason = "") {
+    clearPin();
+    setUnlocked(false);
+    setAccountOpen(false);
+    setLockNotice(reason);
+    signOut(auth);
+  }
+
   async function withAuth(run) {
     setAuthBusy(true);
     setAuthError("");
@@ -917,34 +1124,35 @@ function Admin() {
     setBusy(false);
   }
 
-  if (!ready) return <main className="adminLogin">Loading…</main>;
-  if (!owner)
+  if (!ready) return <main className="adminLock" />;
+  if (!signedIn)
     return (
       <Login
-        error={authError}
+        error={authError || lockNotice}
         busy={authBusy}
         onGoogle={() => withAuth(() => signInWithPopup(auth, new GoogleAuthProvider()))}
         onEmail={(email, password) => withAuth(() => signInWithEmailAndPassword(auth, email, password))}
       />
     );
+  if (!unlocked)
+    return (
+      <PinScreen
+        key={hasPin(user.uid) ? "unlock" : "setup"}
+        mode={hasPin(user.uid) ? "unlock" : "setup"}
+        user={user}
+        onDone={() => setUnlocked(true)}
+        onSignOut={fullSignOut}
+      />
+    );
 
   return (
     <main className="adminPage">
-      <header className="adminTop">
-        <div>
+      <header className="adminHead">
+        <div className="adminHeadRow">
           <span className="eyebrow">APEX ADMIN</span>
-          <h1>{new Date().toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", timeZone: ZONE })}</h1>
+          <SyncPill health={calendarHealth} onOpen={() => setAccountOpen(true)} />
         </div>
-        <nav>
-          {canInstall && (
-            <button type="button" className="adminInstall" onClick={install}>
-              Install app
-            </button>
-          )}
-          <button type="button" onClick={() => signOut(auth)}>
-            Sign out
-          </button>
-        </nav>
+        <h1>{new Date().toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", timeZone: ZONE })}</h1>
       </header>
 
       {dataError && <div className="adminError">{dataError}</div>}
@@ -952,7 +1160,6 @@ function Admin() {
       {tab === "home" && (
         <>
           <NotifyCard status={notifications.status} onEnable={notifications.enable} />
-          <CalendarLink health={calendarHealth} busy={busy} onConnect={connectCalendar} />
 
           {pending.length > 0 && (
             <button type="button" className="adminCard adminNudge" onClick={() => setTab("requests")}>
@@ -1033,6 +1240,26 @@ function Admin() {
         onApprove={approve}
         onDecline={decline}
       />
+
+      {accountOpen && (
+        <AccountSheet
+          user={user}
+          health={calendarHealth}
+          notifyStatus={notifications.status}
+          onEnableNotify={notifications.enable}
+          busy={busy}
+          onConnect={connectCalendar}
+          canInstall={canInstall}
+          onInstall={install}
+          onChangePin={() => {
+            clearPin();
+            setAccountOpen(false);
+            setUnlocked(false);
+          }}
+          onSignOut={() => fullSignOut("")}
+          onClose={() => setAccountOpen(false)}
+        />
+      )}
 
       <TabBar tab={tab} onTab={setTab} requestCount={pending.length} />
 
