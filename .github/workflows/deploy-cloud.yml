@@ -104,6 +104,7 @@ jobs:
             declineBookingRequest
             cancelBooking
             registerOwnerDevice
+            reportPinLockout
             createManualBooking
             syncJobToCalendar
             submitInquiry
