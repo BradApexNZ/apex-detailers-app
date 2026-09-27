@@ -1468,10 +1468,10 @@ export const googleCalendarCallback = onRequest({ region: REGION, secrets: GOOGL
       { merge: true }
     );
     await stateReference.delete();
-    response.redirect(`${APP_BASE_URL.value()}/hq?google=connected`);
+    response.redirect(`${ADMIN_URL.value()}/admin?google=connected`);
   } catch (error) {
     console.error(error);
-    response.status(400).send("Google connection failed. Return to Apex HQ and try again.");
+    response.status(400).send("Google connection failed. Go back to Apex Admin and tap Connect again.");
   }
 });
 

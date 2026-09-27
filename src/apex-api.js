@@ -71,6 +71,9 @@ export const submitBookingRequest = bookingSubmitCall;
 export const approveBookingRequest = privateCall("approveBookingRequest");
 export const declineBookingRequest = privateCall("declineBookingRequest");
 export const cancelBooking = privateCall("cancelBooking");
+// Server-side health check: actually calls Google, so an expired or revoked
+// connection shows as unhealthy rather than merely "connected".
+export const getCalendarLinkStatus = privateCall("getGoogleCalendarStatus");
 export const createManualBooking = privateCall("createManualBooking");
 export const syncJobToCalendar = privateCall("syncJobToCalendar");
 export const submitInquiry = privateCall("submitInquiry");
