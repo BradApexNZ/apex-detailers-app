@@ -192,10 +192,6 @@
   font-size: 12px;
   font-weight: 600;
 }
-.heroAreas li:first-child {
-  border-color: var(--gold-line);
-  color: var(--gold);
-}
 
 /* ---- step progress ---- */
 .steps {

@@ -56,6 +56,9 @@ const withTimeout = (promise, ms = 15000) =>
 
 function BookingCalendar({ serviceId, value, bookingWindowDays, onSelect }) {
   const [viewMonth, setViewMonth] = useState(() => monthKey(value || today()));
+  // Until the customer uses the arrows, skip ahead past months with nothing
+  // free, so the calendar never opens on a wall of crossed-out days.
+  const [userMoved, setUserMoved] = useState(Boolean(value));
   const [fullDates, setFullDates] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -67,7 +70,22 @@ function BookingCalendar({ serviceId, value, bookingWindowDays, onSelect }) {
     withTimeout(listMonthAvailability({ serviceId, month: viewMonth }))
       .then(result => {
         if (cancelled) return;
-        setFullDates(new Set(result?.fullDates || []));
+        const full = new Set(result?.fullDates || []);
+        setFullDates(full);
+        if (!userMoved) {
+          const todayKey = today();
+          const lastDay = addDays(todayKey, Number(bookingWindowDays || 60));
+          const [y, m] = viewMonth.split("-").map(Number);
+          let free = false;
+          for (let day = 1; day <= daysInMonth(y, m); day++) {
+            const dateStr = ymd(y, m, day);
+            if (dateStr > todayKey && dateStr <= lastDay && !full.has(dateStr)) {
+              free = true;
+              break;
+            }
+          }
+          if (!free && `${addMonths(viewMonth, 1)}-01` <= lastDay) setViewMonth(addMonths(viewMonth, 1));
+        }
       })
       .catch(() => {
         if (!cancelled) setError("Could not check the calendar. Try again.");
@@ -96,11 +114,27 @@ function BookingCalendar({ serviceId, value, bookingWindowDays, onSelect }) {
   return (
     <div className="apexCalendar">
       <div className="apexCalHeader">
-        <button type="button" onClick={() => setViewMonth(month => addMonths(month, -1))} disabled={!canGoPrev} aria-label="Previous month">
+        <button
+          type="button"
+          onClick={() => {
+            setUserMoved(true);
+            setViewMonth(month => addMonths(month, -1));
+          }}
+          disabled={!canGoPrev}
+          aria-label="Previous month"
+        >
           ‹
         </button>
         <strong>{monthLabel(viewMonth)}</strong>
-        <button type="button" onClick={() => setViewMonth(month => addMonths(month, 1))} disabled={!canGoNext} aria-label="Next month">
+        <button
+          type="button"
+          onClick={() => {
+            setUserMoved(true);
+            setViewMonth(month => addMonths(month, 1));
+          }}
+          disabled={!canGoNext}
+          aria-label="Next month"
+        >
           ›
         </button>
       </div>
