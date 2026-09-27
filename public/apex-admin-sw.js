@@ -33,7 +33,7 @@ self.addEventListener("notificationclick", event => {
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(windows => {
       const open = windows.find(client => new URL(client.url).pathname.startsWith("/admin"));
-      if (open) return open.focus();
+      if (open) return (open.navigate ? open.navigate(url) : Promise.resolve(open)).then(client => (client || open).focus());
       return self.clients.openWindow(url);
     })
   );
