@@ -387,7 +387,7 @@
 }
 .adminEvent {
   display: grid;
-  grid-template-columns: 76px 1fr;
+  grid-template-columns: 92px 1fr;
   gap: 10px;
   width: 100%;
   margin-bottom: 8px;
@@ -402,6 +402,7 @@
   cursor: pointer;
 }
 .adminEvent time {
+  white-space: nowrap;
   color: var(--paper-faint);
   font-family: var(--mono);
   font-size: 12.5px;
