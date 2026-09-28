@@ -4,11 +4,6 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "redirects": [
       {
-        "source": "/review",
-        "destination": "https://g.page/r/CV2TeKznEQTSEBM/review",
-        "type": 302
-      },
-      {
         "source": "/HQ",
         "destination": "/hq",
         "type": 301
@@ -44,6 +39,10 @@
       {
         "source": "/admin",
         "destination": "/admin.html"
+      },
+      {
+        "source": "/review",
+        "destination": "/review.html"
       },
       {
         "source": "/tools",
