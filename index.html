@@ -19,8 +19,13 @@
       // Hosting site gets. The <meta refresh> above is a no-JS fallback and
       // stays pointed at /hq since that path can't be made hostname-aware.
       // admin.apexdetailers.co.nz is the same idea for the owner: it opens the
-      // stripped-down /admin approvals app.
-      const landing = { "book.apexdetailers.co.nz": "/book", "admin.apexdetailers.co.nz": "/admin" };
+      // stripped-down /admin approvals app. review.apexdetailers.co.nz is a
+      // tidy link for asking customers for a Google review (/review forwards).
+      const landing = {
+        "book.apexdetailers.co.nz": "/book",
+        "admin.apexdetailers.co.nz": "/admin",
+        "review.apexdetailers.co.nz": "/review"
+      };
       window.location.replace(landing[window.location.hostname] || "/hq");
     </script>
   </head>
