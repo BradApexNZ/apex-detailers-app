@@ -281,6 +281,11 @@ async function calendarConfig(connected) {
   return { rows, selectedCalendarIds, primaryCalendarId };
 }
 
+// HQ's old "Import from Google Calendar" saved copies of Google events as
+// calendar-block jobs. Google Calendar is read live (calendarBusy), so those
+// copies only go stale - e.g. a deleted cooking class kept blocking the day.
+const isCalendarCopy = job => job?.mode === "calendar-block";
+
 async function calendarBusy(start, end) {
   const connected = await connectedGoogle();
   if (!connected) return [];
@@ -335,7 +340,7 @@ async function availableSlots(date, serviceId) {
   });
   jobSnapshot.forEach(document => {
     const data = document.data();
-    if (!data.bookingTime || ["Archived", "Cancelled"].includes(data.status)) return;
+    if (!data.bookingTime || ["Archived", "Cancelled"].includes(data.status) || isCalendarCopy(data)) return;
     const start = parseLocal(date, data.bookingTime);
     blocked.push({ start, end: start.plus({ minutes: Number(data.durationMinutes || serviceById(data.packageId).durationMinutes) }) });
   });
@@ -680,7 +685,7 @@ async function fullDatesInMonth(month, serviceId) {
   });
   jobSnapshot.forEach(document => {
     const data = document.data();
-    if (!data.bookingTime || ["Archived", "Cancelled"].includes(data.status)) return;
+    if (!data.bookingTime || ["Archived", "Cancelled"].includes(data.status) || isCalendarCopy(data)) return;
     const start = parseLocal(data.bookingDate, data.bookingTime);
     const duration = Number(data.durationMinutes || serviceById(data.packageId).durationMinutes);
     (byDate[data.bookingDate] ||= []).push({ start, end: start.plus({ minutes: duration }) });
@@ -825,10 +830,12 @@ export const submitBookingRequest = onCall(
         transaction.get(jobQuery)
       ]);
       const locks = lockSnapshot.docs.map(document => ({ id: document.id, ...document.data() }));
-      const jobs = jobSnapshot.docs.map(document => {
-        const row = document.data();
-        return { id: document.id, ...row, durationMinutes: Number(row.durationMinutes || serviceById(row.packageId).durationMinutes) };
-      });
+      const jobs = jobSnapshot.docs
+        .filter(document => !isCalendarCopy(document.data()))
+        .map(document => {
+          const row = document.data();
+          return { id: document.id, ...row, durationMinutes: Number(row.durationMinutes || serviceById(row.packageId).durationMinutes) };
+        });
       if (hasBookingConflict({ startTime: data.bookingTime, endTime: data.bookingEndTime, locks, jobs })) {
         throw new HttpsError("already-exists", "That appointment overlaps another Apex booking.");
       }
